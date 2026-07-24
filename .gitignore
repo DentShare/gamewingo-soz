@@ -1,0 +1,42 @@
+# deps
+node_modules/
+.pnp/
+.pnp.js
+
+# builds
+dist/
+build/
+*.tsbuildinfo
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# логи
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# vercel
+.vercel
+
+# brainstorm scratch (visual companion) и временные папки
+.superpowers/
+/_to_delete/
+
+# локальные референс-репозитории (лежат рядом как примеры, не часть монорепо)
+/canvas-confetti-master/
+/Enclave-Phaser-Template-gh-pages/
+/examples-master/
+/games-master/
+/howler.js-master/
+/phaser3-rex-notes-master/
+/template-vite-ts-main/

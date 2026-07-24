@@ -1,0 +1,21 @@
+{
+  "name": "gamewingo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Каталог встраиваемых HTML5-игр для финтех-приложения (Phaser 4 + TS + Vite)",
+  "workspaces": [
+    "packages/*",
+    "games/*"
+  ],
+  "scripts": {
+    "bridge:build": "npm run build -w @gamewingo/game-bridge",
+    "new-game": "echo \"Скопируйте template-vite-ts-main в games/<name> — или используйте скилл new-game в Claude Code\"",
+    "typecheck": "tsc -b --pretty"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
