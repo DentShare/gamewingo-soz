@@ -1,0 +1,20 @@
+{
+  "app.title": "5 букв",
+  "menu.daily": "Слово дня",
+  "menu.practice": "Тренировка",
+  "menu.howto": "Как играть",
+  "menu.back": "Назад",
+  "game.invalidWord": "Слишком коротко",
+  "game.notInList": "Нет такого слова",
+  "result.won": "Отгадано!",
+  "result.lost": "Не угадали",
+  "result.answerWas": "Слово было: {word}",
+  "result.share": "Поделиться",
+  "result.claim": "Забрать награду",
+  "result.claimed": "Начислено: {points}",
+  "result.streak": "Серия: {n}",
+  "result.leaderboard": "Таблица лидеров",
+  "result.playAgain": "Ещё раз",
+  "error.network": "Нет соединения",
+  "a11y.highContrast": "Высокий контраст"
+}

@@ -1,0 +1,20 @@
+{
+  "app.title": "5 harf",
+  "menu.daily": "Kun soʻzi",
+  "menu.practice": "Mashq",
+  "menu.howto": "Qanday oʻynash",
+  "menu.back": "Orqaga",
+  "game.invalidWord": "Juda qisqa",
+  "game.notInList": "Bunday soʻz yoʻq",
+  "result.won": "Topildi!",
+  "result.lost": "Topilmadi",
+  "result.answerWas": "Soʻz: {word}",
+  "result.share": "Ulashish",
+  "result.claim": "Mukofotni olish",
+  "result.claimed": "Hisoblandi: {points}",
+  "result.streak": "Ketma-ket: {n}",
+  "result.leaderboard": "Reyting",
+  "result.playAgain": "Yana",
+  "error.network": "Aloqa yoʻq",
+  "a11y.highContrast": "Yuqori kontrast"
+}
