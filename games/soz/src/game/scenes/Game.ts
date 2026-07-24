@@ -8,7 +8,7 @@ import { pickDailyWord, dailyIndex } from '../../core/dailyWord';
 import { saveDaily, loadDaily } from '../../core/persistence';
 import { keyboardFor, ENTER, BACKSPACE, UZ_DIGRAPH_KEYS, type Key } from '../keyboards';
 import { paletteFor, statusColor, COLORS, FONT, type Palette } from '../palette';
-import { toast } from '../ui';
+import { toast, applyTheme } from '../ui';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
@@ -62,6 +62,7 @@ export class Game extends Scene {
     this.rowContainers = [];
     this.keyObjects = new Map();
 
+    applyTheme(this);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.mode = (this.registry.get('mode') as 'daily' | 'practice') ?? 'daily';
     this.dayId = (this.registry.get('dayId') as number) ?? 0;

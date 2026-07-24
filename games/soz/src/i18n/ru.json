@@ -4,6 +4,7 @@
   "menu.practice": "Тренировка",
   "menu.howto": "Как играть",
   "menu.back": "Назад",
+  "howto.body": "Угадайте слово из 5 букв за 6 попыток.\n🟩 на месте  🟨 не там  ⬛ нет",
   "game.invalidWord": "Слишком коротко",
   "game.notInList": "Нет такого слова",
   "result.won": "Отгадано!",

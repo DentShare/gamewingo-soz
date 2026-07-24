@@ -1,5 +1,12 @@
 import { Scene } from 'phaser';
+import type { BrandTheme } from '@gamewingo/game-bridge';
 import { COLORS, FONT } from './palette';
+
+/** Применяет брендовую тему из INIT поверх дефолтной палитры (пока — цвет фона). */
+export function applyTheme(scene: Scene): void {
+  const theme = scene.registry.get('theme') as BrandTheme | null;
+  if (theme?.background) scene.cameras.main.setBackgroundColor(theme.background);
+}
 
 export interface Button {
   bg: Phaser.GameObjects.Rectangle;

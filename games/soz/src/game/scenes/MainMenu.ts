@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, type Button } from '../ui';
+import { makeButton, applyTheme, type Button } from '../ui';
 import { COLORS, FONT } from '../palette';
 
 const CX = 200;
@@ -15,6 +15,7 @@ export class MainMenu extends Scene {
 
   create() {
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
+    applyTheme(this);
 
     this.add
       .text(CX, 130, t(this.locale, 'app.title'), {
@@ -41,10 +42,7 @@ export class MainMenu extends Scene {
   }
 
   private showHowto() {
-    const lines =
-      this.locale === 'uz'
-        ? "5 harfli soʻzni 6 urinishda toping.\n🟩 oʻz oʻrnida  🟨 boshqa joyda  ⬛ yoʻq"
-        : 'Угадайте слово из 5 букв за 6 попыток.\n🟩 на месте  🟨 не там  ⬛ нет';
+    const lines = t(this.locale, 'howto.body');
     const overlay = this.add
       .rectangle(CX, 360, 400, 720, 0x000000, 0.75)
       .setInteractive()

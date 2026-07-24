@@ -1,0 +1,19 @@
+{
+  "$comment": "Манифест каталога игр GameWingo. Приложение читает его, чтобы показать список игр в WebView без релиза. URL заполняется после деплоя на Vercel.",
+  "version": 1,
+  "games": [
+    {
+      "gameId": "soz",
+      "title": { "ru": "5 букв", "uz": "5 harf" },
+      "mechanic": "wordle",
+      "locales": ["ru", "uz"],
+      "orientation": "portrait",
+      "url": "",
+      "modes": ["daily", "practice"],
+      "leaderboard": true,
+      "streak": true,
+      "status": "mvp",
+      "buildSizeMb": 1.4
+    }
+  ]
+}

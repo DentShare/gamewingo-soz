@@ -2,7 +2,7 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import type { Row } from '../../core/gameState';
 import { t } from '../../i18n';
-import { makeButton, type Button } from '../ui';
+import { makeButton, applyTheme, type Button } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { buildShareText } from '../share';
 import { loadDaily, saveDaily } from '../../core/persistence';
@@ -30,6 +30,7 @@ export class GameOver extends Scene {
   }
 
   create() {
+    applyTheme(this);
     this.session = this.registry.get('session') as Session;
     this.last = this.registry.get('lastGame') as LastGame;
     const loc = this.last.locale;
