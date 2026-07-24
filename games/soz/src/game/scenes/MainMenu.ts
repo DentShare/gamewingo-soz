@@ -2,7 +2,7 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import { makeButton, type Button } from '../ui';
-import { COLORS } from '../palette';
+import { COLORS, FONT } from '../palette';
 
 const CX = 200;
 
@@ -18,7 +18,7 @@ export class MainMenu extends Scene {
 
     this.add
       .text(CX, 130, t(this.locale, 'app.title'), {
-        fontFamily: 'sans-serif', fontSize: 46, color: '#e9e9ea', fontStyle: 'bold',
+        fontFamily: FONT, fontSize: 46, color: '#e9e9ea', fontStyle: 'bold',
       })
       .setOrigin(0.5);
 
@@ -51,7 +51,7 @@ export class MainMenu extends Scene {
       .setDepth(50);
     const text = this.add
       .text(CX, 360, lines, {
-        fontFamily: 'sans-serif', fontSize: 18, color: COLORS.headText, align: 'center',
+        fontFamily: FONT, fontSize: 18, color: COLORS.headText, align: 'center',
         wordWrap: { width: 340 },
       })
       .setOrigin(0.5)

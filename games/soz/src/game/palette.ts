@@ -1,5 +1,8 @@
 import type { UnitStatus } from '../core/evaluate';
 
+/** Бандл-шрифт с покрытием кириллица + латиница + ʻ (U+02BB). Фолбэк — системный sans-serif. */
+export const FONT = 'Rubik, sans-serif';
+
 export interface Palette {
   correct: number;
   present: number;

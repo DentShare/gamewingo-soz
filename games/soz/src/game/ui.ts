@@ -1,5 +1,5 @@
 import { Scene } from 'phaser';
-import { COLORS } from './palette';
+import { COLORS, FONT } from './palette';
 
 export interface Button {
   bg: Phaser.GameObjects.Rectangle;
@@ -24,7 +24,7 @@ export function makeButton(
     .setStrokeStyle(1, COLORS.emptyBorder)
     .setInteractive({ useHandCursor: true });
   const txt = scene.add
-    .text(x, y, label, { fontFamily: 'sans-serif', fontSize: 18, color: '#e9e9ea' })
+    .text(x, y, label, { fontFamily: FONT, fontSize: 18, color: '#e9e9ea' })
     .setOrigin(0.5);
   bg.on('pointerover', () => bg.setFillStyle(COLORS.emptyBorder));
   bg.on('pointerout', () => bg.setFillStyle(COLORS.panel));
@@ -41,7 +41,7 @@ export function makeButton(
 export function toast(scene: Scene, x: number, y: number, message: string): void {
   const t = scene.add
     .text(x, y, message, {
-      fontFamily: 'sans-serif', fontSize: 16, color: '#111317',
+      fontFamily: FONT, fontSize: 16, color: '#111317',
       backgroundColor: '#e9e9ea', padding: { x: 12, y: 8 },
     })
     .setOrigin(0.5)

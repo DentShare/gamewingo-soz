@@ -7,7 +7,7 @@ import { createGame, type Game as CoreGame } from '../../core/gameState';
 import { pickDailyWord, dailyIndex } from '../../core/dailyWord';
 import { saveDaily, loadDaily } from '../../core/persistence';
 import { keyboardFor, ENTER, BACKSPACE, UZ_DIGRAPH_KEYS, type Key } from '../keyboards';
-import { paletteFor, statusColor, COLORS, type Palette } from '../palette';
+import { paletteFor, statusColor, COLORS, FONT, type Palette } from '../palette';
 import { toast } from '../ui';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -132,7 +132,7 @@ export class Game extends Scene {
         const y = this.rowCenterY(r);
         const rect = this.add.rectangle(x, y, TILE, TILE).setStrokeStyle(2, COLORS.emptyBorder);
         const text = this.add
-          .text(x, y, '', { fontFamily: 'sans-serif', fontSize: 26, color: COLORS.tileText })
+          .text(x, y, '', { fontFamily: FONT, fontSize: 26, color: COLORS.tileText })
           .setOrigin(0.5);
         container.add([rect, text]);
         rowTiles.push({ rect, text });
@@ -161,7 +161,7 @@ export class Game extends Scene {
         const label = key === ENTER ? '⏎' : key === BACKSPACE ? '⌫' : key;
         const text = this.add
           .text(cx, y + kh / 2, label, {
-            fontFamily: 'sans-serif', fontSize: key.length > 1 && key !== ENTER && key !== BACKSPACE ? 15 : 16,
+            fontFamily: FONT, fontSize: key.length > 1 && key !== ENTER && key !== BACKSPACE ? 15 : 16,
             color: isDigraph ? '#ffffff' : COLORS.keyText,
           })
           .setOrigin(0.5);

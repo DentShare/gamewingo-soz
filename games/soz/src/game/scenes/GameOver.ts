@@ -3,7 +3,7 @@ import type { Locale } from '../../core/locale';
 import type { Row } from '../../core/gameState';
 import { t } from '../../i18n';
 import { makeButton, type Button } from '../ui';
-import { COLORS } from '../palette';
+import { COLORS, FONT } from '../palette';
 import { buildShareText } from '../share';
 import { loadDaily, saveDaily } from '../../core/persistence';
 import type { Session } from '../../bridge/session';
@@ -36,14 +36,14 @@ export class GameOver extends Scene {
 
     this.add
       .text(CX, 90, t(loc, this.last.solved ? 'result.won' : 'result.lost'), {
-        fontFamily: 'sans-serif', fontSize: 34, color: '#e9e9ea', fontStyle: 'bold',
+        fontFamily: FONT, fontSize: 34, color: '#e9e9ea', fontStyle: 'bold',
       })
       .setOrigin(0.5);
 
     if (!this.last.solved) {
       this.add
         .text(CX, 140, t(loc, 'result.answerWas', { word: this.last.answer }), {
-          fontFamily: 'sans-serif', fontSize: 20, color: COLORS.headText,
+          fontFamily: FONT, fontSize: 20, color: COLORS.headText,
         })
         .setOrigin(0.5);
     }
@@ -86,11 +86,11 @@ export class GameOver extends Scene {
     const lbY = y + 10;
     this.add
       .text(CX, lbY, t(loc, 'result.leaderboard'), {
-        fontFamily: 'sans-serif', fontSize: 18, color: COLORS.headText, fontStyle: 'bold',
+        fontFamily: FONT, fontSize: 18, color: COLORS.headText, fontStyle: 'bold',
       })
       .setOrigin(0.5);
     const listText = this.add
-      .text(CX, lbY + 26, '…', { fontFamily: 'sans-serif', fontSize: 15, color: '#b8bcc4', align: 'center' })
+      .text(CX, lbY + 26, '…', { fontFamily: FONT, fontSize: 15, color: '#b8bcc4', align: 'center' })
       .setOrigin(0.5, 0);
     void this.session.leaderboard(5).then((entries) => {
       if (!entries.length) {
