@@ -1,32 +1,64 @@
-import { Scene, GameObjects } from 'phaser';
+import { Scene } from 'phaser';
+import type { Locale } from '../../core/locale';
+import { t } from '../../i18n';
+import { makeButton, type Button } from '../ui';
+import { COLORS } from '../palette';
 
-export class MainMenu extends Scene
-{
-    background: GameObjects.Image;
-    logo: GameObjects.Image;
-    title: GameObjects.Text;
+const CX = 200;
 
-    constructor ()
-    {
-        super('MainMenu');
-    }
+export class MainMenu extends Scene {
+  private locale: Locale = 'ru';
 
-    create ()
-    {
-        this.background = this.add.image(512, 384, 'background');
+  constructor() {
+    super('MainMenu');
+  }
 
-        this.logo = this.add.image(512, 300, 'logo');
+  create() {
+    this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
 
-        this.title = this.add.text(512, 460, 'Main Menu', {
-            fontFamily: 'Arial Black', fontSize: 38, color: '#ffffff',
-            stroke: '#000000', strokeThickness: 8,
-            align: 'center'
-        }).setOrigin(0.5);
+    this.add
+      .text(CX, 130, t(this.locale, 'app.title'), {
+        fontFamily: 'sans-serif', fontSize: 46, color: '#e9e9ea', fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
 
-        this.input.once('pointerdown', () => {
+    makeButton(this, CX, 300, t(this.locale, 'menu.daily'), () => this.startMode('daily'));
+    makeButton(this, CX, 370, t(this.locale, 'menu.practice'), () => this.startMode('practice'));
+    makeButton(this, CX, 440, t(this.locale, 'menu.howto'), () => this.showHowto());
 
-            this.scene.start('Game');
+    const label = () =>
+      `${t(this.locale, 'a11y.highContrast')}: ${this.registry.get('highContrast') ? '✓' : '×'}`;
+    let btn: Button;
+    btn = makeButton(this, CX, 560, label(), () => {
+      this.registry.set('highContrast', !this.registry.get('highContrast'));
+      btn.setLabel(label());
+    });
+  }
 
-        });
-    }
+  private startMode(mode: 'daily' | 'practice') {
+    this.registry.set('mode', mode);
+    this.scene.start('Game');
+  }
+
+  private showHowto() {
+    const lines =
+      this.locale === 'uz'
+        ? "5 harfli soʻzni 6 urinishda toping.\n🟩 oʻz oʻrnida  🟨 boshqa joyda  ⬛ yoʻq"
+        : 'Угадайте слово из 5 букв за 6 попыток.\n🟩 на месте  🟨 не там  ⬛ нет';
+    const overlay = this.add
+      .rectangle(CX, 360, 400, 720, 0x000000, 0.75)
+      .setInteractive()
+      .setDepth(50);
+    const text = this.add
+      .text(CX, 360, lines, {
+        fontFamily: 'sans-serif', fontSize: 18, color: COLORS.headText, align: 'center',
+        wordWrap: { width: 340 },
+      })
+      .setOrigin(0.5)
+      .setDepth(51);
+    overlay.on('pointerup', () => {
+      overlay.destroy();
+      text.destroy();
+    });
+  }
 }

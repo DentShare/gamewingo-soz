@@ -17,6 +17,8 @@ export interface Session {
   start(): void;
   finish(input: FinishInput): Promise<{ accepted: boolean; pointsAwarded?: number } | null>;
   claim(rewardId: string): void;
+  /** Шэринг результата: событие хосту (нативный share) + фолбэк в буфер. */
+  shareResult(text: string): void;
   /** Лидерборд по слову дня (per-locale фильтр — на сервере). Пустой массив при ошибке/деве. */
   leaderboard(limit?: number): Promise<LeaderboardEntry[]>;
   /** Подписка на REWARD_RESULT от приложения. Возвращает функцию отписки. */
@@ -65,6 +67,14 @@ export function createSession(
       }
     },
     claim(rewardId) { bridge.claimReward(rewardId, sessionId); },
+    shareResult(text) {
+      bridge.track('share_result', { text });
+      try {
+        navigator.clipboard?.writeText(text);
+      } catch {
+        /* буфер недоступен в WebView — основной путь через событие хосту */
+      }
+    },
     async leaderboard(limit = 10) {
       if (!api) return [];
       try {
