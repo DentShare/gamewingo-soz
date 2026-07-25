@@ -96,9 +96,8 @@ export class GameOver extends Scene {
     let step = 0;
     const btn = (label: string, onClick: () => void, primary = false): Button => {
       const b = makeButton(this, CX, y, label, onClick, primary ? { primary: true } : {});
-      this.appear(b.bg, 440 + step * 70);
-      this.appear(b.txt, 440 + step * 70);
-      y += 60;
+      this.appear(b.root, 440 + step * 70);
+      y += 64;
       step++;
       return b;
     };
@@ -111,7 +110,7 @@ export class GameOver extends Scene {
         if (!r.granted) return;
         claimBtn.setLabel(t(loc, 'result.claimed', { points: r.points ?? 0 }));
         this.tweens.add({
-          targets: [claimBtn.bg, claimBtn.txt], scale: 1.12, duration: 140, yoyo: true, ease: 'Quad.easeOut',
+          targets: claimBtn.root, scale: 1.1, duration: 140, yoyo: true, ease: 'Quad.easeOut',
         });
         const saved = loadDaily(loc, this.last.dayId);
         if (saved) saveDaily(loc, this.last.dayId, { ...saved, rewardClaimed: true });

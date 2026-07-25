@@ -22,14 +22,23 @@ export function applyTheme(scene: Scene): void {
 }
 
 export interface Button {
-  bg: Phaser.GameObjects.Rectangle;
-  txt: Phaser.GameObjects.Text;
+  /** Корневой контейнер (для анимаций появления/пульса). */
+  root: Phaser.GameObjects.Container;
   setLabel(s: string): void;
   destroy(): void;
 }
 
-/** Простая кнопка: прямоугольник + текст, hover/tap. Тап-таргет ≥ 44px.
- *  `primary` — заливка брендовым `theme.primary` (если задан) для главной CTA. */
+/** Затемнить цвет 0xRRGGBB на долю amt (0..1) — для нижнего 3D-бортика. */
+export function darken(color: number, amt: number): number {
+  const r = (color >> 16) & 0xff, g = (color >> 8) & 0xff, b = color & 0xff;
+  const d = (c: number) => Math.max(0, Math.round(c * (1 - amt)));
+  return (d(r) << 16) | (d(g) << 8) | d(b);
+}
+
+/**
+ * Объёмная «чанки»-кнопка: тёмный нижний бортик + приподнятая лицевая часть,
+ * вдавливается при нажатии. `primary` — брендовый `theme.primary` для CTA.
+ */
 export function makeButton(
   scene: Scene,
   x: number,
@@ -38,28 +47,46 @@ export function makeButton(
   onClick: () => void,
   opts: { width?: number; height?: number; primary?: boolean } = {},
 ): Button {
-  const w = opts.width ?? 240;
-  const h = opts.height ?? 48;
+  const w = opts.width ?? 248;
+  const h = opts.height ?? 52;
   const isPrimary = !!opts.primary;
   const brandPrimary = isPrimary ? hexToNum(getTheme(scene)?.primary) : undefined;
-  const base = isPrimary ? (brandPrimary ?? COLORS.primary) : COLORS.panel;
-  const hover = isPrimary ? base : COLORS.panelHover;
-  const border = isPrimary ? base : COLORS.panelBorder;
-  const bg = scene.add
-    .rectangle(x, y, w, h, base)
-    .setStrokeStyle(1, border)
-    .setInteractive({ useHandCursor: true });
+  const face = isPrimary ? (brandPrimary ?? COLORS.primary) : COLORS.panel;
+  const lipColor = darken(face, isPrimary ? 0.28 : 0.14);
+  const lip = 6;
+  const r = 14;
+  const left = -w / 2;
+  const top = -h / 2;
+
+  const root = scene.add.container(x, y);
+
+  // Нижний бортик (тёмная база), выступает на `lip` снизу.
+  const baseG = scene.add.graphics();
+  baseG.fillStyle(lipColor, 1).fillRoundedRect(left, top, w, h, r);
+
+  // Лицевая часть (поднята на `lip` вверх) + текст.
+  const faceC = scene.add.container(0, -lip);
+  const faceG = scene.add.graphics();
+  faceG.fillStyle(face, 1).fillRoundedRect(left, top, w, h, r);
+  if (!isPrimary) faceG.lineStyle(1.5, COLORS.panelBorder, 1).strokeRoundedRect(left, top, w, h, r);
   const txt = scene.add
-    .text(x, y, label, { fontFamily: FONT, fontSize: 18, color: isPrimary ? '#ffffff' : COLORS.headText })
+    .text(0, 0, label, { fontFamily: FONT, fontSize: 18, color: isPrimary ? '#ffffff' : COLORS.headText })
     .setOrigin(0.5);
-  bg.on('pointerover', () => bg.setFillStyle(hover));
-  bg.on('pointerout', () => bg.setFillStyle(base));
-  bg.on('pointerup', onClick);
+  faceC.add([faceG, txt]);
+
+  const hit = scene.add.rectangle(0, -lip / 2, w, h + lip, 0x000000, 0).setInteractive({ useHandCursor: true });
+  root.add([baseG, faceC, hit]);
+
+  let pressed = false;
+  const press = (down: boolean) => { faceC.y = down ? -1 : -lip; };
+  hit.on('pointerdown', () => { pressed = true; press(true); });
+  hit.on('pointerup', () => { if (pressed) { pressed = false; press(false); onClick(); } });
+  hit.on('pointerout', () => { if (pressed) { pressed = false; press(false); } });
+
   return {
-    bg,
-    txt,
+    root,
     setLabel: (s: string) => txt.setText(s),
-    destroy: () => { bg.destroy(); txt.destroy(); },
+    destroy: () => root.destroy(),
   };
 }
 

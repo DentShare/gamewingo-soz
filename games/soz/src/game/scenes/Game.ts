@@ -133,11 +133,12 @@ export class Game extends Scene {
       for (let c = 0; c < WORD_LENGTH; c++) {
         const x = this.colCenterX(c);
         const y = this.rowCenterY(r);
-        const rect = this.add.rectangle(x, y, TILE, TILE).setStrokeStyle(2, COLORS.emptyBorder);
+        const shadow = this.add.rectangle(x, y + 3, TILE, TILE, 0x000000, 0.06).setOrigin(0.5);
+        const rect = this.add.rectangle(x, y, TILE, TILE, COLORS.panel).setStrokeStyle(2, COLORS.emptyBorder);
         const text = this.add
           .text(x, y, '', { fontFamily: FONT, fontSize: 26, color: COLORS.tileTextDark })
           .setOrigin(0.5);
-        container.add([rect, text]);
+        container.add([shadow, rect, text]);
         rowTiles.push({ rect, text });
       }
       this.rowContainers.push(container);
@@ -158,6 +159,7 @@ export class Game extends Scene {
         const w = widths[i];
         const cx = x + w / 2;
         const isDigraph = UZ_DIGRAPH_KEYS.has(key);
+        this.add.rectangle(cx, y + kh / 2 + 3, w, kh, 0x000000, 0.12).setOrigin(0.5); // нижний бортик (тень)
         const rect = this.add
           .rectangle(cx, y + kh / 2, w, kh, isDigraph ? COLORS.digraphKey : COLORS.keyDefault)
           .setInteractive({ useHandCursor: true });
