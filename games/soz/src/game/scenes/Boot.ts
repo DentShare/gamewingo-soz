@@ -2,11 +2,12 @@ import { Scene } from 'phaser';
 import { createBridge, createApiClient } from '@gamewingo/game-bridge';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createSession } from '../../bridge/session';
+import { createDemoApi, installDemoApp, DEMO_API_BASE } from '../../bridge/demo';
 import { computeDayId } from '../../core/dailyWord';
 
 /**
- * Boot: поднимает мост, ждёт INIT от приложения (в вебе — фолбэк по таймауту),
- * кладёт session/locale/theme/dayId в registry и уходит в меню.
+ * Boot: поднимает мост, ждёт INIT от приложения. Если INIT не пришёл (веб/дев вне
+ * WinGo) — включает демо-бэкенд (баллы/стрик/лидерборд локально) и стартует меню.
  */
 export class Boot extends Scene {
   constructor() {
@@ -16,7 +17,7 @@ export class Boot extends Scene {
   create() {
     const bridge = createBridge();
     const session = createSession(bridge, (base, token) =>
-      createApiClient({ baseUrl: base, authToken: token }),
+      base.startsWith('demo') ? createDemoApi() : createApiClient({ baseUrl: base, authToken: token }),
     );
 
     let started = false;
@@ -40,9 +41,16 @@ export class Boot extends Scene {
 
     session.ready(); // GAME_READY
 
-    // Локальная разработка / веб без хоста: если INIT не пришёл — стартуем с дефолтами.
+    // Нет хоста (веб/дев) → демо-режим: локальный бэкенд + дефолтная локаль/тема.
     this.time.delayedCall(700, () => {
       off();
+      if (!started) {
+        installDemoApp(); // живёт весь сеанс (single-page); чистить не нужно
+        this.registry.set('demo', true);
+        session.applyInit({
+          type: 'INIT', authToken: 'demo', apiBaseUrl: DEMO_API_BASE, locale: 'ru', sessionId: 'demo',
+        });
+      }
       proceed();
     });
   }

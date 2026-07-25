@@ -6,6 +6,7 @@ import { makeButton, applyTheme, type Button } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { buildShareText } from '../share';
 import { loadDaily, saveDaily } from '../../core/persistence';
+import { currentStreak } from '../../bridge/demo';
 import type { Session } from '../../bridge/session';
 
 interface LastGame {
@@ -61,6 +62,19 @@ export class GameOver extends Scene {
           })
           .setOrigin(0.5),
         320,
+      );
+    }
+
+    // Стрик (в демо — из локального бэкенда; решённое слово дня).
+    const streak = currentStreak();
+    if (won && this.last.mode === 'daily' && streak >= 1) {
+      this.appear(
+        this.add
+          .text(CX, 168, `🔥 ${t(loc, 'result.streak', { n: streak })}`, {
+            fontFamily: FONT, fontSize: 20, color: COLORS.headText, fontStyle: 'bold',
+          })
+          .setOrigin(0.5),
+        300,
       );
     }
 
