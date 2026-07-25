@@ -5,6 +5,7 @@
       "name": "soz-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "-w", "@gamewingo/soz"],
+      "autoPort": true,
       "port": 8080
     }
   ]

@@ -1,20 +1,30 @@
 import StartGame from './game/main';
 
-// Дожидаемся загрузки бандл-шрифта до старта Phaser — иначе canvas-текст
-// отрисуется системным фолбэком. Не блокируем дольше 1.5с (сеть/офлайн).
-async function boot() {
+// Полная готовность бандл-шрифта ДО старта Phaser. Иначе первый canvas-рендер текста
+// (особенно пустые плитки, которые заполняются позже) запекает «тофу» — белые блоки.
+async function ensureFont(): Promise<void> {
+  const family = 'Rubik';
+  const sizes = ['16px', '26px', '34px', '46px'];
+  const samples = ['Йцукен', "oʻgʻshchng", 'абвгд'];
   try {
-    await Promise.race([
-      Promise.all([
-        document.fonts.load('400 16px Rubik'),
-        document.fonts.load('400 16px Rubik', 'ў'),
-      ]),
-      new Promise((resolve) => setTimeout(resolve, 1500)),
-    ]);
+    await Promise.all(
+      sizes.flatMap((sz) => samples.map((s) => document.fonts.load(`400 ${sz} ${family}`, s))),
+    );
+    await document.fonts.ready;
+    // Прогрев растеризации: форсируем реальную отрисовку глифов в 2D-контексте.
+    const ctx = document.createElement('canvas').getContext('2d');
+    if (ctx) {
+      for (const sz of sizes) {
+        ctx.font = `${sz} ${family}`;
+        ctx.fillText("Йцукен oʻshchа", 0, 40);
+      }
+    }
   } catch {
-    /* шрифт не загрузился — идём на системном фолбэке */
+    /* офлайн/ошибка загрузки — играем на системном фолбэке */
   }
-  StartGame('game-container');
 }
 
-document.addEventListener('DOMContentLoaded', boot);
+document.addEventListener('DOMContentLoaded', async () => {
+  await ensureFont();
+  StartGame('game-container');
+});
