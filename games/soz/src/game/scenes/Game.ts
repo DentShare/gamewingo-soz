@@ -159,18 +159,46 @@ export class Game extends Scene {
         const rect = this.add
           .rectangle(cx, y + kh / 2, w, kh, isDigraph ? 0x3a6d11 : COLORS.keyDefault)
           .setInteractive({ useHandCursor: true });
-        const label = key === ENTER ? '⏎' : key === BACKSPACE ? '⌫' : key;
-        const text = this.add
-          .text(cx, y + kh / 2, label, {
-            fontFamily: FONT, fontSize: key.length > 1 && key !== ENTER && key !== BACKSPACE ? 15 : 16,
-            color: isDigraph ? '#ffffff' : COLORS.keyText,
-          })
-          .setOrigin(0.5);
         rect.on('pointerup', () => this.onKey(key));
-        if (key !== ENTER && key !== BACKSPACE) this.keyObjects.set(key, { rect, text });
+
+        if (key === ENTER || key === BACKSPACE) {
+          // Символы ⏎/⌫ не входят в сабсет шрифта — рисуем векторные иконки (надёжно везде).
+          this.drawSpecialKeyIcon(key, cx, y + kh / 2);
+        } else {
+          const text = this.add
+            .text(cx, y + kh / 2, key, {
+              fontFamily: FONT, fontSize: key.length > 1 ? 15 : 16,
+              color: isDigraph ? '#ffffff' : COLORS.keyText,
+            })
+            .setOrigin(0.5);
+          this.keyObjects.set(key, { rect, text });
+        }
         x += w + kgap;
       });
       y += kh + kgap;
+    }
+  }
+
+  /** Векторные иконки для Enter (галочка) и Backspace (стрелка влево). */
+  private drawSpecialKeyIcon(key: Key, cx: number, cy: number) {
+    const g = this.add.graphics();
+    g.lineStyle(2.5, 0x111317, 1);
+    if (key === ENTER) {
+      g.beginPath();
+      g.moveTo(cx - 8, cy);
+      g.lineTo(cx - 2, cy + 6);
+      g.lineTo(cx + 9, cy - 6);
+      g.strokePath();
+    } else {
+      // стрелка влево (backspace)
+      g.beginPath();
+      g.moveTo(cx + 9, cy);
+      g.lineTo(cx - 7, cy);
+      g.moveTo(cx - 7, cy);
+      g.lineTo(cx - 1, cy - 6);
+      g.moveTo(cx - 7, cy);
+      g.lineTo(cx - 1, cy + 6);
+      g.strokePath();
     }
   }
 

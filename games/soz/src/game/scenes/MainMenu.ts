@@ -23,7 +23,7 @@ export class MainMenu extends Scene {
       })
       .setOrigin(0.5);
 
-    makeButton(this, CX, 300, t(this.locale, 'menu.daily'), () => this.startMode('daily'));
+    makeButton(this, CX, 300, t(this.locale, 'menu.daily'), () => this.startMode('daily'), { primary: true });
     makeButton(this, CX, 370, t(this.locale, 'menu.practice'), () => this.startMode('practice'));
     makeButton(this, CX, 440, t(this.locale, 'menu.howto'), () => this.showHowto());
 
