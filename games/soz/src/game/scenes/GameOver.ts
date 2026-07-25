@@ -31,7 +31,7 @@ export class GameOver extends Scene {
 
   create() {
     applyTheme(this);
-    this.cameras.main.fadeIn(220, 17, 19, 23);
+    this.cameras.main.fadeIn(220, ...COLORS.fade);
     this.session = this.registry.get('session') as Session;
     this.last = this.registry.get('lastGame') as LastGame;
     const loc = this.last.locale;
@@ -46,7 +46,7 @@ export class GameOver extends Scene {
 
     const title = this.add
       .text(CX, 128, t(loc, won ? 'result.won' : 'result.lost'), {
-        fontFamily: FONT, fontSize: 32, color: '#ffffff', fontStyle: 'bold',
+        fontFamily: FONT, fontSize: 32, color: COLORS.headText, fontStyle: 'bold',
       })
       .setOrigin(0.5)
       .setScale(0.7)
@@ -116,7 +116,7 @@ export class GameOver extends Scene {
       })
       .setOrigin(0.5);
     const listText = this.add
-      .text(CX, lbY + 26, '…', { fontFamily: FONT, fontSize: 15, color: '#b8bcc4', align: 'center' })
+      .text(CX, lbY + 26, '…', { fontFamily: FONT, fontSize: 15, color: COLORS.headMuted, align: 'center' })
       .setOrigin(0.5, 0);
     this.appear(lbTitle, 620);
     this.appear(listText, 660);

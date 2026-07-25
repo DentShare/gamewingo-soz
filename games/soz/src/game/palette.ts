@@ -9,20 +9,32 @@ export interface Palette {
   absent: number;
 }
 
-/** Обычная палитра (Wordle-цвета). */
-export const NORMAL: Palette = { correct: 0x538d4e, present: 0xb59f3b, absent: 0x3a3c42 };
-/** High-contrast для дальтоников: оранжевый / голубой (по мотивам colourblind-режима Wordle). */
-export const HIGH_CONTRAST: Palette = { correct: 0xf5793a, present: 0x85c0f9, absent: 0x3a3c42 };
+/** Статусы плиток в стиле WinGo: зелёный (бренд) / тёплый янтарный / тёплый серый. */
+export const NORMAL: Palette = { correct: 0x2fb84c, present: 0xeb9d2e, absent: 0x8d7f72 };
+/** High-contrast для дальтоников: оранжевый / синий. */
+export const HIGH_CONTRAST: Palette = { correct: 0xf5793a, present: 0x2b8ce6, absent: 0x8d7f72 };
 
+/** Централизованная палитра (светлая тема WinGo). Точные hex подгоняются здесь. */
 export const COLORS = {
-  bg: 0x111317,
-  emptyBorder: 0x3a3d44,
-  filledBorder: 0x6b6f78,
-  keyDefault: 0x818384,
-  keyText: '#111317',
-  tileText: '#ffffff',
-  headText: '#e9e9ea',
-  panel: 0x2a2d34,
+  bg: 0xfbebe1,            // светлый персиковый фон WinGo
+  emptyBorder: 0xe7d3c7,   // граница пустой плитки
+  filledBorder: 0xc2a38c,  // граница набранной плитки
+  keyDefault: 0xece0d6,    // светлая клавиша
+  digraphKey: 0xf7d3bf,    // диграф-клавиша: светлый оранжевый тинт (не путать со статусами)
+  keyText: '#3a2a1f',      // тёмный текст на клавише
+  iconDark: 0x3a2a1f,      // иконки Enter/Backspace
+  tileTextDark: '#2a211a', // текст на пустой/набранной плитке (тёмный, светлый фон)
+  tileTextLight: '#ffffff',// текст на цветной плитке
+  headText: '#241a12',     // заголовки/основной текст
+  headMuted: '#8a7a6d',    // приглушённый текст
+  panel: 0xffffff,         // белые карточки/кнопки
+  panelBorder: 0xe7d3c7,
+  panelHover: 0xf5e8df,    // ховер светлой кнопки
+  primary: 0xf26522,       // WinGo оранжевый (дефолт CTA, если тема не задана)
+  toastBg: '#2a211a',
+  toastText: '#ffffff',
+  /** Фон камеры для fade (RGB, совпадает с bg). */
+  fade: [251, 235, 225] as [number, number, number],
 };
 
 export function paletteFor(highContrast: boolean): Palette {

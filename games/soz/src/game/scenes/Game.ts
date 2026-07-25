@@ -64,7 +64,7 @@ export class Game extends Scene {
     this.keyObjects = new Map();
 
     applyTheme(this);
-    this.cameras.main.fadeIn(200, 17, 19, 23);
+    this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.mode = (this.registry.get('mode') as 'daily' | 'practice') ?? 'daily';
     this.dayId = (this.registry.get('dayId') as number) ?? 0;
@@ -135,7 +135,7 @@ export class Game extends Scene {
         const y = this.rowCenterY(r);
         const rect = this.add.rectangle(x, y, TILE, TILE).setStrokeStyle(2, COLORS.emptyBorder);
         const text = this.add
-          .text(x, y, '', { fontFamily: FONT, fontSize: 26, color: COLORS.tileText })
+          .text(x, y, '', { fontFamily: FONT, fontSize: 26, color: COLORS.tileTextDark })
           .setOrigin(0.5);
         container.add([rect, text]);
         rowTiles.push({ rect, text });
@@ -159,7 +159,7 @@ export class Game extends Scene {
         const cx = x + w / 2;
         const isDigraph = UZ_DIGRAPH_KEYS.has(key);
         const rect = this.add
-          .rectangle(cx, y + kh / 2, w, kh, isDigraph ? 0x3a6d11 : COLORS.keyDefault)
+          .rectangle(cx, y + kh / 2, w, kh, isDigraph ? COLORS.digraphKey : COLORS.keyDefault)
           .setInteractive({ useHandCursor: true });
         rect.on('pointerdown', () => this.tweens.add({ targets: rect, scale: 0.9, duration: 60, yoyo: true, ease: 'Quad.easeOut' }));
         rect.on('pointerup', () => this.onKey(key));
@@ -171,7 +171,7 @@ export class Game extends Scene {
           const text = this.add
             .text(cx, y + kh / 2, key, {
               fontFamily: FONT, fontSize: key.length > 1 ? 15 : 16,
-              color: isDigraph ? '#ffffff' : COLORS.keyText,
+              color: COLORS.keyText,
             })
             .setOrigin(0.5);
           this.keyObjects.set(key, { rect, text });
@@ -185,7 +185,7 @@ export class Game extends Scene {
   /** Векторные иконки для Enter (галочка) и Backspace (стрелка влево). */
   private drawSpecialKeyIcon(key: Key, cx: number, cy: number) {
     const g = this.add.graphics();
-    g.lineStyle(2.5, 0x111317, 1);
+    g.lineStyle(2.5, COLORS.iconDark, 1);
     if (key === ENTER) {
       g.beginPath();
       g.moveTo(cx - 8, cy);
@@ -286,6 +286,7 @@ export class Game extends Scene {
       const tile = this.tiles[row][c];
       tile.text.setText(r.units[c]);
       tile.text.setFontSize(r.units[c].length > 1 ? 20 : 26);
+      tile.text.setColor(COLORS.tileTextLight);
       tile.rect.setFillStyle(statusColor(r.statuses[c], this.palette));
       tile.rect.setStrokeStyle(0);
     }
@@ -315,6 +316,7 @@ export class Game extends Scene {
         onComplete: () => {
           tile.text.setText(r.units[c]);
           tile.text.setFontSize(r.units[c].length > 1 ? 20 : 26);
+          tile.text.setColor(COLORS.tileTextLight);
           tile.rect.setFillStyle(statusColor(r.statuses[c], this.palette));
           tile.rect.setStrokeStyle(0);
           this.tweens.add({
@@ -400,7 +402,7 @@ export class Game extends Scene {
       mode: this.mode, locale: this.locale, dayId: this.dayId,
       solved, guessesUsed, answer: this.answerWord, rows, rewardClaimed,
     });
-    this.cameras.main.fadeOut(220, 17, 19, 23);
+    this.cameras.main.fadeOut(220, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }
 }

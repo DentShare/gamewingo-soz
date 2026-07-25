@@ -16,11 +16,11 @@ export class MainMenu extends Scene {
   create() {
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     applyTheme(this);
-    this.cameras.main.fadeIn(200, 17, 19, 23);
+    this.cameras.main.fadeIn(200, ...COLORS.fade);
 
     this.add
       .text(CX, 130, t(this.locale, 'app.title'), {
-        fontFamily: FONT, fontSize: 46, color: '#e9e9ea', fontStyle: 'bold',
+        fontFamily: FONT, fontSize: 46, color: COLORS.headText, fontStyle: 'bold',
       })
       .setOrigin(0.5);
 
@@ -45,12 +45,12 @@ export class MainMenu extends Scene {
   private showHowto() {
     const lines = t(this.locale, 'howto.body');
     const overlay = this.add
-      .rectangle(CX, 360, 400, 720, 0x000000, 0.75)
+      .rectangle(CX, 360, 400, 720, 0x241a12, 0.82)
       .setInteractive()
       .setDepth(50);
     const text = this.add
       .text(CX, 360, lines, {
-        fontFamily: FONT, fontSize: 18, color: COLORS.headText, align: 'center',
+        fontFamily: FONT, fontSize: 18, color: '#ffffff', align: 'center',
         wordWrap: { width: 340 },
       })
       .setOrigin(0.5)

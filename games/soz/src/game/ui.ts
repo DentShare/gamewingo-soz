@@ -40,17 +40,19 @@ export function makeButton(
 ): Button {
   const w = opts.width ?? 240;
   const h = opts.height ?? 48;
-  const brandPrimary = opts.primary ? hexToNum(getTheme(scene)?.primary) : undefined;
-  const base = brandPrimary ?? (opts.primary ? 0x538d4e : COLORS.panel);
-  const hover = opts.primary ? base : COLORS.emptyBorder;
+  const isPrimary = !!opts.primary;
+  const brandPrimary = isPrimary ? hexToNum(getTheme(scene)?.primary) : undefined;
+  const base = isPrimary ? (brandPrimary ?? COLORS.primary) : COLORS.panel;
+  const hover = isPrimary ? base : COLORS.panelHover;
+  const border = isPrimary ? base : COLORS.panelBorder;
   const bg = scene.add
     .rectangle(x, y, w, h, base)
-    .setStrokeStyle(1, opts.primary ? base : COLORS.emptyBorder)
+    .setStrokeStyle(1, border)
     .setInteractive({ useHandCursor: true });
   const txt = scene.add
-    .text(x, y, label, { fontFamily: FONT, fontSize: 18, color: '#ffffff' })
+    .text(x, y, label, { fontFamily: FONT, fontSize: 18, color: isPrimary ? '#ffffff' : COLORS.headText })
     .setOrigin(0.5);
-  bg.on('pointerover', () => bg.setFillStyle(opts.primary ? hover : COLORS.emptyBorder));
+  bg.on('pointerover', () => bg.setFillStyle(hover));
   bg.on('pointerout', () => bg.setFillStyle(base));
   bg.on('pointerup', onClick);
   return {
@@ -65,8 +67,8 @@ export function makeButton(
 export function toast(scene: Scene, x: number, y: number, message: string): void {
   const t = scene.add
     .text(x, y, message, {
-      fontFamily: FONT, fontSize: 16, color: '#111317',
-      backgroundColor: '#e9e9ea', padding: { x: 12, y: 8 },
+      fontFamily: FONT, fontSize: 16, color: COLORS.toastText,
+      backgroundColor: COLORS.toastBg, padding: { x: 12, y: 8 },
     })
     .setOrigin(0.5)
     .setDepth(100);
