@@ -16,6 +16,7 @@ export class MainMenu extends Scene {
   create() {
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     applyTheme(this);
+    this.cameras.main.fadeIn(200, 17, 19, 23);
 
     this.add
       .text(CX, 130, t(this.locale, 'app.title'), {

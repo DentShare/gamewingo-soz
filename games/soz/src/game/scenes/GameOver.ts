@@ -31,6 +31,7 @@ export class GameOver extends Scene {
 
   create() {
     applyTheme(this);
+    this.cameras.main.fadeIn(220, 17, 19, 23);
     this.session = this.registry.get('session') as Session;
     this.last = this.registry.get('lastGame') as LastGame;
     const loc = this.last.locale;

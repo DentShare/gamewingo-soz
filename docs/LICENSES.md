@@ -21,6 +21,7 @@
 |---|---|---|---|---|---|
 | _(пример)_ match3 | github.com/.../phaser-match3 | MIT | сохранён LICENSE + копирайт в src | 2026-07-22 | — |
 | soz | github.com/phaserjs/template-vite-ts | MIT | сохранён `games/soz/LICENSE` + копирайт Phaser Studio | 2026-07-24 | — |
+| soz · confetti | github.com/catdad/canvas-confetti | MIT | сохранить копирайт в NOTICE | 2026-07-25 | — |
 |  |  |  |  |  |  |
 
 ## Ассеты (графика, звук, шрифты)

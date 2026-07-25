@@ -11,14 +11,16 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "phaser": "4.0.0",
-    "@gamewingo/game-bridge": "*"
+    "@gamewingo/game-bridge": "*",
+    "canvas-confetti": "^1.9.4",
+    "phaser": "4.0.0"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "jsdom": "^25.0.1",
+    "terser": "^5.39.0",
     "typescript": "~5.7.2",
     "vite": "^6.3.1",
-    "vitest": "^2.1.8",
-    "jsdom": "^25.0.1",
-    "terser": "^5.39.0"
+    "vitest": "^2.1.8"
   }
 }

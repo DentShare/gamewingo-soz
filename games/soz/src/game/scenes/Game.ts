@@ -13,6 +13,7 @@ import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
+import confetti from 'canvas-confetti';
 
 import ansRu from '../../data/answers.ru.json';
 import alwRu from '../../data/allowed.ru.json';
@@ -63,6 +64,7 @@ export class Game extends Scene {
     this.keyObjects = new Map();
 
     applyTheme(this);
+    this.cameras.main.fadeIn(200, 17, 19, 23);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.mode = (this.registry.get('mode') as 'daily' | 'practice') ?? 'daily';
     this.dayId = (this.registry.get('dayId') as number) ?? 0;
@@ -94,7 +96,7 @@ export class Game extends Scene {
       if (saved) {
         for (const row of saved.rows) {
           this.coreGame.submit(row.units);
-          this.renderRow(this.coreGame.guessesUsed - 1);
+          this.paintRowInstant(this.coreGame.guessesUsed - 1);
         }
         this.refreshKeyColors();
       }
@@ -159,6 +161,7 @@ export class Game extends Scene {
         const rect = this.add
           .rectangle(cx, y + kh / 2, w, kh, isDigraph ? 0x3a6d11 : COLORS.keyDefault)
           .setInteractive({ useHandCursor: true });
+        rect.on('pointerdown', () => this.tweens.add({ targets: rect, scale: 0.9, duration: 60, yoyo: true, ease: 'Quad.easeOut' }));
         rect.on('pointerup', () => this.onKey(key));
 
         if (key === ENTER || key === BACKSPACE) {
@@ -220,6 +223,14 @@ export class Game extends Scene {
     if (this.current.length >= WORD_LENGTH) return;
     this.current.push(key);
     this.renderCurrent();
+    this.popTile(this.coreGame.guessesUsed, this.current.length - 1);
+  }
+
+  /** Лёгкий «отскок» плитки при наборе буквы. */
+  private popTile(row: number, col: number) {
+    const tile = this.tiles[row]?.[col];
+    if (!tile) return;
+    this.tweens.add({ targets: [tile.rect, tile.text], scale: 1.12, duration: 70, yoyo: true, ease: 'Quad.easeOut' });
   }
 
   private onBackspace() {
@@ -253,16 +264,23 @@ export class Game extends Scene {
       return;
     }
     this.coreGame.submit(this.current);
-    this.renderRow(row);
-    this.refreshKeyColors();
     this.current = [];
 
-    if (this.coreGame.status !== 'in_progress') {
-      this.endGame();
-    }
+    this.revealRow(row, () => {
+      this.refreshKeyColors();
+      const status = this.coreGame.status;
+      if (status === 'won') {
+        this.winBounce(row);
+        this.celebrate();
+      }
+      if (status !== 'in_progress') {
+        this.endGame(status === 'won');
+      }
+    });
   }
 
-  private renderRow(row: number) {
+  /** Мгновенная покраска ряда без анимации (для восстановления сохранённой партии). */
+  private paintRowInstant(row: number) {
     const r = this.coreGame.rows[row];
     for (let c = 0; c < WORD_LENGTH; c++) {
       const tile = this.tiles[row][c];
@@ -270,8 +288,71 @@ export class Game extends Scene {
       tile.text.setFontSize(r.units[c].length > 1 ? 20 : 26);
       tile.rect.setFillStyle(statusColor(r.statuses[c], this.palette));
       tile.rect.setStrokeStyle(0);
-      this.tweens.add({ targets: tile.rect, scaleY: 0.85, yoyo: true, duration: 90, delay: c * 40 });
     }
+  }
+
+  /** Флип-раскрытие ряда: плитки переворачиваются по очереди, цвет проявляется на середине флипа. */
+  private revealRow(row: number, onComplete: () => void) {
+    const r = this.coreGame.rows[row];
+    let done = 0;
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      // На случай, если анимация была прервана — гарантируем финальный вид ряда.
+      this.paintRowInstant(row);
+      this.tiles[row].forEach((tile) => { tile.rect.scaleY = 1; tile.text.scaleY = 1; });
+      onComplete();
+    };
+    for (let c = 0; c < WORD_LENGTH; c++) {
+      const tile = this.tiles[row][c];
+      this.tweens.add({
+        targets: [tile.rect, tile.text],
+        scaleY: 0,
+        duration: 130,
+        delay: c * 180,
+        ease: 'Quad.easeIn',
+        onComplete: () => {
+          tile.text.setText(r.units[c]);
+          tile.text.setFontSize(r.units[c].length > 1 ? 20 : 26);
+          tile.rect.setFillStyle(statusColor(r.statuses[c], this.palette));
+          tile.rect.setStrokeStyle(0);
+          this.tweens.add({
+            targets: [tile.rect, tile.text],
+            scaleY: 1,
+            duration: 130,
+            ease: 'Quad.easeOut',
+            onComplete: () => { done++; if (done === WORD_LENGTH) finish(); },
+          });
+        },
+      });
+    }
+    // Фолбэк: гарантируем переход к результату, даже если твин-колбэк не сработал.
+    this.time.delayedCall((WORD_LENGTH - 1) * 180 + 130 + 130 + 120, finish);
+  }
+
+  /** Победный отскок выигрышного ряда — плитки прыгают по очереди. */
+  private winBounce(row: number) {
+    this.tiles[row].forEach((tile, c) => {
+      this.tweens.add({
+        targets: [tile.rect, tile.text],
+        y: '-=14',
+        duration: 150,
+        delay: 80 * c,
+        yoyo: true,
+        ease: 'Quad.easeOut',
+      });
+    });
+  }
+
+  /** Конфетти при победе (DOM-оверлей поверх canvas игры). */
+  private celebrate() {
+    const burst = (opts: confetti.Options) => confetti({ disableForReducedMotion: true, ...opts });
+    burst({ particleCount: 90, spread: 65, origin: { y: 0.45 }, startVelocity: 38 });
+    this.time.delayedCall(180, () => {
+      burst({ particleCount: 60, angle: 60, spread: 55, origin: { x: 0 } });
+      burst({ particleCount: 60, angle: 120, spread: 55, origin: { x: 1 } });
+    });
   }
 
   private refreshKeyColors() {
@@ -289,16 +370,18 @@ export class Game extends Scene {
     this.tweens.add({ targets: c, x: 6, duration: 55, yoyo: true, repeat: 2, onComplete: () => { c.x = 0; } });
   }
 
-  private endGame() {
+  private endGame(solved: boolean) {
     if (this.finished) return;
     this.finished = true;
-    const solved = this.coreGame.status === 'won';
     const guessesUsed = this.coreGame.guessesUsed;
     const rows = this.coreGame.rows;
 
     if (this.mode === 'daily') {
       saveDaily(this.locale, this.dayId, { rows, status: this.coreGame.status, rewardClaimed: false });
     }
+
+    // Победу показываем дольше (отскок + конфетти), проигрыш — быстрее.
+    const holdMs = solved ? 2000 : 1100;
 
     void this.session
       .finish({
@@ -307,8 +390,9 @@ export class Game extends Scene {
       })
       .then((res) => {
         this.registry.set('scorePreview', res?.pointsAwarded ?? null);
-        this.time.delayedCall(1200, () => this.goToResult(solved, guessesUsed, rows, false));
       });
+
+    this.time.delayedCall(holdMs, () => this.goToResult(solved, guessesUsed, rows, false));
   }
 
   private goToResult(solved: boolean, guessesUsed: number, rows: CoreGame['rows'], rewardClaimed: boolean) {
@@ -316,6 +400,7 @@ export class Game extends Scene {
       mode: this.mode, locale: this.locale, dayId: this.dayId,
       solved, guessesUsed, answer: this.answerWord, rows, rewardClaimed,
     });
-    this.scene.start('GameOver');
+    this.cameras.main.fadeOut(220, 17, 19, 23);
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }
 }
