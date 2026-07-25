@@ -3,6 +3,7 @@ import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import { makeButton, applyTheme, type Button } from '../ui';
 import { COLORS, FONT } from '../palette';
+import { loadDaily } from '../../core/persistence';
 
 const CX = 200;
 
@@ -28,15 +29,31 @@ export class MainMenu extends Scene {
     this.langPill(CX - 78, 168, 'ru', 'Русский');
     this.langPill(CX + 78, 168, 'uz', 'Oʻzbekcha');
 
-    // Режимы (на выбранном языке).
-    makeButton(this, CX, 292, t(this.locale, 'menu.daily'), () => this.startMode('daily'), { primary: true });
-    makeButton(this, CX, 358, t(this.locale, 'menu.practice'), () => this.startMode('practice'));
+    // Разгадано ли сегодняшнее слово дня.
+    const dayId = (this.registry.get('dayId') as number) ?? 0;
+    const savedDaily = loadDaily(this.locale, dayId);
+    const dailyDone = !!savedDaily && savedDaily.status !== 'in_progress';
+
+    // Слово дня. Если уже разгадано — помечаем галочкой, а «Тренировка» становится главной CTA.
+    const dailyLabel = dailyDone
+      ? `${t(this.locale, 'menu.daily')}  ✓`
+      : t(this.locale, 'menu.daily');
+    makeButton(this, CX, 292, dailyLabel, () => this.startMode('daily'), { primary: !dailyDone });
+    makeButton(this, CX, 358, t(this.locale, 'menu.practice'), () => this.startMode('practice'), { primary: dailyDone });
     makeButton(this, CX, 424, t(this.locale, 'menu.howto'), () => this.showHowto());
+
+    if (dailyDone) {
+      this.add
+        .text(CX, 466, t(this.locale, 'menu.dailyDone'), {
+          fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
+        })
+        .setOrigin(0.5);
+    }
 
     const label = () =>
       `${t(this.locale, 'a11y.highContrast')}: ${this.registry.get('highContrast') ? '✓' : '×'}`;
     let btn: Button;
-    btn = makeButton(this, CX, 548, label(), () => {
+    btn = makeButton(this, CX, 556, label(), () => {
       this.registry.set('highContrast', !this.registry.get('highContrast'));
       btn.setLabel(label());
     });
@@ -45,12 +62,11 @@ export class MainMenu extends Scene {
   /** Пилюля выбора языка. Выбранная подсвечена; по тапу переключает и перерисовывает меню. */
   private langPill(x: number, y: number, loc: Locale, label: string) {
     const selected = this.locale === loc;
-    const b = makeButton(this, x, y, label, () => {
+    return makeButton(this, x, y, label, () => {
       if (this.locale === loc) return;
       this.registry.set('locale', loc);
       this.scene.restart();
     }, { width: 148, height: 44, primary: selected });
-    return b;
   }
 
   private startMode(mode: 'daily' | 'practice') {
