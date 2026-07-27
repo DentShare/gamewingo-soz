@@ -5,14 +5,15 @@ import { tokenizeWord } from '../../core/tokenizer';
 import { loadDictionary, type Dictionary } from '../../core/dictionary';
 import { createGame, type Game as CoreGame } from '../../core/gameState';
 import { pickDailyWord, dailyIndex } from '../../core/dailyWord';
-import { saveDaily, loadDaily } from '../../core/persistence';
+import { saveDaily, loadDaily, hasOnboarded, setOnboarded } from '../../core/persistence';
 import { keyboardFor, ENTER, BACKSPACE, UZ_DIGRAPH_KEYS, type Key } from '../keyboards';
 import { paletteFor, statusColor, COLORS, FONT, type Palette } from '../palette';
-import { toast, applyTheme } from '../ui';
+import { toast, applyTheme, darken } from '../ui';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
+import { startOnboarding, type Rect } from '../onboarding';
 import confetti from 'canvas-confetti';
 
 import ansRu from '../../data/answers.ru.json';
@@ -49,6 +50,12 @@ export class Game extends Scene {
   private current: string[] = [];
   private timer!: RoundTimer;
   private finished = false;
+  private tutorialActive = false;
+
+  // Зоны для обучения (заполняются при построении доски/клавиатуры).
+  private boardBounds!: Rect;
+  private keyboardBounds!: Rect;
+  private enterKeyBounds!: Rect;
 
   constructor() {
     super('Game');
@@ -58,6 +65,7 @@ export class Game extends Scene {
     // Phaser переиспользует один экземпляр сцены между рестартами — сбрасываем изменяемое
     // состояние здесь (инициализаторы полей выполняются только при конструировании).
     this.finished = false;
+    this.tutorialActive = false;
     this.current = [];
     this.tiles = [];
     this.rowContainers = [];
@@ -89,6 +97,7 @@ export class Game extends Scene {
 
     this.buildBoard();
     this.buildKeyboard();
+    this.buildBackButton();
 
     // Восстановить сохранённые ряды (daily, партия в процессе).
     if (this.mode === 'daily') {
@@ -114,6 +123,28 @@ export class Game extends Scene {
     this.events.once('shutdown', off);
 
     this.bindPhysicalKeyboard();
+    this.maybeShowOnboarding();
+  }
+
+  /** Первый запуск (свежая партия) — показываем обучение один раз. Таймер на паузе. */
+  private maybeShowOnboarding() {
+    if (this.finished || hasOnboarded() || this.coreGame.guessesUsed > 0) return;
+    this.tutorialActive = true;
+    this.timer.pause();
+    // Даём кадру отрисоваться (и завершиться fade-in камеры), затем открываем оверлей.
+    this.time.delayedCall(360, () => {
+      startOnboarding(
+        this,
+        this.locale,
+        this.palette,
+        { board: this.boardBounds, keyboard: this.keyboardBounds, enterKey: this.enterKeyBounds },
+        () => {
+          setOnboarded();
+          this.tutorialActive = false;
+          this.timer.resume();
+        },
+      );
+    });
   }
 
   private randomPracticeWord(): string {
@@ -127,6 +158,8 @@ export class Game extends Scene {
   private rowCenterY(row: number) { return BOARD_Y + TILE / 2 + row * (TILE + GAP); }
 
   private buildBoard() {
+    const boardH = MAX_GUESSES * (TILE + GAP) - GAP;
+    this.boardBounds = { x: BOARD_X, y: BOARD_Y, w: BOARD_W, h: boardH };
     for (let r = 0; r < MAX_GUESSES; r++) {
       const container = this.add.container(0, 0);
       const rowTiles: Tile[] = [];
@@ -148,9 +181,13 @@ export class Game extends Scene {
 
   private buildKeyboard() {
     const rows = keyboardFor(this.locale);
-    let y = BOARD_Y + MAX_GUESSES * (TILE + GAP) + 24;
+    const kbTop = BOARD_Y + MAX_GUESSES * (TILE + GAP) + 24;
+    let y = kbTop;
     const kh = 46;
     const kgap = 5;
+    let kbMinX = Infinity;
+    let kbMaxX = -Infinity;
+    let kbBottom = kbTop;
     for (const row of rows) {
       const widths = row.map((k) => (k === ENTER || k === BACKSPACE ? 52 : 30));
       const totalW = widths.reduce((a, b) => a + b, 0) + kgap * (row.length - 1);
@@ -158,6 +195,8 @@ export class Game extends Scene {
       row.forEach((key, i) => {
         const w = widths[i];
         const cx = x + w / 2;
+        kbMinX = Math.min(kbMinX, cx - w / 2);
+        kbMaxX = Math.max(kbMaxX, cx + w / 2);
         const isDigraph = UZ_DIGRAPH_KEYS.has(key);
         this.add.rectangle(cx, y + kh / 2 + 3, w, kh, 0x000000, 0.12).setOrigin(0.5); // нижний бортик (тень)
         const rect = this.add
@@ -169,6 +208,7 @@ export class Game extends Scene {
         if (key === ENTER || key === BACKSPACE) {
           // Символы ⏎/⌫ не входят в сабсет шрифта — рисуем векторные иконки (надёжно везде).
           this.drawSpecialKeyIcon(key, cx, y + kh / 2);
+          if (key === ENTER) this.enterKeyBounds = { x: cx - w / 2, y, w, h: kh };
         } else {
           const text = this.add
             .text(cx, y + kh / 2, key, {
@@ -180,8 +220,10 @@ export class Game extends Scene {
         }
         x += w + kgap;
       });
+      kbBottom = y + kh;
       y += kh + kgap;
     }
+    this.keyboardBounds = { x: kbMinX, y: kbTop, w: kbMaxX - kbMinX, h: kbBottom - kbTop };
   }
 
   /** Векторные иконки для Enter (галочка) и Backspace (стрелка влево). */
@@ -209,7 +251,9 @@ export class Game extends Scene {
 
   private bindPhysicalKeyboard() {
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter') this.onKey(ENTER);
+      if (this.tutorialActive) return;
+      if (e.key === 'Escape') this.goBack();
+      else if (e.key === 'Enter') this.onKey(ENTER);
       else if (e.key === 'Backspace') this.onKey(BACKSPACE);
       else if (e.key.length === 1) {
         const u = e.key.toLowerCase();
@@ -218,8 +262,71 @@ export class Game extends Scene {
     });
   }
 
+  /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню. */
+  private buildBackButton() {
+    const w = 92;
+    const h = 40;
+    const cx = 14 + w / 2; // отступ 14px от левого края
+    const cy = 34;
+    const lip = 4;
+    const r = 12;
+    const container = this.add.container(cx, cy).setDepth(30);
+
+    // Нижний бортик (тёмная база).
+    const base = this.add.graphics();
+    base.fillStyle(darken(COLORS.panel, 0.14), 1).fillRoundedRect(-w / 2, -h / 2, w, h, r);
+
+    // Лицевая часть (приподнята на `lip`).
+    const faceC = this.add.container(0, -lip);
+    const face = this.add.graphics();
+    face.fillStyle(COLORS.panel, 1).fillRoundedRect(-w / 2, -h / 2, w, h, r);
+    face.lineStyle(1.5, COLORS.panelBorder, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, r);
+
+    // Иконка «стрелка влево» (шеврон) — символ не входит в сабсет шрифта, рисуем вектором.
+    const ax = -w / 2 + 18;
+    face.lineStyle(2.5, COLORS.iconDark, 1);
+    face.beginPath();
+    face.moveTo(ax + 5, -6);
+    face.lineTo(ax - 4, 0);
+    face.lineTo(ax + 5, 6);
+    face.strokePath();
+
+    const label = this.add
+      .text(ax + 12, 0, t(this.locale, 'menu.back'), {
+        fontFamily: FONT, fontSize: 16, color: COLORS.headText,
+      })
+      .setOrigin(0, 0.5);
+    faceC.add([face, label]);
+
+    const hit = this.add
+      .rectangle(0, -lip / 2, w, h + lip, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    container.add([base, faceC, hit]);
+
+    let pressed = false;
+    const press = (down: boolean) => { faceC.y = down ? -1 : -lip; };
+    hit.on('pointerdown', () => { pressed = true; press(true); });
+    hit.on('pointerup', () => { if (pressed) { pressed = false; press(false); this.goBack(); } });
+    hit.on('pointerout', () => { if (pressed) { pressed = false; press(false); } });
+  }
+
+  /** Выход в главное меню. Незавершённую партию слова дня сохраняем, чтобы прогресс не потерялся. */
+  private goBack() {
+    if (this.finished || this.tutorialActive) return;
+    if (this.mode === 'daily' && this.coreGame.guessesUsed > 0) {
+      saveDaily(this.locale, this.dayId, {
+        rows: this.coreGame.rows,
+        status: this.coreGame.status,
+        rewardClaimed: false,
+      });
+    }
+    this.finished = true; // блокируем ввод на время перехода
+    this.cameras.main.fadeOut(200, ...COLORS.fade);
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
+  }
+
   private onKey(key: Key) {
-    if (this.finished) return;
+    if (this.finished || this.tutorialActive) return;
     if (key === ENTER) return this.onEnter();
     if (key === BACKSPACE) return this.onBackspace();
     if (this.current.length >= WORD_LENGTH) return;

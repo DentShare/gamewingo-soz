@@ -18,5 +18,16 @@
   "result.leaderboard": "Таблица лидеров",
   "result.playAgain": "Ещё раз",
   "error.network": "Нет соединения",
-  "a11y.highContrast": "Высокий контраст"
+  "a11y.highContrast": "Высокий контраст",
+  "onboarding.board": "У вас 6 попыток, чтобы угадать слово из 5 букв.",
+  "onboarding.keyboard": "Здесь видно, какие буквы уже угаданы, а каких нет в слове.",
+  "onboarding.enter": "Набрали слово — нажмите эту кнопку, чтобы проверить.",
+  "onboarding.legendTitle": "Что значат цвета",
+  "onboarding.correct": "Буква на своём месте",
+  "onboarding.present": "Есть в слове, но не здесь",
+  "onboarding.absent": "Такой буквы в слове нет",
+  "onboarding.win": "Все зелёные — слово отгадано!",
+  "onboarding.next": "Далее",
+  "onboarding.done": "Понятно",
+  "onboarding.skip": "Пропустить"
 }
