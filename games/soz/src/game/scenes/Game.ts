@@ -8,7 +8,7 @@ import { pickDailyWord, dailyIndex } from '../../core/dailyWord';
 import { saveDaily, loadDaily } from '../../core/persistence';
 import { keyboardFor, ENTER, BACKSPACE, UZ_DIGRAPH_KEYS, type Key } from '../keyboards';
 import { paletteFor, statusColor, COLORS, FONT, type Palette } from '../palette';
-import { toast, applyTheme } from '../ui';
+import { toast, applyTheme, darken } from '../ui';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
@@ -89,6 +89,7 @@ export class Game extends Scene {
 
     this.buildBoard();
     this.buildKeyboard();
+    this.buildBackButton();
 
     // Восстановить сохранённые ряды (daily, партия в процессе).
     if (this.mode === 'daily') {
@@ -209,13 +210,77 @@ export class Game extends Scene {
 
   private bindPhysicalKeyboard() {
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter') this.onKey(ENTER);
+      if (e.key === 'Escape') this.goBack();
+      else if (e.key === 'Enter') this.onKey(ENTER);
       else if (e.key === 'Backspace') this.onKey(BACKSPACE);
       else if (e.key.length === 1) {
         const u = e.key.toLowerCase();
         if (this.keyObjects.has(u)) this.onKey(u);
       }
     });
+  }
+
+  /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню. */
+  private buildBackButton() {
+    const w = 92;
+    const h = 40;
+    const cx = 14 + w / 2; // отступ 14px от левого края
+    const cy = 34;
+    const lip = 4;
+    const r = 12;
+    const container = this.add.container(cx, cy).setDepth(30);
+
+    // Нижний бортик (тёмная база).
+    const base = this.add.graphics();
+    base.fillStyle(darken(COLORS.panel, 0.14), 1).fillRoundedRect(-w / 2, -h / 2, w, h, r);
+
+    // Лицевая часть (приподнята на `lip`).
+    const faceC = this.add.container(0, -lip);
+    const face = this.add.graphics();
+    face.fillStyle(COLORS.panel, 1).fillRoundedRect(-w / 2, -h / 2, w, h, r);
+    face.lineStyle(1.5, COLORS.panelBorder, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, r);
+
+    // Иконка «стрелка влево» (шеврон) — символ не входит в сабсет шрифта, рисуем вектором.
+    const ax = -w / 2 + 18;
+    face.lineStyle(2.5, COLORS.iconDark, 1);
+    face.beginPath();
+    face.moveTo(ax + 5, -6);
+    face.lineTo(ax - 4, 0);
+    face.lineTo(ax + 5, 6);
+    face.strokePath();
+
+    const label = this.add
+      .text(ax + 12, 0, t(this.locale, 'menu.back'), {
+        fontFamily: FONT, fontSize: 16, color: COLORS.headText,
+      })
+      .setOrigin(0, 0.5);
+    faceC.add([face, label]);
+
+    const hit = this.add
+      .rectangle(0, -lip / 2, w, h + lip, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    container.add([base, faceC, hit]);
+
+    let pressed = false;
+    const press = (down: boolean) => { faceC.y = down ? -1 : -lip; };
+    hit.on('pointerdown', () => { pressed = true; press(true); });
+    hit.on('pointerup', () => { if (pressed) { pressed = false; press(false); this.goBack(); } });
+    hit.on('pointerout', () => { if (pressed) { pressed = false; press(false); } });
+  }
+
+  /** Выход в главное меню. Незавершённую партию слова дня сохраняем, чтобы прогресс не потерялся. */
+  private goBack() {
+    if (this.finished) return;
+    if (this.mode === 'daily' && this.coreGame.guessesUsed > 0) {
+      saveDaily(this.locale, this.dayId, {
+        rows: this.coreGame.rows,
+        status: this.coreGame.status,
+        rewardClaimed: false,
+      });
+    }
+    this.finished = true; // блокируем ввод на время перехода
+    this.cameras.main.fadeOut(200, ...COLORS.fade);
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
   }
 
   private onKey(key: Key) {
