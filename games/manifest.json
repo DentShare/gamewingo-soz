@@ -8,7 +8,7 @@
       "mechanic": "wordle",
       "locales": ["ru", "uz"],
       "orientation": "portrait",
-      "url": "",
+      "url": "https://soz-wingo.vercel.app",
       "modes": ["daily", "practice"],
       "leaderboard": true,
       "streak": true,
