@@ -18,5 +18,16 @@
   "result.leaderboard": "Reyting",
   "result.playAgain": "Yana",
   "error.network": "Aloqa yoʻq",
-  "a11y.highContrast": "Yuqori kontrast"
+  "a11y.highContrast": "Yuqori kontrast",
+  "onboarding.board": "Soʻzni topish uchun sizda 6 ta urinish bor.",
+  "onboarding.keyboard": "Bu yerda qaysi harflar topilgani, qaysilari soʻzda yoʻqligi koʻrinadi.",
+  "onboarding.enter": "Soʻzni terib, tekshirish uchun shu tugmani bosing.",
+  "onboarding.legendTitle": "Ranglar nimani bildiradi",
+  "onboarding.correct": "Harf oʻz oʻrnida",
+  "onboarding.present": "Soʻzda bor, lekin bu yerda emas",
+  "onboarding.absent": "Bunday harf soʻzda yoʻq",
+  "onboarding.win": "Hammasi yashil — soʻz topildi!",
+  "onboarding.next": "Keyingi",
+  "onboarding.done": "Tushunarli",
+  "onboarding.skip": "Oʻtkazib yuborish"
 }
