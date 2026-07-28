@@ -59,6 +59,7 @@ RU + UZ (латиница). Готова к просмотру и интегра
 | `GAME_START` | старт партии | `sessionId` |
 | `GAME_OVER` | конец партии | `score`, `sessionId`, `durationMs` |
 | `REWARD_CLAIM` | «Забрать награду» (daily) | `rewardId`, `sessionId` |
+| `GAME_EXIT` | тап «‹ К играм» в меню | `sessionId` — приложение возвращает WebView к каталогу игр |
 | `GAME_EVENT` / `GAME_ERROR` | аналитика / ошибки | — |
 
 Плюс прямой вызов API (Bearer-токен):

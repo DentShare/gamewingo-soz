@@ -43,6 +43,8 @@ export interface GameBridge {
   claimReward(rewardId: string, sessionId: string): void;
   /** Произвольное аналитическое событие. */
   track(name: string, payload?: Record<string, unknown>): void;
+  /** Выйти из игры в каталог. Приложение вернёт WebView к списку игр. */
+  exit(sessionId: string): void;
   /** Сообщить об ошибке. */
   error(message: string): void;
   /** Подписаться на события от приложения. Возвращает функцию отписки. */
@@ -76,6 +78,9 @@ export function createBridge(): GameBridge {
     },
     track(name, payload) {
       post({ type: 'GAME_EVENT', name, payload });
+    },
+    exit(sessionId) {
+      post({ type: 'GAME_EXIT', sessionId });
     },
     error(message) {
       post({ type: 'GAME_ERROR', message });

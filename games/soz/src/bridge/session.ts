@@ -17,6 +17,8 @@ export interface Session {
   start(): void;
   finish(input: FinishInput): Promise<{ accepted: boolean; pointsAwarded?: number } | null>;
   claim(rewardId: string): void;
+  /** Выйти из игры в каталог игр (приложение вернёт WebView к списку). */
+  exit(): void;
   /** Шэринг результата: событие хосту (нативный share) + фолбэк в буфер. */
   shareResult(text: string): void;
   /** Лидерборд по слову дня (per-locale фильтр — на сервере). Пустой массив при ошибке/деве. */
@@ -67,6 +69,7 @@ export function createSession(
       }
     },
     claim(rewardId) { bridge.claimReward(rewardId, sessionId); },
+    exit() { bridge.exit(sessionId); },
     shareResult(text) {
       bridge.track('share_result', { text });
       try {

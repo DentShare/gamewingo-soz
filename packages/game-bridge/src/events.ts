@@ -19,6 +19,8 @@ export type GameToAppEvent =
   | { type: 'REWARD_CLAIM'; rewardId: string; sessionId: string }
   /** Прогресс/аналитика (необязательно). */
   | { type: 'GAME_EVENT'; name: string; payload?: Record<string, unknown> }
+  /** Игрок хочет выйти из игры в каталог игр. Приложение возвращает WebView к списку игр. */
+  | { type: 'GAME_EXIT'; sessionId: string }
   /** Ошибка внутри игры — чтобы приложение могло показать фолбэк. */
   | { type: 'GAME_ERROR'; message: string };
 

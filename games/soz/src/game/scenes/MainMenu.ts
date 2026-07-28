@@ -5,8 +5,11 @@ import { makeButton, applyTheme, setupCamera, type Button } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { loadDaily, setHighContrast } from '../../core/persistence';
+import type { Session } from '../../bridge/session';
 
 const CX = 200;
+/** Каталог игр WinGo (для автономного/веб-режима). В приложении выход обрабатывает мост. */
+const HUB_URL = 'https://gamewingo-hub.vercel.app';
 
 export class MainMenu extends Scene {
   private locale: Locale = 'ru';
@@ -20,6 +23,8 @@ export class MainMenu extends Scene {
     applyTheme(this);
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
+
+    this.buildCatalogLink();
 
     this.add
       .text(CX, 96, t(this.locale, 'app.title'), {
@@ -79,6 +84,28 @@ export class MainMenu extends Scene {
     this.registry.set('mode', mode);
     this.registry.set('locale', this.locale);
     this.scene.start('Game');
+  }
+
+  /** Ссылка «‹ К играм» слева вверху — выход в каталог игр WinGo. */
+  private buildCatalogLink() {
+    const link = this.add
+      .text(16, 32, `‹ ${t(this.locale, 'menu.catalog')}`, {
+        fontFamily: FONT, fontSize: 15, color: '#d34e12', fontStyle: 'bold',
+      })
+      .setOrigin(0, 0.5)
+      .setResolution(DPR)
+      .setInteractive({ useHandCursor: true });
+    link.on('pointerup', () => this.exitToCatalog());
+  }
+
+  /** Выход в каталог: событие мосту (реальный WebView вернётся к списку), а в вебе — переход на хаб. */
+  private exitToCatalog() {
+    const session = this.registry.get('session') as Session | undefined;
+    session?.exit();
+    if (this.registry.get('demo')) {
+      const hub = (this.registry.get('catalogUrl') as string) || HUB_URL;
+      window.location.href = hub;
+    }
   }
 
   /** «Как играть» — запускает интерактивное обучение поверх игрового поля; по концу → в меню. */
