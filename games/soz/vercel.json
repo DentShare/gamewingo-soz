@@ -1,6 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "$comment": "Проект gamewingo-soz (Root Directory = games/soz) отдаёт ВЕСЬ каталог: хаб на /, игры на /<slug>/. Сборка идёт из корня монорепо (npm run build:all → dist-all), затем результат кладётся в games/soz/dist — туда, где этот проект ждёт выход. Тот же каталог собирает корневой vercel.json для проекта с Root Directory = корень.",
   "installCommand": "cd ../.. && npm install",
   "buildCommand": "cd ../.. && npm run build:all && rm -rf games/soz/dist && cp -r dist-all games/soz/dist",
   "outputDirectory": "dist",

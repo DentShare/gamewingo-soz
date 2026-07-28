@@ -1,33 +1,50 @@
 # Деплой каталога на Vercel
 
-Весь каталог (хаб + все игры) — **один Vercel-проект** `gamewingo-games`, привязанный к GitHub-репо.
+Весь каталог (хаб + все игры) — **один Vercel-проект**, привязанный к GitHub-репо.
 Каждый мерж в `main` автоматически собирает и выкладывает production:
 
 ```
-https://gamewingo-games.vercel.app/            ← хаб (hub/)
-https://gamewingo-games.vercel.app/manifest.json
-https://gamewingo-games.vercel.app/soz/        ← игры (games/<slug>/dist)
-https://gamewingo-games.vercel.app/pairs/
-https://gamewingo-games.vercel.app/fifteen/
-https://gamewingo-games.vercel.app/2048/
-https://gamewingo-games.vercel.app/sudoku-kids/
+https://gamewingo-soz.vercel.app/            ← хаб (hub/)
+https://gamewingo-soz.vercel.app/manifest.json
+https://gamewingo-soz.vercel.app/soz/        ← игры (games/<slug>/dist)
+https://gamewingo-soz.vercel.app/pairs/
+https://gamewingo-soz.vercel.app/fifteen/
+https://gamewingo-soz.vercel.app/2048/
+https://gamewingo-soz.vercel.app/sudoku-kids/
 ```
 
 ## Как это устроено
 
-- Корневой `vercel.json`: `installCommand: npm install`, `buildCommand: npm run build:all`,
-  `outputDirectory: dist-all`, immutable-кэш для `assets/` и `fonts/`.
 - `npm run build:all` = сборка моста → сборка всех игр (`build:games`) →
   `scripts/build-catalog.mjs` складывает `hub/`, `games/manifest.json` и `games/<slug>/dist`
   в `dist-all/`.
 - Игры собираются с `base: './'`, поэтому работают из подпапок без правок.
+- Внутриигровая ссылка «К играм» — относительная (`../`), поэтому не зависит от домена.
 - localStorage-ключи игр обязаны иметь префикс `<slug>:` — все игры на одном origin.
 
-## Настройки Vercel-проекта `gamewingo-games`
+## Действующий проект: `gamewingo-soz`
 
-- Import репозитория `DentShare/gamewingo-soz`.
-- **Root Directory:** корень репо (по умолчанию).
-- Остальное подхватывается из корневого `vercel.json`.
+Исторически у него **Root Directory = `games/soz`**, поэтому Vercel читает
+`games/soz/vercel.json`. Этот конфиг собирает каталог из корня монорепо и кладёт
+результат в `games/soz/dist` — туда, где проект ждёт выход:
+
+```
+buildCommand: cd ../.. && npm run build:all && rm -rf games/soz/dist && cp -r dist-all games/soz/dist
+outputDirectory: dist
+```
+
+## Если создавать отдельный проект под каталог
+
+Корневой `vercel.json` собирает тот же каталог для проекта с **Root Directory = корень репо**
+(`buildCommand: npm run build:all`, `outputDirectory: dist-all`). Достаточно импортировать репо
+в дашборде и не менять Root Directory. После этого обновить URL в `games/manifest.json`.
+
+Альтернатива без нового проекта: переименовать проект `gamewingo-soz`
+(Settings → Project Name) — сменится и домен `*.vercel.app`; URL в манифесте обновить.
+
+> ⚠️ `vercel.json` **не допускает произвольных полей** — только из схемы. Ключ вроде
+> `$comment` роняет деплой на валидации ещё до сборки
+> («should NOT have additional property»). Комментарии — только здесь, в доках.
 
 ## Добавление новой игры в каталог
 
