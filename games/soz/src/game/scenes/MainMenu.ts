@@ -8,8 +8,12 @@ import { loadDaily, setHighContrast } from '../../core/persistence';
 import type { Session } from '../../bridge/session';
 
 const CX = 200;
-/** Каталог игр WinGo (для автономного/веб-режима). В приложении выход обрабатывает мост. */
-const HUB_URL = 'https://gamewingo-games.vercel.app';
+/**
+ * Каталог игр WinGo (для автономного/веб-режима). В приложении выход обрабатывает мост.
+ * Путь относительный: игра лежит на /<slug>/, хаб — на корне того же домена,
+ * поэтому ссылка не зависит от того, на каком домене развёрнут каталог.
+ */
+const HUB_URL = '../';
 
 export class MainMenu extends Scene {
   private locale: Locale = 'ru';
