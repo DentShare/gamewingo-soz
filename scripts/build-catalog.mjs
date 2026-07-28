@@ -15,7 +15,12 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(root, 'dist-all');
 
-const GAMES = ['soz', 'pairs', 'fifteen', '2048', 'sudoku-kids'];
+const GAMES = [
+  // логические / детские
+  'soz', 'pairs', 'fifteen', '2048', 'sudoku-kids',
+  // аркадные
+  'stack', 'flyer', 'targets', 'snake',
+];
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });

@@ -29,6 +29,10 @@
 | fifteen | github.com/phaserjs/template-vite-ts (через структуру pairs) | MIT | сохранён `games/fifteen/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
 | 2048 | github.com/phaserjs/template-vite-ts (через структуру pairs); механика 2048 — реализация с нуля | MIT | сохранён `games/2048/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
 | sudoku-kids | github.com/phaserjs/template-vite-ts (через структуру pairs); генератор судоку — собственный | MIT | сохранён `games/sudoku-kids/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
+| stack (аркада) | github.com/phaserjs/template-vite-ts (через структуру pairs); механика реализована с нуля | MIT | сохранён `games/stack/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
+| flyer (аркада) | github.com/phaserjs/template-vite-ts (через структуру pairs); механика реализована с нуля, чужие ассеты/названия не используются | MIT | сохранён `games/flyer/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
+| targets (аркада) | github.com/phaserjs/template-vite-ts (через структуру pairs); механика реализована с нуля | MIT | сохранён `games/targets/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
+| snake (аркада) | github.com/phaserjs/template-vite-ts (через структуру pairs); механика — публичная классика, реализация с нуля | MIT | сохранён `games/snake/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
 |  |  |  |  |  |  |
 
 ## Ассеты (графика, звук, шрифты)
@@ -36,8 +40,8 @@
 | Ассет | Источник | Лицензия | Условия (атрибуция?) | Использован в | Дата | Проверил |
 |---|---|---|---|---|---|---|
 | _(пример)_ UI-кит | kenney.nl | CC0 | без условий | все игры | 2026-07-22 | — |
-| Шрифт Rubik (сабсеты latin+cyrillic 400) | fonts.google.com/specimen/Rubik | OFL 1.1 | сохранить копирайт/OFL, не продавать сам шрифт | soz, pairs, fifteen, 2048, sudoku-kids | 2026-07-24 | — |
-| Эмодзи на карточках/иконках | системный emoji-шрифт устройства | — (не бандлится) | ничего не поставляем — рендер ОС | pairs, sudoku-kids | 2026-07-28 | — |
+| Шрифт Rubik (сабсеты latin+cyrillic 400) | fonts.google.com/specimen/Rubik | OFL 1.1 | сохранить копирайт/OFL, не продавать сам шрифт | все игры каталога | 2026-07-24 | — |
+| Эмодзи на карточках/иконках | системный emoji-шрифт устройства | — (не бандлится) | ничего не поставляем — рендер ОС | pairs, sudoku-kids, аркады | 2026-07-28 | — |
 |  |  |  |  |  |  |  |
 
 ## Запрещено к использованию

@@ -1,0 +1,26 @@
+{
+  "name": "@gamewingo/stack",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config vite/config.dev.mjs",
+    "build": "vite build --config vite/config.prod.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@gamewingo/game-bridge": "*",
+    "canvas-confetti": "^1.9.4",
+    "phaser": "4.0.0"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "jsdom": "^25.0.1",
+    "terser": "^5.39.0",
+    "typescript": "~5.7.2",
+    "vite": "^6.3.1",
+    "vitest": "^2.1.8"
+  }
+}

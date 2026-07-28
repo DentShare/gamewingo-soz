@@ -100,7 +100,10 @@
       <div class="lang" data-lang="uz">Oʻzbekcha</div>
     </div>
 
-    <div class="section-title" id="sAvail">Доступные</div>
+    <div class="section-title" id="sArcade">Аркады · играй сразу</div>
+    <div class="grid" id="gridArcade"></div>
+
+    <div class="section-title" id="sAvail">Головоломки</div>
     <div class="grid" id="grid"></div>
 
     <div class="section-title" id="sSoon">Скоро</div>
@@ -158,30 +161,54 @@
       tags: ['RU', 'UZ', { ru: 'Детям', uz: 'Bolalarga', accent: true }],
     },
   ];
-  const SOON = [
-    { icon: '🎯', title: { ru: 'Меткий глаз', uz: 'Nishonga' } },
-    { icon: '🐍', title: { ru: 'Змейка', uz: 'Ilon' } },
+  // Аркады: заходишь и играешь — партия на 30–60 секунд, управление одним пальцем.
+  const ARCADE = [
+    {
+      id: 'stack',
+      title: { ru: 'Башня', uz: 'Minora' },
+      desc: { ru: 'Тап — блок падает. Строй башню выше', uz: 'Bosing — blok tushadi. Minorani balandroq quring' },
+      url: 'stack/',
+      icon: '🧱',
+      tags: ['RU', 'UZ', { ru: 'Один тап', uz: 'Bir bosish', accent: true }],
+    },
+    {
+      id: 'flyer',
+      title: { ru: 'Полёт', uz: 'Parvoz' },
+      desc: { ru: 'Тапай и пролетай сквозь проёмы', uz: 'Bosing va teshiklardan uching' },
+      url: 'flyer/',
+      icon: '🚀',
+      tags: ['RU', 'UZ', { ru: 'Один тап', uz: 'Bir bosish', accent: true }],
+    },
+    {
+      id: 'targets',
+      title: { ru: 'Меткий глаз', uz: 'Nishonga ur' },
+      desc: { ru: 'Бей по целям 60 секунд — держи серию', uz: '60 soniya nishonga ur — ketma-ketlikni ushla' },
+      url: 'targets/',
+      icon: '🎯',
+      tags: ['RU', 'UZ', { ru: 'Реакция', uz: 'Reaksiya', accent: true }],
+    },
+    {
+      id: 'snake',
+      title: { ru: 'Змейка', uz: 'Ilon' },
+      desc: { ru: 'Свайпай, ешь и расти', uz: 'Suring, yeng va oʻsing' },
+      url: 'snake/',
+      icon: '🐍',
+      tags: ['RU', 'UZ', { ru: 'Классика', uz: 'Klassika', accent: true }],
+    },
   ];
+  const SOON = [];
   const STR = {
-    ru: { title: 'Игры', sub: 'Играй, зарабатывай бонусы', avail: 'Доступные', soon: 'Скоро', play: 'Играть', soonBadge: 'Скоро' },
-    uz: { title: 'Oʻyinlar', sub: 'Oʻyna, bonus yigʻ', avail: 'Mavjud', soon: 'Tez orada', play: 'Oʻynash', soonBadge: 'Tez orada' },
+    ru: { title: 'Игры', sub: 'Играй, зарабатывай бонусы', arcade: 'Аркады · играй сразу', avail: 'Головоломки', soon: 'Скоро', play: 'Играть', soonBadge: 'Скоро' },
+    uz: { title: 'Oʻyinlar', sub: 'Oʻyna, bonus yigʻ', arcade: 'Arkada · darrov oʻyna', avail: 'Boshqotirmalar', soon: 'Tez orada', play: 'Oʻynash', soonBadge: 'Tez orada' },
   };
   const C = { green: '#2fb84c', amber: '#eb9d2e', grey: '#8d7f72' };
   let lang = localStorage.getItem('wingoHubLang') || 'ru';
 
-  function render() {
-    const s = STR[lang];
-    document.getElementById('hTitle').textContent = s.title;
-    document.getElementById('hSub').textContent = s.sub;
-    document.getElementById('sAvail').textContent = s.avail;
-    document.getElementById('sSoon').textContent = s.soon;
-    document.getElementById('count').textContent = GAMES.length + ' / ' + (GAMES.length + SOON.length);
-    document.querySelectorAll('.lang').forEach(el =>
-      el.classList.toggle('active', el.dataset.lang === lang));
-
-    const grid = document.getElementById('grid');
+  /** Карточки играбельной секции (аркады / головоломки). */
+  function renderPlayable(gridId, games, s) {
+    const grid = document.getElementById(gridId);
     grid.innerHTML = '';
-    GAMES.forEach(g => {
+    games.forEach(g => {
       const card = document.createElement('div');
       card.className = 'card playable';
       const tags = g.tags.map(tg => typeof tg === 'string'
@@ -198,12 +225,31 @@
           <div class="tags">${tags}</div>
           <button class="play">${s.play} ↗</button>
         </div>`;
-      const open = () => { window.location.href = g.url; };
-      card.addEventListener('click', open);
+      card.addEventListener('click', () => { window.location.href = g.url; });
       grid.appendChild(card);
     });
+  }
 
+  function render() {
+    const s = STR[lang];
+    const total = ARCADE.length + GAMES.length;
+    document.getElementById('hTitle').textContent = s.title;
+    document.getElementById('hSub').textContent = s.sub;
+    document.getElementById('sArcade').textContent = s.arcade;
+    document.getElementById('sAvail').textContent = s.avail;
+    document.getElementById('sSoon').textContent = s.soon;
+    document.getElementById('count').textContent = total + ' / ' + (total + SOON.length);
+    document.querySelectorAll('.lang').forEach(el =>
+      el.classList.toggle('active', el.dataset.lang === lang));
+
+    renderPlayable('gridArcade', ARCADE, s);
+    renderPlayable('grid', GAMES, s);
+
+    // Секция «Скоро» показывается, только если в ней что-то есть.
+    const soonEmpty = SOON.length === 0;
+    document.getElementById('sSoon').style.display = soonEmpty ? 'none' : '';
     const soon = document.getElementById('gridSoon');
+    soon.style.display = soonEmpty ? 'none' : '';
     soon.innerHTML = '';
     SOON.forEach(g => {
       const card = document.createElement('div');
