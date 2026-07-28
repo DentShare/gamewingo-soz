@@ -12,7 +12,7 @@
     "build:games": "npm run build -w @gamewingo/soz -w @gamewingo/pairs -w @gamewingo/fifteen -w @gamewingo/2048 -w @gamewingo/sudoku-kids",
     "build:all": "npm run bridge:build && npm run build:games && node scripts/build-catalog.mjs",
     "new-game": "echo \"Скопируйте template-vite-ts-main в games/<name> — или используйте скилл new-game в Claude Code\"",
-    "typecheck": "tsc -b --pretty"
+    "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
     "typescript": "^5.6.3"

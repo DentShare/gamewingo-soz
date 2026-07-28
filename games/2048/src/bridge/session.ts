@@ -15,6 +15,8 @@ export interface Session {
   locale: Locale; theme?: BrandTheme; sessionId: string; ready(): void;
   applyInit(e: Extract<AppToGameEvent, { type: 'INIT' }>): void;
   start(): void;
+  /** Выйти из игры в каталог игр (приложение вернёт WebView к списку). */
+  exit(): void;
   /** Конец партии: GAME_OVER хосту + отправка результата на сервер (начисление — там). */
   finish(input: FinishInput): Promise<{ accepted: boolean; pointsAwarded?: number } | null>;
   leaderboard(limit?: number): Promise<LeaderboardEntry[]>;
@@ -43,6 +45,7 @@ export function createSession(
       api = makeApi(e.apiBaseUrl, e.authToken);
     },
     start() { bridge.start(sessionId); },
+    exit() { bridge.exit(sessionId); },
     async finish(input) {
       const { score, maxTile, moves, durationMs } = input;
       bridge.gameOver(score, sessionId, durationMs);

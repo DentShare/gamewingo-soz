@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import {
-  LEVELS, makePuzzle, conflicts, isComplete, type Grid, type LevelId,
+  LEVELS, blockDims, makePuzzle, conflicts, isComplete, type Grid, type LevelId,
 } from '../../core/sudoku';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
@@ -10,6 +10,8 @@ import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
+import { startOnboarding, type OnboardingTargets, type Rect } from '../onboarding';
+import { hasOnboarded, setOnboarded } from '../../core/persistence';
 
 const W = 400;
 const GRID_TOP = 92;
@@ -32,6 +34,8 @@ export class Game extends Scene {
   private selected: number | null = null;
   private hintsLeft = MAX_HINTS;
   private finished = false;
+  /** Идёт обучение: игровой ввод и выход заблокированы. */
+  private tutorialActive = false;
 
   // Вью.
   private cellRects: Phaser.GameObjects.Rectangle[] = [];
@@ -46,6 +50,8 @@ export class Game extends Scene {
   private boardTop = 0;
   private cellSize = 0;
   private keyCenters: { v: number; x: number; y: number }[] = []; // v=0 — ластик
+  private keypadRect: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private hintRect: Rect = { x: 0, y: 0, w: 0, h: 0 };
 
   constructor() {
     super('Game');
@@ -59,6 +65,7 @@ export class Game extends Scene {
     this.selected = null;
     this.hintsLeft = MAX_HINTS;
     this.finished = false;
+    this.tutorialActive = false;
 
     applyTheme(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
@@ -66,18 +73,14 @@ export class Game extends Scene {
     this.level = (this.registry.get('level') as LevelId) ?? 'easy4';
     this.session = this.registry.get('session') as Session;
 
-    const spec = LEVELS[this.level];
-    this.size = spec.size;
-    const { puzzle, solution } = makePuzzle(spec.size, spec.clues, mulberry32(Math.floor(Math.random() * 2 ** 31)));
-    this.grid = puzzle.slice();
-    this.solution = solution;
-    this.given = puzzle.map((v) => v !== 0);
+    // «Как играть» из меню: обучение на настоящей сетке, без сессии, таймера и ввода.
+    if (this.registry.get('howto')) {
+      this.runHowto();
+      return;
+    }
 
-    this.buildHud();
-    this.buildBoard();
-    this.buildKeypad();
-    this.buildHintButton();
-    this.refresh();
+    this.buildPuzzle();
+    this.buildScreen();
 
     this.timer = createRoundTimer(() => performance.now());
     this.session.start();
@@ -87,15 +90,140 @@ export class Game extends Scene {
       else if (e.type === 'RESUME') this.timer.resume();
     });
     this.events.once('shutdown', off);
+
+    this.maybeShowOnboarding();
   }
 
   update() {
-    if (this.timeText && !this.finished) {
+    if (this.timeText && this.timer && !this.finished) {
       const sec = Math.floor(this.timer.elapsedMs() / 1000);
       const mm = String(Math.floor(sec / 60)).padStart(2, '0');
       const ss = String(sec % 60).padStart(2, '0');
       this.timeText.setText(`${mm}:${ss}`);
     }
+  }
+
+  // ── Сборка партии ────────────────────────────────────────────────────────────
+
+  /** Генерирует паззл текущего уровня. */
+  private buildPuzzle() {
+    const spec = LEVELS[this.level];
+    this.size = spec.size;
+    const { puzzle, solution } = makePuzzle(spec.size, spec.clues, mulberry32(Math.floor(Math.random() * 2 ** 31)));
+    this.grid = puzzle.slice();
+    this.solution = solution;
+    this.given = puzzle.map((v) => v !== 0);
+  }
+
+  /** Собирает весь экран партии: HUD, доска, цифровая панель, подсказка. */
+  private buildScreen() {
+    this.buildHud();
+    this.buildBoard();
+    this.buildKeypad();
+    this.buildHintButton();
+    this.refresh();
+  }
+
+  // ── Обучение ─────────────────────────────────────────────────────────────────
+
+  /** «Как играть» из меню: настоящая сетка 4×4 с данными, но без партии; по концу — в меню. */
+  private runHowto() {
+    this.registry.set('howto', false); // одноразовый вход
+    this.tutorialActive = true;
+    this.level = 'easy4'; // на 4×4 правила нагляднее
+    this.buildPuzzle();
+    this.buildScreen();
+    this.timer = createRoundTimer(() => performance.now()); // не стартует: на экране 00:00
+    this.time.delayedCall(360, () =>
+      this.launchOnboarding(() => {
+        setOnboarded();
+        this.scene.start('MainMenu');
+      }),
+    );
+  }
+
+  /** Первая партия — показываем обучение один раз: таймер на паузе, ввод заблокирован. */
+  private maybeShowOnboarding() {
+    if (hasOnboarded()) return;
+    this.tutorialActive = true;
+    this.timer.pause();
+    // Даём кадру отрисоваться (и завершиться fade-in камеры), затем открываем оверлей.
+    this.time.delayedCall(360, () =>
+      this.launchOnboarding(() => {
+        setOnboarded();
+        this.tutorialActive = false;
+        this.timer.resume();
+      }),
+    );
+  }
+
+  private launchOnboarding(onDone: () => void) {
+    const demoCell = this.grid.indexOf(0); // верхняя-левая пустая клетка
+    const prevValue = demoCell >= 0 ? this.grid[demoCell] : 0;
+    const prevSelected = this.selected;
+    startOnboarding(this, this.locale, this.onboardingTargets(demoCell), {
+      select: () => {
+        if (demoCell < 0) return;
+        this.selected = demoCell;
+        this.refresh();
+      },
+      fill: () => {
+        if (demoCell < 0) return;
+        this.grid[demoCell] = this.solution[demoCell];
+        this.refresh();
+        this.pulseCell(demoCell);
+      },
+      reset: () => {
+        // Сетку игрока возвращаем как была: обучение не даёт форы.
+        if (demoCell >= 0) this.grid[demoCell] = prevValue;
+        this.selected = prevSelected;
+        this.refresh();
+      },
+    }, onDone);
+  }
+
+  /** Настоящие зоны экрана для подсветки: доска, строка, блок, клетка, панель, подсказка. */
+  private onboardingTargets(demoCell: number): OnboardingTargets {
+    const n = this.size;
+    const cell = this.cellSize;
+    const board: Rect = { x: this.boardLeft, y: this.boardTop, w: n * cell, h: n * cell };
+
+    // Строка и блок с наибольшим числом данных — на них правило видно лучше всего.
+    const { rows: bRows, cols: bCols } = blockDims(n);
+    const rowScore = (r: number) => this.given.slice(r * n, r * n + n).filter(Boolean).length;
+    let bestRow = 0;
+    for (let r = 1; r < n; r++) if (rowScore(r) > rowScore(bestRow)) bestRow = r;
+
+    let bestBlock = { r0: 0, c0: 0, score: -1 };
+    for (let r0 = 0; r0 < n; r0 += bRows) {
+      for (let c0 = 0; c0 < n; c0 += bCols) {
+        let score = 0;
+        for (let r = r0; r < r0 + bRows; r++) {
+          for (let c = c0; c < c0 + bCols; c++) if (this.given[r * n + c]) score++;
+        }
+        if (score > bestBlock.score) bestBlock = { r0, c0, score };
+      }
+    }
+
+    const idx = demoCell >= 0 ? demoCell : 0;
+    return {
+      board,
+      row: { x: this.boardLeft, y: this.boardTop + bestRow * cell, w: n * cell, h: cell },
+      block: {
+        x: this.boardLeft + bestBlock.c0 * cell,
+        y: this.boardTop + bestBlock.r0 * cell,
+        w: bCols * cell,
+        h: bRows * cell,
+      },
+      cell: {
+        x: this.boardLeft + (idx % n) * cell,
+        y: this.boardTop + Math.floor(idx / n) * cell,
+        w: cell,
+        h: cell,
+      },
+      keypad: this.keypadRect,
+      hint: this.hintRect,
+    };
   }
 
   // ── HUD: кнопка назад + таймер ───────────────────────────────────────────────
@@ -136,7 +264,7 @@ export class Game extends Scene {
   }
 
   private goBack() {
-    if (this.finished) return;
+    if (this.finished || this.tutorialActive) return;
     this.finished = true;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
@@ -203,6 +331,7 @@ export class Game extends Scene {
     const totalW = kw * count + KEY_GAP * (count - 1);
     let x = (W - totalW) / 2;
     const cy = PAD_TOP + KEY_H / 2;
+    this.keypadRect = { x, y: PAD_TOP, w: totalW, h: KEY_H };
     for (let v = 1; v <= count; v++) {
       const digit = v <= n ? v : 0; // последняя клавиша — ластик
       const cx = x + kw / 2;
@@ -239,7 +368,9 @@ export class Game extends Scene {
   }
 
   private buildHintButton() {
-    this.hintButton = makeButton(this, W / 2, HINT_Y, this.hintLabel(), () => this.useHint(), { width: 232, height: 48 });
+    const w = 232, h = 48, lip = 6;
+    this.hintButton = makeButton(this, W / 2, HINT_Y, this.hintLabel(), () => this.useHint(), { width: w, height: h });
+    this.hintRect = { x: (W - w) / 2, y: HINT_Y - h / 2 - lip, w, h: h + lip };
   }
 
   private hintLabel(): string {
@@ -249,27 +380,27 @@ export class Game extends Scene {
   // ── Взаимодействие ───────────────────────────────────────────────────────────
 
   private onCellTap(i: number) {
-    if (this.finished || this.given[i]) return; // данные не выделяем
+    if (this.finished || this.tutorialActive || this.given[i]) return; // данные не выделяем
     this.selected = i;
     this.refresh();
   }
 
   private onDigit(v: number) {
-    if (this.finished || this.selected === null || this.given[this.selected]) return;
+    if (this.finished || this.tutorialActive || this.selected === null || this.given[this.selected]) return;
     this.grid[this.selected] = v;
     this.refresh();
     this.checkWin();
   }
 
   private onErase() {
-    if (this.finished || this.selected === null || this.given[this.selected]) return;
+    if (this.finished || this.tutorialActive || this.selected === null || this.given[this.selected]) return;
     this.grid[this.selected] = 0;
     this.refresh();
   }
 
   /** Подсказка: правильная цифра в выделенную клетку (или случайную пустую). Максимум 3. */
   private useHint() {
-    if (this.finished || this.hintsLeft <= 0) return;
+    if (this.finished || this.tutorialActive || this.hintsLeft <= 0) return;
     let target = this.selected !== null && !this.given[this.selected] ? this.selected : -1;
     if (target === -1) {
       const empty = this.grid.map((v, i) => (v === 0 ? i : -1)).filter((i) => i !== -1);
