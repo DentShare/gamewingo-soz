@@ -1,39 +1,60 @@
-# Деплой игры на Vercel
+# Деплой каталога на Vercel
 
-Каждая игра каталога — отдельный статический билд на Vercel (отдельный Vercel-проект).
-Так новые игры добавляются без релиза приложения — через манифест `games/manifest.json`.
+Весь каталог (хаб + все игры) — **один Vercel-проект** `gamewingo-games`, привязанный к GitHub-репо.
+Каждый мерж в `main` автоматически собирает и выкладывает production:
 
-## Настройки Vercel-проекта для `soz`
+```
+https://gamewingo-games.vercel.app/            ← хаб (hub/)
+https://gamewingo-games.vercel.app/manifest.json
+https://gamewingo-games.vercel.app/soz/        ← игры (games/<slug>/dist)
+https://gamewingo-games.vercel.app/pairs/
+https://gamewingo-games.vercel.app/fifteen/
+https://gamewingo-games.vercel.app/2048/
+https://gamewingo-games.vercel.app/sudoku-kids/
+```
 
-Игра — часть npm-workspaces монорепо и зависит от `@gamewingo/game-bridge`, поэтому установка и
-сборка моста должны идти из корня. Конфиг лежит в `games/soz/vercel.json`:
+## Как это устроено
 
-- **Root Directory:** `games/soz`
-- **Install Command:** `cd ../.. && npm install`
-- **Build Command:** `cd ../.. && npm run bridge:build && npm run build -w @gamewingo/soz`
-- **Output Directory:** `dist`
+- Корневой `vercel.json`: `installCommand: npm install`, `buildCommand: npm run build:all`,
+  `outputDirectory: dist-all`, immutable-кэш для `assets/` и `fonts/`.
+- `npm run build:all` = сборка моста → сборка всех игр (`build:games`) →
+  `scripts/build-catalog.mjs` складывает `hub/`, `games/manifest.json` и `games/<slug>/dist`
+  в `dist-all/`.
+- Игры собираются с `base: './'`, поэтому работают из подпапок без правок.
+- localStorage-ключи игр обязаны иметь префикс `<slug>:` — все игры на одном origin.
 
-В дашборде Vercel включить «Include files outside the Root Directory» (для доступа к корню монорепо
-и пакету моста).
+## Настройки Vercel-проекта `gamewingo-games`
 
-## Шаги (выполняет владелец аккаунта — нужен вход в Vercel)
+- Import репозитория `DentShare/gamewingo-soz`.
+- **Root Directory:** корень репо (по умолчанию).
+- Остальное подхватывается из корневого `vercel.json`.
 
-1. `vercel login` (или через дашборд).
-2. Создать проект, указать Root Directory = `games/soz` (конфиг подхватится автоматически).
-3. Первый деплой: `vercel --prod` из папки `games/soz` (или Deploy в дашборде).
-4. Проверить итоговый URL в WebView (не только в десктоп-браузере) — чеклист `webview-qa`.
-5. Вписать URL в `games/manifest.json` → поле `games[].url` и закоммитить.
+## Добавление новой игры в каталог
 
-## Проверка сборки локально (перед деплоем)
+1. Игра в `games/<slug>` собирается (`npm run build -w @gamewingo/<slug>`), ключи
+   localStorage с префиксом `<slug>:`.
+2. Добавить slug в `GAMES` в `scripts/build-catalog.mjs` и в `build:games` в корневом
+   `package.json`.
+3. Запись в `games/manifest.json` (url: `https://gamewingo-games.vercel.app/<slug>/`)
+   и карточка в `hub/index.html`.
+4. Мерж в `main` — деплой произойдёт автоматически.
+
+## Проверка сборки локально (перед мержем)
 
 ```bash
-npm run bridge:build
-npm run build -w @gamewingo/soz
-# статически отдать dist для проверки:
-npx serve games/soz/dist
+npm run build:all
+npx serve dist-all   # хаб на /, игры на /<slug>/
 ```
 
 ## Замечание про вес
 
-`dist` ≈ 1.4 МБ на диске; по сети Vercel отдаёт gzip/brotli (Phaser сжимается ~в 4 раза → ~0.4 МБ),
-что укладывается в бюджет загрузки < 3 сек на 3G. Проверить реальным throttling в DevTools/на устройстве.
+Каждая игра ≈ 1.4 МБ на диске (по сети ~0.4 МБ с brotli — Phaser жмётся ~в 4 раза),
+бюджет загрузки < 3 сек на 3G соблюдается. Общий вес каталога роли не играет —
+игры грузятся по отдельности.
+
+## Историческая справка
+
+Ранее каждая игра деплоилась отдельным Vercel-проектом (`gamewingo-soz`, `soz-wingo`,
+`gamewingo-hub`, `wingo-games`) — эти проекты можно удалить в дашборде после переключения
+приложения на новые URL из `manifest.json`. Пер-игровые `games/<slug>/vercel.json`
+оставлены на случай возврата к отдельным проектам, но в основной схеме не используются.

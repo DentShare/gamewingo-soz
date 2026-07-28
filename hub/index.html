@@ -110,13 +110,14 @@
   </div>
 
 <script>
-  // Каталог игр (в проде читается из games/manifest.json).
+  // Каталог игр. URL относительные — хаб и игры живут в одном Vercel-проекте
+  // (см. scripts/build-catalog.mjs); абсолютные URL для приложения — в manifest.json.
   const GAMES = [
     {
       id: 'soz',
       title: { ru: '5 букв', uz: '5 harf' },
       desc: { ru: 'Угадай слово из 5 букв за 6 попыток', uz: '5 harfli soʻzni 6 urinishda top' },
-      url: 'https://gamewingo-soz.vercel.app',
+      url: 'soz/',
       tags: ['RU', 'UZ', { ru: 'Слова', uz: 'Soʻzlar', accent: true }],
       thumb: [
         { l: 'С', c: 'green' }, { l: 'Л', c: 'grey' }, { l: 'О', c: 'amber' },
@@ -124,9 +125,40 @@
         { l: 'К', c: 'amber' }, { l: 'Н', c: 'grey' }, { l: 'О', c: 'green' },
       ],
     },
+    {
+      id: 'pairs',
+      title: { ru: 'Найди пару', uz: 'Juftini top' },
+      desc: { ru: 'Открывай карточки и находи пары', uz: 'Kartochkalarni ochib juftlarni top' },
+      url: 'pairs/',
+      icon: '🐾',
+      tags: ['RU', 'UZ', { ru: 'Детям', uz: 'Bolalarga', accent: true }],
+    },
+    {
+      id: 'fifteen',
+      title: { ru: 'Пятнашки', uz: 'Boshqotirma 15' },
+      desc: { ru: 'Собери числа по порядку', uz: 'Raqamlarni tartib bilan yigʻ' },
+      url: 'fifteen/',
+      icon: '🔢',
+      tags: ['RU', 'UZ', { ru: 'Логика', uz: 'Mantiq', accent: true }],
+    },
+    {
+      id: '2048',
+      title: { ru: '2048', uz: '2048' },
+      desc: { ru: 'Сливай плитки и дойди до 2048', uz: 'Plitkalarni qoʻshib 2048 ga yet' },
+      url: '2048/',
+      icon: '🧮',
+      tags: ['RU', 'UZ', { ru: 'Логика', uz: 'Mantiq', accent: true }],
+    },
+    {
+      id: 'sudoku-kids',
+      title: { ru: 'Мини-судоку', uz: 'Mini sudoku' },
+      desc: { ru: 'Судоку 4×4 и 6×6 для детей', uz: 'Bolalar uchun 4×4 va 6×6 sudoku' },
+      url: 'sudoku-kids/',
+      icon: '🧩',
+      tags: ['RU', 'UZ', { ru: 'Детям', uz: 'Bolalarga', accent: true }],
+    },
   ];
   const SOON = [
-    { icon: '🧩', title: { ru: 'Пазл', uz: 'Pazl' } },
     { icon: '🎯', title: { ru: 'Меткий глаз', uz: 'Nishonga' } },
     { icon: '🐍', title: { ru: 'Змейка', uz: 'Ilon' } },
   ];
@@ -155,10 +187,11 @@
       const tags = g.tags.map(tg => typeof tg === 'string'
         ? `<span class="tag">${tg}</span>`
         : `<span class="tag ${tg.accent ? 'g' : ''}">${tg[lang]}</span>`).join('');
-      const mini = g.thumb.map(t =>
-        `<i style="background:${C[t.c]}">${t.l}</i>`).join('');
+      const thumb = g.thumb
+        ? `<div class="mini">${g.thumb.map(t => `<i style="background:${C[t.c]}">${t.l}</i>`).join('')}</div>`
+        : `<span style="font-size:34px">${g.icon}</span>`;
       card.innerHTML = `
-        <div class="thumb"><div class="mini">${mini}</div></div>
+        <div class="thumb">${thumb}</div>
         <div class="info">
           <h2>${g.title[lang]}</h2>
           <p class="desc">${g.desc[lang]}</p>
