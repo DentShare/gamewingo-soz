@@ -1,0 +1,254 @@
+import { Scene } from 'phaser';
+import type { Locale } from '../../core/locale';
+import { createGrid2048, applyMove, SIZE, type Grid2048, type Dir } from '../../core/grid';
+import { mulberry32 } from '../../core/rng';
+import { COLORS, FONT, tileColor, tileTextColor, tileFontSize } from '../palette';
+import { applyTheme, darken, toast } from '../ui';
+import { t } from '../../i18n';
+import type { Session } from '../../bridge/session';
+import type { AppToGameEvent } from '@gamewingo/game-bridge';
+import { createRoundTimer, type RoundTimer } from '../roundTimer';
+import { loadBest } from '../../core/persistence';
+
+const W = 400;
+const TILE = 80;
+const GAP = 10;
+const PAD = 12;
+const BOARD = SIZE * TILE + (SIZE - 1) * GAP + 2 * PAD; // 374
+const BOARD_LEFT = (W - BOARD) / 2;
+const BOARD_TOP = 140;
+const SWIPE_MIN = 24; // порог свайпа, px
+
+export class Game extends Scene {
+  private locale: Locale = 'ru';
+  private session!: Session;
+  private core!: Grid2048;
+  private tileLayer!: Phaser.GameObjects.Container;
+  private scoreText!: Phaser.GameObjects.Text;
+  private bestText!: Phaser.GameObjects.Text;
+  private best = 0;
+  private timer!: RoundTimer;
+  private finished = false;
+  private wonShown = false;
+  private swipeFrom: { x: number; y: number } | null = null;
+
+  constructor() {
+    super('Game');
+  }
+
+  create() {
+    // Сцена переиспользуется между рестартами — сбрасываем изменяемое состояние.
+    this.finished = false;
+    this.wonShown = false;
+    this.swipeFrom = null;
+
+    applyTheme(this);
+    this.cameras.main.fadeIn(200, ...COLORS.fade);
+    this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
+    this.session = this.registry.get('session') as Session;
+
+    this.core = createGrid2048(mulberry32(Math.floor(Math.random() * 2 ** 31)));
+    this.best = loadBest();
+
+    this.buildHud();
+    this.buildBoard();
+    this.tileLayer = this.add.container(0, 0);
+    this.redraw();
+    this.bindInput();
+
+    this.timer = createRoundTimer(() => performance.now());
+    this.session.start();
+    this.timer.start();
+    const off = this.session.onApp((e: AppToGameEvent) => {
+      if (e.type === 'PAUSE') this.timer.pause();
+      else if (e.type === 'RESUME') this.timer.resume();
+    });
+    this.events.once('shutdown', off);
+  }
+
+  // ── HUD: кнопка назад + счёт + рекорд ────────────────────────────────────────
+
+  private buildHud() {
+    this.buildBackButton();
+    this.scoreText = this.add
+      .text(W - 20, 24, t(this.locale, 'game.score', { n: 0 }), {
+        fontFamily: FONT, fontSize: 16, color: COLORS.headText, fontStyle: 'bold',
+      })
+      .setOrigin(1, 0.5);
+    this.bestText = this.add
+      .text(W - 20, 46, t(this.locale, 'game.best', { n: this.best }), {
+        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
+      })
+      .setOrigin(1, 0.5);
+  }
+
+  /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
+  private buildBackButton() {
+    const w = 92, h = 40, lip = 4, r = 12;
+    const container = this.add.container(14 + w / 2, 34).setDepth(30);
+    const base = this.add.graphics();
+    base.fillStyle(darken(COLORS.panel, 0.14), 1).fillRoundedRect(-w / 2, -h / 2, w, h, r);
+    const faceC = this.add.container(0, -lip);
+    const face = this.add.graphics();
+    face.fillStyle(COLORS.panel, 1).fillRoundedRect(-w / 2, -h / 2, w, h, r);
+    face.lineStyle(1.5, COLORS.panelBorder, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, r);
+    const ax = -w / 2 + 18;
+    face.lineStyle(2.5, COLORS.iconDark, 1);
+    face.beginPath();
+    face.moveTo(ax + 5, -6); face.lineTo(ax - 4, 0); face.lineTo(ax + 5, 6);
+    face.strokePath();
+    const label = this.add
+      .text(ax + 12, 0, t(this.locale, 'menu.back'), { fontFamily: FONT, fontSize: 16, color: COLORS.headText })
+      .setOrigin(0, 0.5);
+    faceC.add([face, label]);
+    const hit = this.add.rectangle(0, -lip / 2, w, h + lip, 0x000000, 0).setInteractive({ useHandCursor: true });
+    container.add([base, faceC, hit]);
+    let pressed = false;
+    const press = (down: boolean) => { faceC.y = down ? -1 : -lip; };
+    hit.on('pointerdown', () => { pressed = true; press(true); });
+    hit.on('pointerup', () => { if (pressed) { pressed = false; press(false); this.goBack(); } });
+    hit.on('pointerout', () => { if (pressed) { pressed = false; press(false); } });
+  }
+
+  private goBack() {
+    if (this.finished) return;
+    this.finished = true;
+    this.cameras.main.fadeOut(200, ...COLORS.fade);
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
+  }
+
+  // ── Поле ─────────────────────────────────────────────────────────────────────
+
+  private cellXY(row: number, col: number): { x: number; y: number } {
+    return {
+      x: BOARD_LEFT + PAD + col * (TILE + GAP) + TILE / 2,
+      y: BOARD_TOP + PAD + row * (TILE + GAP) + TILE / 2,
+    };
+  }
+
+  private buildBoard() {
+    const g = this.add.graphics();
+    g.fillStyle(darken(COLORS.board, 0.16), 1).fillRoundedRect(BOARD_LEFT, BOARD_TOP + 4, BOARD, BOARD, 18);
+    g.fillStyle(COLORS.board, 1).fillRoundedRect(BOARD_LEFT, BOARD_TOP, BOARD, BOARD, 18);
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const { x, y } = this.cellXY(r, c);
+        g.fillStyle(COLORS.boardCell, 1).fillRoundedRect(x - TILE / 2, y - TILE / 2, TILE, TILE, 12);
+      }
+    }
+  }
+
+  /**
+   * Полная перерисовка поля по состоянию ядра (канон: просто и надёжно).
+   * `spawn`/`merged` — клетки для лёгкого tween-подскока.
+   */
+  private redraw(fx?: { spawn: [number, number] | null; merged: Array<[number, number]> }) {
+    this.tileLayer.removeAll(true);
+    const cells = this.core.cells;
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const v = cells[r][c];
+        if (v === 0) continue;
+        const cont = this.buildTile(r, c, v);
+        if (fx?.spawn && fx.spawn[0] === r && fx.spawn[1] === c) {
+          cont.setScale(0);
+          this.tweens.add({ targets: cont, scale: 1, duration: 160, ease: 'Back.easeOut' });
+        } else if (fx?.merged.some(([mr, mc]) => mr === r && mc === c)) {
+          this.tweens.add({ targets: cont, scale: 1.12, duration: 90, yoyo: true, ease: 'Quad.easeOut' });
+        }
+      }
+    }
+  }
+
+  private buildTile(row: number, col: number, value: number): Phaser.GameObjects.Container {
+    const { x, y } = this.cellXY(row, col);
+    const cont = this.add.container(x, y);
+    const color = tileColor(value);
+    const g = this.add.graphics();
+    g.fillStyle(darken(color, 0.18), 1).fillRoundedRect(-TILE / 2, -TILE / 2 + 3, TILE, TILE, 12);
+    g.fillStyle(color, 1).fillRoundedRect(-TILE / 2, -TILE / 2, TILE, TILE, 12);
+    const txt = this.add
+      .text(0, 0, String(value), {
+        fontFamily: FONT, fontSize: tileFontSize(value), color: tileTextColor(value), fontStyle: 'bold',
+      })
+      .setOrigin(0.5);
+    cont.add([g, txt]);
+    this.tileLayer.add(cont);
+    return cont;
+  }
+
+  // ── Управление: свайп + стрелки ──────────────────────────────────────────────
+
+  private bindInput() {
+    const kb = this.input.keyboard;
+    kb?.on('keydown-LEFT', () => this.tryMove('left'));
+    kb?.on('keydown-RIGHT', () => this.tryMove('right'));
+    kb?.on('keydown-UP', () => this.tryMove('up'));
+    kb?.on('keydown-DOWN', () => this.tryMove('down'));
+
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      this.swipeFrom = { x: p.x, y: p.y };
+    });
+    this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (!this.swipeFrom) return;
+      const dx = p.x - this.swipeFrom.x;
+      const dy = p.y - this.swipeFrom.y;
+      this.swipeFrom = null;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_MIN) return;
+      const dir: Dir = Math.abs(dx) >= Math.abs(dy)
+        ? (dx > 0 ? 'right' : 'left')
+        : (dy > 0 ? 'down' : 'up');
+      this.tryMove(dir);
+    });
+  }
+
+  private tryMove(dir: Dir) {
+    if (this.finished) return;
+    const before = this.core.cells.map((row) => [...row]);
+    const res = this.core.move(dir);
+    if (!res.moved) return;
+
+    // Спавн и слитые клетки для подскока: сравниваем с чистым ходом без спавна.
+    const expected = applyMove(before, dir);
+    let spawn: [number, number] | null = null;
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (this.core.cells[r][c] !== expected.cells[r][c]) spawn = [r, c];
+      }
+    }
+    this.redraw({ spawn, merged: expected.merges.map((m) => [m.row, m.col]) });
+
+    this.scoreText.setText(t(this.locale, 'game.score', { n: this.core.score }));
+    if (this.core.score > this.best) {
+      this.best = this.core.score;
+      this.bestText.setText(t(this.locale, 'game.best', { n: this.best }));
+    }
+
+    if (!this.wonShown && this.core.hasWon()) {
+      this.wonShown = true; // поздравление один раз, игра продолжается
+      toast(this, W / 2, 580, t(this.locale, 'game.won'));
+    }
+
+    if (this.core.isOver()) {
+      this.finished = true;
+      this.time.delayedCall(450, () => this.endGame());
+    }
+  }
+
+  private endGame() {
+    const durationMs = Math.round(this.timer.elapsedMs());
+    const score = this.core.score;
+    const maxTile = this.core.maxTile();
+    const moves = this.core.moves;
+
+    void this.session
+      .finish({ score, maxTile, moves, durationMs })
+      .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
+
+    this.registry.set('lastGame', {
+      locale: this.locale, score, maxTile, moves, durationMs, won: this.core.hasWon(),
+    });
+    this.cameras.main.fadeOut(250, ...COLORS.fade);
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
+  }
+}

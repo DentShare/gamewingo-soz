@@ -1,0 +1,19 @@
+{
+  "app.title": "2048",
+  "menu.play": "Играть",
+  "menu.howto": "Как играть",
+  "menu.back": "Назад",
+  "menu.best": "Рекорд: {n}",
+  "game.score": "Счёт: {n}",
+  "game.best": "Рекорд: {n}",
+  "game.won": "2048! Продолжайте!",
+  "howto.body": "Свайпайте, чтобы сдвигать плитки.\nОдинаковые сливаются в одну.\nСоберите плитку 2048!",
+  "result.title": "Ходов больше нет",
+  "result.titleWon": "Победа!",
+  "result.score": "Очки: {n}",
+  "result.newBest": "Новый рекорд!",
+  "result.playAgain": "Ещё раз",
+  "result.menu": "В меню",
+  "result.leaderboard": "Таблица лидеров",
+  "error.network": "Нет соединения"
+}
