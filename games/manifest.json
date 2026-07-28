@@ -14,7 +14,7 @@
         "uz"
       ],
       "orientation": "portrait",
-      "url": "https://gamewingo-games.vercel.app/soz/",
+      "url": "https://gamewingo-soz.vercel.app/soz/",
       "modes": [
         "daily",
         "practice"
@@ -36,7 +36,7 @@
         "uz"
       ],
       "orientation": "portrait",
-      "url": "https://gamewingo-games.vercel.app/pairs/",
+      "url": "https://gamewingo-soz.vercel.app/pairs/",
       "modes": [
         "practice"
       ],
@@ -57,7 +57,7 @@
         "uz"
       ],
       "orientation": "portrait",
-      "url": "https://gamewingo-games.vercel.app/fifteen/",
+      "url": "https://gamewingo-soz.vercel.app/fifteen/",
       "modes": [
         "practice"
       ],
@@ -78,7 +78,7 @@
         "uz"
       ],
       "orientation": "portrait",
-      "url": "https://gamewingo-games.vercel.app/2048/",
+      "url": "https://gamewingo-soz.vercel.app/2048/",
       "modes": [
         "practice"
       ],
@@ -99,7 +99,7 @@
         "uz"
       ],
       "orientation": "portrait",
-      "url": "https://gamewingo-games.vercel.app/sudoku-kids/",
+      "url": "https://gamewingo-soz.vercel.app/sudoku-kids/",
       "modes": [
         "practice"
       ],
