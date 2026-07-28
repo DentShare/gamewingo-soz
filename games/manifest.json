@@ -4,12 +4,21 @@
   "games": [
     {
       "gameId": "soz",
-      "title": { "ru": "5 букв", "uz": "5 harf" },
+      "title": {
+        "ru": "5 букв",
+        "uz": "5 harf"
+      },
       "mechanic": "wordle",
-      "locales": ["ru", "uz"],
+      "locales": [
+        "ru",
+        "uz"
+      ],
       "orientation": "portrait",
-      "url": "https://gamewingo-soz.vercel.app",
-      "modes": ["daily", "practice"],
+      "url": "https://gamewingo-games.vercel.app/soz/",
+      "modes": [
+        "daily",
+        "practice"
+      ],
       "leaderboard": true,
       "streak": true,
       "status": "mvp",
@@ -17,12 +26,20 @@
     },
     {
       "gameId": "pairs",
-      "title": { "ru": "Найди пару", "uz": "Juftini top" },
+      "title": {
+        "ru": "Найди пару",
+        "uz": "Juftini top"
+      },
       "mechanic": "memory",
-      "locales": ["ru", "uz"],
+      "locales": [
+        "ru",
+        "uz"
+      ],
       "orientation": "portrait",
-      "url": "https://gamewingo-pairs.vercel.app",
-      "modes": ["practice"],
+      "url": "https://gamewingo-games.vercel.app/pairs/",
+      "modes": [
+        "practice"
+      ],
       "leaderboard": true,
       "streak": false,
       "status": "mvp",
@@ -30,12 +47,20 @@
     },
     {
       "gameId": "fifteen",
-      "title": { "ru": "Пятнашки", "uz": "Boshqotirma 15" },
+      "title": {
+        "ru": "Пятнашки",
+        "uz": "Boshqotirma 15"
+      },
       "mechanic": "sliding-puzzle",
-      "locales": ["ru", "uz"],
+      "locales": [
+        "ru",
+        "uz"
+      ],
       "orientation": "portrait",
-      "url": "https://gamewingo-fifteen.vercel.app",
-      "modes": ["practice"],
+      "url": "https://gamewingo-games.vercel.app/fifteen/",
+      "modes": [
+        "practice"
+      ],
       "leaderboard": true,
       "streak": false,
       "status": "mvp",
@@ -43,12 +68,20 @@
     },
     {
       "gameId": "2048",
-      "title": { "ru": "2048", "uz": "2048" },
+      "title": {
+        "ru": "2048",
+        "uz": "2048"
+      },
       "mechanic": "merge",
-      "locales": ["ru", "uz"],
+      "locales": [
+        "ru",
+        "uz"
+      ],
       "orientation": "portrait",
-      "url": "https://gamewingo-2048.vercel.app",
-      "modes": ["practice"],
+      "url": "https://gamewingo-games.vercel.app/2048/",
+      "modes": [
+        "practice"
+      ],
       "leaderboard": true,
       "streak": false,
       "status": "mvp",
@@ -56,12 +89,20 @@
     },
     {
       "gameId": "sudoku-kids",
-      "title": { "ru": "Мини-судоку", "uz": "Mini sudoku" },
+      "title": {
+        "ru": "Мини-судоку",
+        "uz": "Mini sudoku"
+      },
       "mechanic": "sudoku",
-      "locales": ["ru", "uz"],
+      "locales": [
+        "ru",
+        "uz"
+      ],
       "orientation": "portrait",
-      "url": "https://gamewingo-sudoku-kids.vercel.app",
-      "modes": ["practice"],
+      "url": "https://gamewingo-games.vercel.app/sudoku-kids/",
+      "modes": [
+        "practice"
+      ],
       "leaderboard": true,
       "streak": false,
       "status": "mvp",

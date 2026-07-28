@@ -9,7 +9,7 @@ import type { Session } from '../../bridge/session';
 
 const CX = 200;
 /** Каталог игр WinGo (для автономного/веб-режима). В приложении выход обрабатывает мост. */
-const HUB_URL = 'https://gamewingo-hub.vercel.app';
+const HUB_URL = 'https://gamewingo-games.vercel.app';
 
 export class MainMenu extends Scene {
   private locale: Locale = 'ru';
