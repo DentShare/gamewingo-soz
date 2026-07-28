@@ -4,7 +4,7 @@ import { t } from '../../i18n';
 import { makeButton, applyTheme, setupCamera, type Button } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
-import { loadDaily } from '../../core/persistence';
+import { loadDaily, setHighContrast } from '../../core/persistence';
 
 const CX = 200;
 
@@ -58,7 +58,9 @@ export class MainMenu extends Scene {
       `${t(this.locale, 'a11y.highContrast')}: ${this.registry.get('highContrast') ? '✓' : '×'}`;
     let btn: Button;
     btn = makeButton(this, CX, 556, label(), () => {
-      this.registry.set('highContrast', !this.registry.get('highContrast'));
+      const next = !this.registry.get('highContrast');
+      this.registry.set('highContrast', next);
+      setHighContrast(next);
       btn.setLabel(label());
     });
   }

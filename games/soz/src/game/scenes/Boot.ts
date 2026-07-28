@@ -4,6 +4,7 @@ import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createSession } from '../../bridge/session';
 import { createDemoApi, installDemoApp, DEMO_API_BASE } from '../../bridge/demo';
 import { computeDayId } from '../../core/dailyWord';
+import { getHighContrast } from '../../core/persistence';
 
 /**
  * Boot: поднимает мост, ждёт INIT от приложения. Если INIT не пришёл (веб/дев вне
@@ -28,6 +29,7 @@ export class Boot extends Scene {
       this.registry.set('locale', session.locale);
       this.registry.set('theme', session.theme ?? null);
       this.registry.set('dayId', computeDayId());
+      this.registry.set('highContrast', getHighContrast());
       this.scene.start('MainMenu');
     };
 

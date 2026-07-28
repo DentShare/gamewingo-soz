@@ -42,3 +42,22 @@ export function setOnboarded(): void {
     /* quota / приватный режим — тихо игнорируем */
   }
 }
+
+const HIGH_CONTRAST_KEY = 'soz:highContrast';
+
+/** Режим высокого контраста (для дальтоников). По умолчанию выключен. */
+export function getHighContrast(): boolean {
+  try {
+    return localStorage.getItem(HIGH_CONTRAST_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function setHighContrast(on: boolean): void {
+  try {
+    localStorage.setItem(HIGH_CONTRAST_KEY, on ? '1' : '0');
+  } catch {
+    /* quota / приватный режим — тихо игнорируем */
+  }
+}
