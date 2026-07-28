@@ -24,18 +24,12 @@ export class MainMenu extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
+    this.buildHeader();
     this.buildCatalogLink();
 
-    this.add
-      .text(CX, 96, t(this.locale, 'app.title'), {
-        fontFamily: FONT, fontSize: 44, color: COLORS.headText, fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-
     // Выбор языка — две пилюли.
-    this.langPill(CX - 78, 168, 'ru', 'Русский');
-    this.langPill(CX + 78, 168, 'uz', 'Oʻzbekcha');
+    this.langPill(CX - 78, 208, 'ru', 'Русский');
+    this.langPill(CX + 78, 208, 'uz', 'Oʻzbekcha');
 
     // Разгадано ли сегодняшнее слово дня.
     const dayId = (this.registry.get('dayId') as number) ?? 0;
@@ -46,13 +40,13 @@ export class MainMenu extends Scene {
     const dailyLabel = dailyDone
       ? `${t(this.locale, 'menu.daily')}  ✓`
       : t(this.locale, 'menu.daily');
-    makeButton(this, CX, 292, dailyLabel, () => this.startMode('daily'), { primary: !dailyDone });
-    makeButton(this, CX, 358, t(this.locale, 'menu.practice'), () => this.startMode('practice'), { primary: dailyDone });
-    makeButton(this, CX, 424, t(this.locale, 'menu.howto'), () => this.showHowto());
+    makeButton(this, CX, 318, dailyLabel, () => this.startMode('daily'), { primary: !dailyDone });
+    makeButton(this, CX, 384, t(this.locale, 'menu.practice'), () => this.startMode('practice'), { primary: dailyDone });
+    makeButton(this, CX, 450, t(this.locale, 'menu.howto'), () => this.showHowto());
 
     if (dailyDone) {
       this.add
-        .text(CX, 466, t(this.locale, 'menu.dailyDone'), {
+        .text(CX, 492, t(this.locale, 'menu.dailyDone'), {
           fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
         })
         .setOrigin(0.5)
@@ -62,7 +56,7 @@ export class MainMenu extends Scene {
     const label = () =>
       `${t(this.locale, 'a11y.highContrast')}: ${this.registry.get('highContrast') ? '✓' : '×'}`;
     let btn: Button;
-    btn = makeButton(this, CX, 556, label(), () => {
+    btn = makeButton(this, CX, 574, label(), () => {
       const next = !this.registry.get('highContrast');
       this.registry.set('highContrast', next);
       setHighContrast(next);
@@ -86,11 +80,32 @@ export class MainMenu extends Scene {
     this.scene.start('Game');
   }
 
-  /** Ссылка «‹ К играм» слева вверху — выход в каталог игр WinGo. */
+  /** Оранжевая «шапка» с градиентом (в стиле хаба): заголовок + подзаголовок. */
+  private buildHeader() {
+    const g = this.add.graphics();
+    g.fillGradientStyle(0xf5841f, 0xf5841f, 0xf15a24, 0xf15a24, 1);
+    g.fillRoundedRect(-4, -30, 408, 200, { tl: 0, tr: 0, bl: 26, br: 26 });
+
+    this.add
+      .text(CX, 92, t(this.locale, 'app.title'), {
+        fontFamily: FONT, fontSize: 46, color: '#ffffff', fontStyle: 'bold',
+      })
+      .setOrigin(0.5)
+      .setResolution(DPR);
+    this.add
+      .text(CX, 132, t(this.locale, 'app.subtitle'), {
+        fontFamily: FONT, fontSize: 14, color: '#ffffff',
+      })
+      .setOrigin(0.5)
+      .setAlpha(0.92)
+      .setResolution(DPR);
+  }
+
+  /** Ссылка «‹ К играм» слева вверху (на оранжевой шапке) — выход в каталог игр WinGo. */
   private buildCatalogLink() {
     const link = this.add
-      .text(16, 32, `‹ ${t(this.locale, 'menu.catalog')}`, {
-        fontFamily: FONT, fontSize: 15, color: '#d34e12', fontStyle: 'bold',
+      .text(16, 30, `‹ ${t(this.locale, 'menu.catalog')}`, {
+        fontFamily: FONT, fontSize: 15, color: '#ffffff', fontStyle: 'bold',
       })
       .setOrigin(0, 0.5)
       .setResolution(DPR)
