@@ -24,6 +24,11 @@
 | soz · confetti | github.com/catdad/canvas-confetti | MIT | сохранить копирайт в NOTICE | 2026-07-25 | — |
 | soz · словарь RU (allowed) | github.com/danakt/russian-words | MIT | сохранить копирайт; отфильтровано до 5-букв, нормализовано | 2026-07-25 | — |
 | soz · словарь UZ | оригинальная курация (латиница, 5 юнитов) | — (собственная) | без сторонних прав; факты-слова | 2026-07-25 | — |
+| pairs | github.com/phaserjs/template-vite-ts (через структуру soz) | MIT | сохранён `games/pairs/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
+| pairs · confetti | github.com/catdad/canvas-confetti | MIT | сохранить копирайт в NOTICE | 2026-07-28 | — |
+| fifteen | github.com/phaserjs/template-vite-ts (через структуру pairs) | MIT | сохранён `games/fifteen/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
+| 2048 | github.com/phaserjs/template-vite-ts (через структуру pairs); механика 2048 — реализация с нуля | MIT | сохранён `games/2048/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
+| sudoku-kids | github.com/phaserjs/template-vite-ts (через структуру pairs); генератор судоку — собственный | MIT | сохранён `games/sudoku-kids/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
 |  |  |  |  |  |  |
 
 ## Ассеты (графика, звук, шрифты)
@@ -31,7 +36,8 @@
 | Ассет | Источник | Лицензия | Условия (атрибуция?) | Использован в | Дата | Проверил |
 |---|---|---|---|---|---|---|
 | _(пример)_ UI-кит | kenney.nl | CC0 | без условий | все игры | 2026-07-22 | — |
-| Шрифт Rubik (сабсеты latin+cyrillic 400) | fonts.google.com/specimen/Rubik | OFL 1.1 | сохранить копирайт/OFL, не продавать сам шрифт | soz | 2026-07-24 | — |
+| Шрифт Rubik (сабсеты latin+cyrillic 400) | fonts.google.com/specimen/Rubik | OFL 1.1 | сохранить копирайт/OFL, не продавать сам шрифт | soz, pairs, fifteen, 2048, sudoku-kids | 2026-07-24 | — |
+| Эмодзи на карточках/иконках | системный emoji-шрифт устройства | — (не бандлится) | ничего не поставляем — рендер ОС | pairs, sudoku-kids | 2026-07-28 | — |
 |  |  |  |  |  |  |  |
 
 ## Запрещено к использованию
