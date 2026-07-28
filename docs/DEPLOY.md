@@ -29,9 +29,16 @@ https://gamewingo-soz.vercel.app/manifest.json
 результат в `games/soz/dist` — туда, где проект ждёт выход:
 
 ```
+ignoreCommand: exit 1
 buildCommand: cd ../.. && npm run build:all && rm -rf games/soz/dist && cp -r dist-all games/soz/dist
 outputDirectory: dist
 ```
+
+> ⚠️ `ignoreCommand: exit 1` обязателен. Для проекта с Root Directory Vercel по умолчанию
+> **пропускает сборку**, если внутри этой папки ничего не изменилось («Skipped — Not affected»),
+> а этот проект собирает весь каталог из корня монорепо. Без этой строки правки в других играх
+> (`games/pairs`, `games/snake`, …) не доезжали бы до продакшена: деплой отмечался успешным,
+> но фактически пропускался. Код выхода 1 означает «не игнорировать» — сборка идёт всегда.
 
 ## Если создавать отдельный проект под каталог
 

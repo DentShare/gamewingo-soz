@@ -1,7 +1,7 @@
-import { Scene } from 'phaser';
+import { Scene, Math as PhaserMath } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, darken } from '../ui';
+import { applyTheme, darken, setupCamera } from '../ui';
 import { t } from '../../i18n';
 import {
   createSnakeGame, COLS, ROWS, type Dir, type Point, type SnakeGame,
@@ -12,6 +12,7 @@ import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
 import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
+import { DPR } from '../dpr';
 
 const W = 400;
 /** Клетка поля: 15×20 клеток по 24 px = 360×480 — вписано в портрет 400×720. */
@@ -25,6 +26,13 @@ const SWIPE_MIN = 24;
 
 const SEG_TEX = 'snake-seg';
 const HEAD_TEX = 'snake-head';
+/**
+ * Камера зумлена на DPR, поэтому текстуру клетки печём в DPR раз крупнее и ужимаем
+ * спрайт обратно — иначе сегменты растягивались бы и мылили.
+ */
+const TEX_CELL = Math.round(CELL * DPR);
+/** Обратный масштаб: текстура TEX_CELL px рисуется как клетка CELL логических px. */
+const TEX_SCALE = CELL / TEX_CELL;
 
 /** Поворот головы (глаза смотрят по курсу). */
 const ANGLE: Record<Dir, number> = {
@@ -59,6 +67,8 @@ export class Game extends Scene {
   private tutorialActive = false;
   private timer?: RoundTimer;
   private swipeFrom: { x: number; y: number } | null = null;
+  /** Переиспользуемый буфер перевода экранных координат в логические. */
+  private swipePoint = new PhaserMath.Vector2();
 
   constructor() {
     super('Game');
@@ -77,6 +87,7 @@ export class Game extends Scene {
     this.swipeFrom = null;
 
     applyTheme(this);
+    setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.session = this.registry.get('session') as Session;
@@ -195,8 +206,10 @@ export class Game extends Scene {
     kb?.on('keydown-W', () => this.command('up'));
     kb?.on('keydown-S', () => this.command('down'));
 
+    // Холст плотнее в DPR раз, камера зумлена — свайп меряем в логических координатах.
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      this.swipeFrom = { x: p.x, y: p.y };
+      const w = this.toLogical(p);
+      this.swipeFrom = { x: w.x, y: w.y };
     });
     // Свайп засчитывается уже в движении — управление не ждёт отрыва пальца.
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
@@ -208,16 +221,22 @@ export class Game extends Scene {
     });
   }
 
+  /** Экранная точка указателя в логических координатах сцены (400×720). */
+  private toLogical(p: Phaser.Input.Pointer): PhaserMath.Vector2 {
+    return this.cameras.main.getWorldPoint(p.x, p.y, this.swipePoint);
+  }
+
   private trySwipe(p: Phaser.Input.Pointer) {
     if (!this.swipeFrom) return;
-    const dx = p.x - this.swipeFrom.x;
-    const dy = p.y - this.swipeFrom.y;
+    const w = this.toLogical(p);
+    const dx = w.x - this.swipeFrom.x;
+    const dy = w.y - this.swipeFrom.y;
     if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_MIN) return;
     const dir: Dir = Math.abs(dx) >= Math.abs(dy)
       ? (dx > 0 ? 'right' : 'left')
       : (dy > 0 ? 'down' : 'up');
     // Точка отсчёта сдвигается — можно вести пальцем и поворачивать без отрыва.
-    this.swipeFrom = { x: p.x, y: p.y };
+    this.swipeFrom = { x: w.x, y: w.y };
     this.command(dir);
   }
 
@@ -304,18 +323,21 @@ export class Game extends Scene {
       .text(W - 20, 34, t(this.locale, 'game.length', { n: this.core.length }), {
         fontFamily: FONT, fontSize: 15, color: COLORS.headMuted,
       })
-      .setOrigin(1, 0.5);
+      .setOrigin(1, 0.5)
+      .setResolution(DPR);
     // Счёт — крупно: аркада, его видно боковым зрением.
     this.scoreText = this.add
       .text(W / 2, 108, String(this.core.score), {
         fontFamily: FONT, fontSize: 46, color: COLORS.headText, fontStyle: 'bold',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
     this.hintText = this.add
       .text(W / 2, BOARD_TOP + BOARD_H + 32, t(this.locale, 'game.swipeToStart'), {
         fontFamily: FONT, fontSize: 16, color: COLORS.headMuted,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
     this.tweens.add({
       targets: this.hintText, alpha: 0.35, duration: 780, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
@@ -338,7 +360,8 @@ export class Game extends Scene {
     face.strokePath();
     const label = this.add
       .text(ax + 12, 0, t(this.locale, 'menu.back'), { fontFamily: FONT, fontSize: 16, color: COLORS.headText })
-      .setOrigin(0, 0.5);
+      .setOrigin(0, 0.5)
+      .setResolution(DPR);
     faceC.add([face, label]);
     const hit = this.add.rectangle(0, -lip / 2, w, h + lip, 0x000000, 0).setInteractive({ useHandCursor: true });
     container.add([base, faceC, hit]);
@@ -366,14 +389,14 @@ export class Game extends Scene {
     if (!this.textures.exists(SEG_TEX)) {
       const g = this.add.graphics();
       // Почти во всю клетку: соседние сегменты смыкаются в сплошное тело.
-      g.fillStyle(0xffffff, 1).fillRoundedRect(0, 0, CELL, CELL, 8);
-      g.generateTexture(SEG_TEX, CELL, CELL);
+      g.fillStyle(0xffffff, 1).fillRoundedRect(0, 0, TEX_CELL, TEX_CELL, 8 * DPR);
+      g.generateTexture(SEG_TEX, TEX_CELL, TEX_CELL);
       g.destroy();
     }
     if (!this.textures.exists(HEAD_TEX)) {
       const g = this.add.graphics();
-      g.fillStyle(0xffffff, 1).fillRoundedRect(0, 0, CELL, CELL, 9);
-      g.generateTexture(HEAD_TEX, CELL, CELL);
+      g.fillStyle(0xffffff, 1).fillRoundedRect(0, 0, TEX_CELL, TEX_CELL, 9 * DPR);
+      g.generateTexture(HEAD_TEX, TEX_CELL, TEX_CELL);
       g.destroy();
     }
   }
@@ -420,7 +443,7 @@ export class Game extends Scene {
     this.snakeLayer = this.add.container(0, 0).setDepth(4);
 
     const head = this.add.container(0, 0);
-    const img = this.add.image(0, 0, HEAD_TEX).setTint(COLORS.snakeHead);
+    const img = this.add.image(0, 0, HEAD_TEX).setTint(COLORS.snakeHead).setScale(TEX_SCALE);
     const eyeL = this.add.circle(4, -5, 3.2, COLORS.snakeEye);
     const eyeR = this.add.circle(4, 5, 3.2, COLORS.snakeEye);
     const pupilL = this.add.circle(5.6, -5, 1.5, COLORS.snakeEyeDot);
@@ -435,7 +458,7 @@ export class Game extends Scene {
   private segAt(i: number): Phaser.GameObjects.Image {
     let img = this.segs[i];
     if (!img) {
-      img = this.add.image(0, 0, SEG_TEX);
+      img = this.add.image(0, 0, SEG_TEX).setScale(TEX_SCALE);
       this.segs[i] = img;
       this.snakeLayer.add(img);
     }
@@ -460,7 +483,7 @@ export class Game extends Scene {
       );
       img.setTint(i % 2 === 0 ? COLORS.snakeBody : COLORS.snakeBodyAlt);
       // Лёгкое сужение к хвосту — тело выглядит живым, но не рвётся на квадраты.
-      img.setScale(Math.max(0.84, 1 - i * 0.004));
+      img.setScale(TEX_SCALE * Math.max(0.84, 1 - i * 0.004));
       img.setVisible(true);
     }
     for (let i = Math.max(0, n - 1); i < this.segs.length; i++) this.segs[i].setVisible(false);

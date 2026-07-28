@@ -1,8 +1,9 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme } from '../ui';
+import { makeButton, applyTheme, setupCamera } from '../ui';
 import { COLORS, FONT } from '../palette';
+import { DPR } from '../dpr';
 import { saveBest } from '../../core/persistence';
 import type { Session } from '../../bridge/session';
 import confetti from 'canvas-confetti';
@@ -24,6 +25,7 @@ export class GameOver extends Scene {
 
   create() {
     applyTheme(this);
+    setupCamera(this);
     this.cameras.main.fadeIn(220, ...COLORS.fade);
     const session = this.registry.get('session') as Session | undefined;
     const last = (this.registry.get('lastGame') as LastGame) ?? {
@@ -39,6 +41,7 @@ export class GameOver extends Scene {
         fontFamily: FONT, fontSize: 30, color: COLORS.headText, fontStyle: 'bold',
       })
       .setOrigin(0.5)
+      .setResolution(DPR)
       .setScale(0.7)
       .setAlpha(0);
     this.tweens.add({ targets: title, scale: 1, alpha: 1, duration: 360, delay: 100, ease: 'Back.easeOut' });
@@ -46,6 +49,7 @@ export class GameOver extends Scene {
     const hero = this.add
       .text(CX, 176, '🚀', { fontSize: 46 })
       .setOrigin(0.5)
+      .setResolution(DPR)
       .setRotation(Math.PI / 4)
       .setScale(0);
     this.tweens.add({ targets: hero, scale: 1, duration: 340, delay: 240, ease: 'Back.easeOut' });
@@ -58,7 +62,8 @@ export class GameOver extends Scene {
         .text(CX, 246, t(loc, 'result.score', { score: last.score }), {
           fontFamily: FONT, fontSize: 30, color: COLORS.headText, fontStyle: 'bold',
         })
-        .setOrigin(0.5),
+        .setOrigin(0.5)
+        .setResolution(DPR),
       420,
     );
     this.appear(
@@ -66,7 +71,8 @@ export class GameOver extends Scene {
         .text(CX, 286, t(loc, 'result.detail', { passed: last.passed, time }), {
           fontFamily: FONT, fontSize: 16, color: COLORS.headMuted,
         })
-        .setOrigin(0.5),
+        .setOrigin(0.5)
+        .setResolution(DPR),
       480,
     );
     if (isNewBest) {
@@ -75,7 +81,8 @@ export class GameOver extends Scene {
           .text(CX, 320, `🏆 ${t(loc, 'result.newBest')}`, {
             fontFamily: FONT, fontSize: 17, color: COLORS.headText, fontStyle: 'bold',
           })
-          .setOrigin(0.5),
+          .setOrigin(0.5)
+          .setResolution(DPR),
         540,
       );
     }
@@ -90,10 +97,12 @@ export class GameOver extends Scene {
       .text(CX, 516, t(loc, 'result.leaderboard'), {
         fontFamily: FONT, fontSize: 17, color: COLORS.headText, fontStyle: 'bold',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
     const listText = this.add
       .text(CX, 542, '…', { fontFamily: FONT, fontSize: 15, color: COLORS.headMuted, align: 'center' })
-      .setOrigin(0.5, 0);
+      .setOrigin(0.5, 0)
+      .setResolution(DPR);
     this.appear(lbTitle, 720);
     this.appear(listText, 760);
     void (session?.leaderboard(5) ?? Promise.resolve([])).then((entries) => {

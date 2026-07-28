@@ -2,7 +2,8 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import { COLORS, FONT } from '../palette';
-import { darken } from '../ui';
+import { darken, setupCamera, shakeCamera } from '../ui';
+import { DPR } from '../dpr';
 import { mulberry32 } from '../../core/rng';
 import {
   createFlight, FIELD_H, FIELD_W, FLOOR_Y, GAP_H, HERO_X, WALL_W, type Flight,
@@ -67,6 +68,7 @@ export class Game extends Scene {
     this.session = this.registry.get('session') as Session | undefined;
     this.core = createFlight(mulberry32(Math.floor(Math.random() * 2 ** 31)));
 
+    setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.buildSky();
     this.buildWalls();
@@ -297,7 +299,11 @@ export class Game extends Scene {
     g.fillStyle(COLORS.hero, 0.3).fillEllipse(-28, 3, 28, 10);
     g.fillStyle(0xffffff, 0.5).fillEllipse(0, 1, 42, 36);
     // Эмодзи-ракета «смотрит» вправо: собственный поворот компенсирует наклон глифа.
-    const emoji = this.add.text(0, 0, '🚀', { fontSize: 34 }).setOrigin(0.5).setRotation(Math.PI / 4);
+    const emoji = this.add
+      .text(0, 0, '🚀', { fontSize: 34 })
+      .setOrigin(0.5)
+      .setResolution(DPR)
+      .setRotation(Math.PI / 4);
     this.hero = this.add.container(HERO_X, this.core.y, [g, emoji]).setDepth(5);
   }
 
@@ -308,6 +314,7 @@ export class Game extends Scene {
         stroke: COLORS.scoreShadow, strokeThickness: 8,
       })
       .setOrigin(0.5)
+      .setResolution(DPR)
       .setDepth(20);
 
     this.hintText = this.add
@@ -316,6 +323,7 @@ export class Game extends Scene {
         backgroundColor: '#ffffffcc', padding: { x: 14, y: 9 },
       })
       .setOrigin(0.5)
+      .setResolution(DPR)
       .setDepth(20);
     this.tweens.add({
       targets: this.hintText, y: this.hintText.y + 8, duration: 720,
@@ -342,7 +350,8 @@ export class Game extends Scene {
     face.strokePath();
     const label = this.add
       .text(ax + 12, 0, t(this.locale, 'menu.back'), { fontFamily: FONT, fontSize: 16, color: COLORS.headText })
-      .setOrigin(0, 0.5);
+      .setOrigin(0, 0.5)
+      .setResolution(DPR);
     faceC.add([face, label]);
     const hit = this.add.rectangle(0, -lip / 2, w, h + lip, 0x000000, 0).setInteractive({ useHandCursor: true });
     container.add([base, faceC, hit]);
@@ -403,7 +412,7 @@ export class Game extends Scene {
   private die() {
     if (this.dead) return;
     this.dead = true;
-    this.cameras.main.shake(220, 0.016);
+    shakeCamera(this, 220, 0.016);
     this.hintText.setVisible(false);
     this.tweens.add({ targets: this.hero, angle: 92, duration: 420, ease: 'Quad.easeIn' });
     if (this.core.cause !== 'floor') {

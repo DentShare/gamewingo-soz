@@ -3,6 +3,7 @@ import type { Locale } from '../core/locale';
 import { COLORS, FONT } from './palette';
 import { t } from '../i18n';
 import { makeButton, darken } from './ui';
+import { DPR } from './dpr';
 
 /** Прямоугольник в координатах сцены (400×720). */
 export interface Rect { x: number; y: number; w: number; h: number; }
@@ -128,7 +129,8 @@ class Onboarding {
         fontFamily: FONT, fontSize: 17, color: COLORS.headText,
         align: 'center', wordWrap: { width: CARD_W - 40 }, lineSpacing: 3,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
 
     const h = 136 + txt.height;
     const cy = placeCaption(hole, h);
@@ -173,6 +175,7 @@ class Onboarding {
         fontFamily: FONT, fontSize: 14, color: '#ffffff',
       })
       .setOrigin(1, 0.5)
+      .setResolution(DPR)
       .setInteractive({ useHandCursor: true });
     link.on('pointerup', () => this.finish());
 

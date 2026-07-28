@@ -3,7 +3,8 @@ import type { Locale } from '../../core/locale';
 import { createStackGame, type StackGame, type DropResult } from '../../core/stack';
 import { computeScore } from '../../core/score';
 import { COLORS, FONT, blockColor } from '../palette';
-import { applyTheme, darken } from '../ui';
+import { applyTheme, darken, setupCamera, shakeCamera } from '../ui';
+import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
@@ -63,6 +64,7 @@ export class Game extends Scene {
     this.timer = undefined;
 
     applyTheme(this);
+    setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.session = this.registry.get('session') as Session;
@@ -127,6 +129,7 @@ export class Game extends Scene {
         fontFamily: FONT, fontSize: 18, color: COLORS.headText, fontStyle: 'bold',
       })
       .setOrigin(0.5)
+      .setResolution(DPR)
       .setDepth(7)
       .setVisible(false);
   }
@@ -181,12 +184,14 @@ export class Game extends Scene {
         fontFamily: FONT, fontSize: 58, color: COLORS.scoreText, fontStyle: 'bold',
       })
       .setOrigin(0.5)
+      .setResolution(DPR)
       .setDepth(20);
     this.hintText = this.add
       .text(W / 2, 706, t(this.locale, 'game.hint'), {
         fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
       })
       .setOrigin(0.5)
+      .setResolution(DPR)
       .setDepth(20);
   }
 
@@ -207,7 +212,8 @@ export class Game extends Scene {
     face.strokePath();
     const label = this.add
       .text(ax + 12, 0, t(this.locale, 'menu.back'), { fontFamily: FONT, fontSize: 16, color: COLORS.headText })
-      .setOrigin(0, 0.5);
+      .setOrigin(0, 0.5)
+      .setResolution(DPR);
     faceC.add([face, label]);
     const hit = this.add.rectangle(0, -lip / 2, w, h + lip, 0x000000, 0).setInteractive({ useHandCursor: true });
     container.add([base, faceC, hit]);
@@ -229,7 +235,8 @@ export class Game extends Scene {
 
   private bindInput() {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      if (p.y < HUD_H) return; // зона кнопки «Назад»
+      // `p.y` — в пикселях холста (он плотнее в DPR раз), поэтому переводим в координаты сцены.
+      if (this.cameras.main.getWorldPoint(p.x, p.y).y < HUD_H) return; // зона кнопки «Назад»
       this.tryDrop();
     });
     this.input.keyboard?.on('keydown-SPACE', () => this.tryDrop());
@@ -255,7 +262,7 @@ export class Game extends Scene {
       // Мимо: блок улетает вниз, башня рушится.
       this.finished = true;
       this.fall(this.currentView, res.cutX > W / 2 ? 1 : -1);
-      this.cameras.main.shake(220, 0.006);
+      shakeCamera(this, 220, 0.006);
       this.time.delayedCall(560, () => this.endGame());
       return;
     }

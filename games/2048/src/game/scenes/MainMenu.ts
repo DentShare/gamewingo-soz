@@ -1,8 +1,9 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, darken } from '../ui';
+import { makeButton, applyTheme, darken, setupCamera } from '../ui';
 import { COLORS, FONT, tileColor, tileTextColor } from '../palette';
+import { DPR } from '../dpr';
 import { loadBest, loadSave, clearSave } from '../../core/persistence';
 import type { Session } from '../../bridge/session';
 
@@ -24,6 +25,7 @@ export class MainMenu extends Scene {
   create() {
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     applyTheme(this);
+    setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
     this.buildCatalogLink();
@@ -59,7 +61,8 @@ export class MainMenu extends Scene {
         .text(CX, bestY, t(this.locale, 'menu.best', { n: best }), {
           fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
         })
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setResolution(DPR);
     }
 
     makeButton(this, CX, howtoY, t(this.locale, 'menu.howto'), () => this.showHowto());
@@ -72,6 +75,7 @@ export class MainMenu extends Scene {
         fontFamily: FONT, fontSize: 15, color: COLORS.headText, fontStyle: 'bold',
       })
       .setOrigin(0, 0.5)
+      .setResolution(DPR)
       .setInteractive({ useHandCursor: true });
     link.on('pointerup', () => this.exitToCatalog());
   }
@@ -102,7 +106,8 @@ export class MainMenu extends Scene {
       g.fillStyle(tileColor(v), 1).fillRoundedRect(-size / 2, -size / 2, size, size, 14);
       const txt = this.add
         .text(0, 0, ch, { fontFamily: FONT, fontSize: 30, color: tileTextColor(v), fontStyle: 'bold' })
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setResolution(DPR);
       cont.add([g, txt]);
       this.tweens.add({ targets: cont, scale: 1, duration: 300, delay: 80 + i * 90, ease: 'Back.easeOut' });
     });

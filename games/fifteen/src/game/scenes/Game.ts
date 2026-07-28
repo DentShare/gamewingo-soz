@@ -3,7 +3,8 @@ import type { Locale } from '../../core/locale';
 import { LEVELS, createBoard, type Board, type LevelId } from '../../core/board';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, darken } from '../ui';
+import { applyTheme, darken, setupCamera } from '../ui';
+import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
@@ -57,6 +58,7 @@ export class Game extends Scene {
     this.demoUndoCell = -1;
 
     applyTheme(this);
+    setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.level = (this.registry.get('level') as LevelId) ?? '3x3';
@@ -198,10 +200,12 @@ export class Game extends Scene {
       .text(W / 2 + 40, 34, t(this.locale, 'game.moves', { n: 0 }), {
         fontFamily: FONT, fontSize: 16, color: COLORS.headText,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
     this.timeText = this.add
       .text(W - 20, 34, '00:00', { fontFamily: FONT, fontSize: 16, color: COLORS.headMuted })
-      .setOrigin(1, 0.5);
+      .setOrigin(1, 0.5)
+      .setResolution(DPR);
 
     // Общая рамка «ходы + время» — её подсвечивает последний шаг обучения.
     const a = this.movesText.getBounds();
@@ -227,7 +231,8 @@ export class Game extends Scene {
     face.strokePath();
     const label = this.add
       .text(ax + 12, 0, t(this.locale, 'menu.back'), { fontFamily: FONT, fontSize: 16, color: COLORS.headText })
-      .setOrigin(0, 0.5);
+      .setOrigin(0, 0.5)
+      .setResolution(DPR);
     faceC.add([face, label]);
     const hit = this.add.rectangle(0, -lip / 2, w, h + lip, 0x000000, 0).setInteractive({ useHandCursor: true });
     container.add([base, faceC, hit]);
@@ -307,7 +312,8 @@ export class Game extends Scene {
       .text(0, 0, String(value), {
         fontFamily: FONT, fontSize: Math.round(s * 0.4), color: COLORS.tileText, fontStyle: 'bold',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
 
     const hit = this.add.rectangle(0, 0, s, s, 0x000000, 0).setInteractive({ useHandCursor: true });
     root.add([g, num, hit]);

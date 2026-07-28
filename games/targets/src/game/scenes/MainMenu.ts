@@ -1,8 +1,9 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme } from '../ui';
+import { makeButton, applyTheme, setupCamera } from '../ui';
 import { COLORS, FONT } from '../palette';
+import { DPR } from '../dpr';
 import { loadBest } from '../../core/persistence';
 import type { Session } from '../../bridge/session';
 
@@ -23,6 +24,7 @@ export class MainMenu extends Scene {
   create() {
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     applyTheme(this);
+    setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
     this.buildCatalogLink();
@@ -30,7 +32,8 @@ export class MainMenu extends Scene {
     // Декоративная мишень над заголовком — «пульсирует», как живая цель.
     const emblem = this.add
       .text(CX, 128, '🎯', { fontFamily: FONT, fontSize: 68 })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
     this.tweens.add({
       targets: emblem, scale: 1.08, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
@@ -39,12 +42,14 @@ export class MainMenu extends Scene {
       .text(CX, 208, t(this.locale, 'app.title'), {
         fontFamily: FONT, fontSize: 40, color: COLORS.headText, fontStyle: 'bold',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
     this.add
       .text(CX, 244, t(this.locale, 'app.tagline'), {
         fontFamily: FONT, fontSize: 15, color: COLORS.headMuted,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
 
     // Выбор языка — две пилюли.
     this.langPill(CX - 78, 306, 'ru', 'Русский');
@@ -63,7 +68,8 @@ export class MainMenu extends Scene {
       .text(CX, 466, best ? t(this.locale, 'menu.best', { score: best.score }) : ' ', {
         fontFamily: FONT, fontSize: 14, color: COLORS.headMuted,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
 
     makeButton(this, CX, 528, t(this.locale, 'menu.howto'), () => this.showHowto());
   }
@@ -89,6 +95,7 @@ export class MainMenu extends Scene {
         fontFamily: FONT, fontSize: 15, color: COLORS.headText, fontStyle: 'bold',
       })
       .setOrigin(0, 0.5)
+      .setResolution(DPR)
       .setInteractive({ useHandCursor: true });
     link.on('pointerup', () => this.exitToCatalog());
   }
