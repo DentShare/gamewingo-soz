@@ -1,0 +1,19 @@
+{
+  "app.title": "Juftini top",
+  "menu.easy": "Oson · 6 juft",
+  "menu.medium": "Oʻrta · 10 juft",
+  "menu.hard": "Qiyin · 15 juft",
+  "menu.howto": "Qanday oʻynash",
+  "menu.back": "Orqaga",
+  "menu.best": "Rekord: {score}",
+  "howto.body": "Kartochkalarni ikkitadan oching.\nBir xillari topilsa — juft ochiq qoladi.\nBarcha juftlarni kamroq yurishda toping!",
+  "game.moves": "Yurishlar: {n}",
+  "result.title": "Barcha juftlar topildi!",
+  "result.score": "Ochko: {score}",
+  "result.moves": "Yurishlar: {moves} · Vaqt: {time}",
+  "result.newBest": "Yangi rekord!",
+  "result.playAgain": "Yana",
+  "result.menu": "Menyuga",
+  "result.leaderboard": "Reyting",
+  "error.network": "Aloqa yoʻq"
+}
