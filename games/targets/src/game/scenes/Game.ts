@@ -1,17 +1,18 @@
-import { Scene } from 'phaser';
+import { Scene, Math as PhaserMath } from 'phaser';
 import type { Locale } from '../../core/locale';
 import {
   createTargetsGame, FIELD, ROUND_MS, type Target, type TargetsGame,
 } from '../../core/targets';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, darken } from '../ui';
+import { applyTheme, darken, setupCamera } from '../ui';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
 import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
+import { DPR } from '../dpr';
 
 const W = 400;
 /** Радиус, в котором нарисована цель в пуле: реальный размер задаётся масштабом. */
@@ -53,6 +54,9 @@ export class Game extends Scene {
   /** Цель, показанная в обучении (вне ядра — не влияет на счёт). */
   private demoView?: TargetView;
 
+  /** Переиспользуемый буфер перевода экранных координат тапа в логические. */
+  private tapPoint = new PhaserMath.Vector2();
+
   private running = false;
   private finished = false;
   private tutorialActive = false;
@@ -80,6 +84,7 @@ export class Game extends Scene {
     this.timer = undefined;
 
     applyTheme(this);
+    setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.session = this.registry.get('session') as Session | undefined;
@@ -89,7 +94,11 @@ export class Game extends Scene {
     this.buildField();
     this.buildHud();
     this.buildPools();
-    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.onTap(p.x, p.y));
+    // Холст плотнее в DPR раз, камера зумлена — тап переводим в логические координаты.
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      const w = this.cameras.main.getWorldPoint(p.x, p.y, this.tapPoint);
+      this.onTap(w.x, w.y);
+    });
 
     // «Как играть» из меню: обучение поверх настоящего поля, без сессии и партии.
     if (this.registry.get('howto')) {
@@ -135,19 +144,22 @@ export class Game extends Scene {
       .text(W - 18, HUD_TOP_Y, t(this.locale, 'game.time', { n: Math.round(ROUND_MS / 1000) }), {
         fontFamily: FONT, fontSize: 30, color: COLORS.headText, fontStyle: 'bold',
       })
-      .setOrigin(1, 0.5);
+      .setOrigin(1, 0.5)
+      .setResolution(DPR);
 
     this.scoreText = this.add
       .text(18, HUD_ROW_Y, t(this.locale, 'game.score', { n: 0 }), {
         fontFamily: FONT, fontSize: 22, color: COLORS.headText, fontStyle: 'bold',
       })
-      .setOrigin(0, 0.5);
+      .setOrigin(0, 0.5)
+      .setResolution(DPR);
 
     this.comboText = this.add
       .text(W - 18, HUD_ROW_Y, '', {
         fontFamily: FONT, fontSize: 22, color: COLORS.comboText, fontStyle: 'bold',
       })
-      .setOrigin(1, 0.5);
+      .setOrigin(1, 0.5)
+      .setResolution(DPR);
   }
 
   /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
@@ -167,7 +179,8 @@ export class Game extends Scene {
     face.strokePath();
     const label = this.add
       .text(ax + 12, 0, t(this.locale, 'menu.back'), { fontFamily: FONT, fontSize: 16, color: COLORS.headText })
-      .setOrigin(0, 0.5);
+      .setOrigin(0, 0.5)
+      .setResolution(DPR);
     faceC.add([face, label]);
     const hit = this.add.rectangle(0, -lip / 2, w, h + lip, 0x000000, 0).setInteractive({ useHandCursor: true });
     container.add([base, faceC, hit]);
@@ -232,6 +245,7 @@ export class Game extends Scene {
         this.add
           .text(0, 0, '', { fontFamily: FONT, fontSize: 24, color: COLORS.popText, fontStyle: 'bold' })
           .setOrigin(0.5)
+          .setResolution(DPR)
           .setVisible(false)
           .setDepth(20),
       );
@@ -383,6 +397,7 @@ export class Game extends Scene {
     const label = this.add
       .text(cx, cy, '', { fontFamily: FONT, fontSize: 116, color: COLORS.headText, fontStyle: 'bold' })
       .setOrigin(0.5)
+      .setResolution(DPR)
       .setDepth(50);
 
     const seq = ['3', '2', '1'];
@@ -420,6 +435,7 @@ export class Game extends Scene {
         fontFamily: FONT, fontSize: 44, color: COLORS.headText, fontStyle: 'bold',
       })
       .setOrigin(0.5)
+      .setResolution(DPR)
       .setDepth(50);
     this.tweens.add({
       targets: go, alpha: 0, scale: 1.3, duration: 520, ease: 'Quad.easeOut',

@@ -1,8 +1,9 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme } from '../ui';
+import { makeButton, applyTheme, setupCamera } from '../ui';
 import { COLORS, FONT } from '../palette';
+import { DPR } from '../dpr';
 import type { LevelId } from '../../core/board';
 import { loadBest } from '../../core/persistence';
 import type { Session } from '../../bridge/session';
@@ -25,18 +26,21 @@ export class MainMenu extends Scene {
   create() {
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     applyTheme(this);
+    setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
     this.buildCatalogLink();
 
     this.add
       .text(CX, 94, '🧩', { fontFamily: FONT, fontSize: 40 })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
     this.add
       .text(CX, 148, t(this.locale, 'app.title'), {
         fontFamily: FONT, fontSize: 42, color: COLORS.headText, fontStyle: 'bold',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
 
     // Выбор языка — две пилюли.
     this.langPill(CX - 78, 214, 'ru', 'Русский');
@@ -56,7 +60,8 @@ export class MainMenu extends Scene {
           .text(CX, y + 33, t(this.locale, 'menu.best', { score: best.score }), {
             fontFamily: FONT, fontSize: 12, color: COLORS.headMuted,
           })
-          .setOrigin(0.5);
+          .setOrigin(0.5)
+          .setResolution(DPR);
       }
       y += 82;
     });
@@ -71,6 +76,7 @@ export class MainMenu extends Scene {
         fontFamily: FONT, fontSize: 15, color: COLORS.headText, fontStyle: 'bold',
       })
       .setOrigin(0, 0.5)
+      .setResolution(DPR)
       .setInteractive({ useHandCursor: true });
     link.on('pointerup', () => this.exitToCatalog());
   }

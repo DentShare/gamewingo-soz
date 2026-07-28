@@ -3,6 +3,7 @@ import type { Locale } from '../core/locale';
 import { COLORS, FONT } from './palette';
 import { t } from '../i18n';
 import { makeButton } from './ui';
+import { DPR } from './dpr';
 
 /** Прямоугольник в координатах сцены (400×720). */
 export interface Rect { x: number; y: number; w: number; h: number; }
@@ -168,7 +169,8 @@ class Onboarding {
           fontFamily: FONT, fontSize: 17, color: COLORS.headText,
           align: 'center', wordWrap: { width: CARD_W - 44 }, lineSpacing: 3,
         })
-        .setOrigin(0.5),
+        .setOrigin(0.5)
+        .setResolution(DPR),
     );
     this.dots(layer, 200, cy + 14, step);
     this.nextButton(layer, 200, cy + 46, step);
@@ -207,6 +209,7 @@ class Onboarding {
         fontFamily: FONT, fontSize: 14, color: '#ffffff',
       })
       .setOrigin(0.5)
+      .setResolution(DPR)
       .setInteractive({ useHandCursor: true });
     link.on('pointerup', () => this.finish());
     layer.add(link);

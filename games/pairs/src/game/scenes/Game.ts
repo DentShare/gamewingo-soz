@@ -4,7 +4,8 @@ import { LEVELS, buildDeck, type LevelId } from '../../core/deck';
 import { createPairsGame, type PairsGame } from '../../core/game';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, darken } from '../ui';
+import { applyTheme, darken, setupCamera } from '../ui';
+import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
@@ -56,6 +57,7 @@ export class Game extends Scene {
     this.timer = undefined;
 
     applyTheme(this);
+    setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.level = (this.registry.get('level') as LevelId) ?? 'easy';
@@ -229,10 +231,12 @@ export class Game extends Scene {
       .text(W / 2 + 40, 34, t(this.locale, 'game.moves', { n: 0 }), {
         fontFamily: FONT, fontSize: 16, color: COLORS.headText,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
     this.timeText = this.add
       .text(W - 20, 34, '00:00', { fontFamily: FONT, fontSize: 16, color: COLORS.headMuted })
-      .setOrigin(1, 0.5);
+      .setOrigin(1, 0.5)
+      .setResolution(DPR);
   }
 
   /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
@@ -252,7 +256,8 @@ export class Game extends Scene {
     face.strokePath();
     const label = this.add
       .text(ax + 12, 0, t(this.locale, 'menu.back'), { fontFamily: FONT, fontSize: 16, color: COLORS.headText })
-      .setOrigin(0, 0.5);
+      .setOrigin(0, 0.5)
+      .setResolution(DPR);
     faceC.add([face, label]);
     const hit = this.add.rectangle(0, -lip / 2, w, h + lip, 0x000000, 0).setInteractive({ useHandCursor: true });
     container.add([base, faceC, hit]);
@@ -303,7 +308,8 @@ export class Game extends Scene {
     backG.fillStyle(COLORS.cardBack, 1).fillRoundedRect(-size / 2, -size / 2, size, size, r);
     const mark = this.add
       .text(0, 0, '?', { fontFamily: FONT, fontSize: Math.round(size * 0.42), color: COLORS.cardBackMark, fontStyle: 'bold' })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
     back.add([backG, mark]);
 
     // Лицо: белая карточка с эмодзи (скрыто до переворота).
@@ -314,7 +320,8 @@ export class Game extends Scene {
     frontG.lineStyle(1.5, COLORS.panelBorder, 1).strokeRoundedRect(-size / 2, -size / 2, size, size, r);
     const symbol = this.add
       .text(0, 0, this.core.deck[index].symbol, { fontSize: Math.round(size * 0.52) })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
     front.add([frontG, symbol]);
 
     const hit = this.add.rectangle(0, 0, size, size, 0x000000, 0).setInteractive({ useHandCursor: true });

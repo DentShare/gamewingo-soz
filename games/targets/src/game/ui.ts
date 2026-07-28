@@ -1,6 +1,13 @@
 import { Scene } from 'phaser';
 import type { BrandTheme } from '@gamewingo/game-bridge';
 import { COLORS, FONT } from './palette';
+import { DPR, LOGICAL_W, LOGICAL_H } from './dpr';
+
+/** Настраивает камеру сцены на плотный рендер: zoom = DPR, вёрстка в логических 400×720. */
+export function setupCamera(scene: Scene): void {
+  scene.cameras.main.setZoom(DPR);
+  scene.cameras.main.centerOn(LOGICAL_W / 2, LOGICAL_H / 2);
+}
 
 /** Тема бренда из INIT (или null для дефолтной палитры). */
 export function getTheme(scene: Scene): BrandTheme | null {
@@ -71,7 +78,8 @@ export function makeButton(
   if (!isPrimary) faceG.lineStyle(1.5, COLORS.panelBorder, 1).strokeRoundedRect(left, top, w, h, r);
   const txt = scene.add
     .text(0, 0, label, { fontFamily: FONT, fontSize: 18, color: isPrimary ? '#ffffff' : COLORS.headText })
-    .setOrigin(0.5);
+    .setOrigin(0.5)
+    .setResolution(DPR);
   faceC.add([faceG, txt]);
 
   const hit = scene.add.rectangle(0, -lip / 2, w, h + lip, 0x000000, 0).setInteractive({ useHandCursor: true });
@@ -98,6 +106,7 @@ export function toast(scene: Scene, x: number, y: number, message: string): void
       backgroundColor: COLORS.toastBg, padding: { x: 12, y: 8 },
     })
     .setOrigin(0.5)
+    .setResolution(DPR)
     .setDepth(100);
   scene.tweens.add({
     targets: t, alpha: 0, delay: 1100, duration: 400,

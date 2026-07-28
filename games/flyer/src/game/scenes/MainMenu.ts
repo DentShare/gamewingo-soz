@@ -1,8 +1,9 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme } from '../ui';
+import { makeButton, applyTheme, setupCamera } from '../ui';
 import { COLORS, FONT } from '../palette';
+import { DPR } from '../dpr';
 import { loadBest } from '../../core/persistence';
 import type { Session } from '../../bridge/session';
 
@@ -23,6 +24,7 @@ export class MainMenu extends Scene {
   create() {
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     applyTheme(this);
+    setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
     this.buildCatalogLink();
@@ -44,7 +46,8 @@ export class MainMenu extends Scene {
         .text(CX, 492, t(this.locale, 'menu.best', { score: best }), {
           fontFamily: FONT, fontSize: 15, color: COLORS.headMuted,
         })
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setResolution(DPR);
     }
 
     makeButton(this, CX, 552, t(this.locale, 'menu.howto'), () => this.showHowto());
@@ -53,7 +56,8 @@ export class MainMenu extends Scene {
       .text(CX, 616, t(this.locale, 'menu.hint'), {
         fontFamily: FONT, fontSize: 13, color: COLORS.headMuted, align: 'center',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
   }
 
   /** Небесная карточка с героем — сразу понятно, про что игра. */
@@ -71,7 +75,11 @@ export class MainMenu extends Scene {
     g.fillCircle(322, 170, 11);
     g.fillStyle(COLORS.ground, 1).fillRoundedRect(x, y + h - 26, w, 26, { tl: 0, tr: 0, bl: r, br: r });
 
-    const hero = this.add.text(CX, 148, '🚀', { fontSize: 58 }).setOrigin(0.5).setRotation(Math.PI / 4);
+    const hero = this.add
+      .text(CX, 148, '🚀', { fontSize: 58 })
+      .setOrigin(0.5)
+      .setResolution(DPR)
+      .setRotation(Math.PI / 4);
     this.tweens.add({
       targets: hero, y: 132, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
@@ -80,7 +88,8 @@ export class MainMenu extends Scene {
       .text(CX, 282, t(this.locale, 'app.title'), {
         fontFamily: FONT, fontSize: 42, color: COLORS.headText, fontStyle: 'bold',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
   }
 
   /** Пилюля выбора языка. Выбранная подсвечена; по тапу переключает и перерисовывает меню. */
@@ -104,6 +113,7 @@ export class MainMenu extends Scene {
         fontFamily: FONT, fontSize: 15, color: COLORS.headText, fontStyle: 'bold',
       })
       .setOrigin(0, 0.5)
+      .setResolution(DPR)
       .setInteractive({ useHandCursor: true });
     link.on('pointerup', () => this.exitToCatalog());
   }

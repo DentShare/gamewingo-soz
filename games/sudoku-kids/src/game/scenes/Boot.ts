@@ -3,6 +3,7 @@ import { createBridge, createApiClient } from '@gamewingo/game-bridge';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createSession } from '../../bridge/session';
 import { createDemoApi, DEMO_API_BASE } from '../../bridge/demo';
+import { setupCamera } from '../ui';
 
 /**
  * Boot: поднимает мост, ждёт INIT от приложения. Если INIT не пришёл (веб/дев вне
@@ -14,6 +15,7 @@ export class Boot extends Scene {
   }
 
   create() {
+    setupCamera(this); // плотный рендер: вёрстка в логических 400×720
     const bridge = createBridge();
     const session = createSession(bridge, (base, token) =>
       base.startsWith('demo') ? createDemoApi() : createApiClient({ baseUrl: base, authToken: token }),

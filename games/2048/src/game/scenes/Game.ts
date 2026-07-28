@@ -3,7 +3,8 @@ import type { Locale } from '../../core/locale';
 import { createGrid2048, applyMove, SIZE, type Grid2048, type Dir } from '../../core/grid';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT, tileColor, tileTextColor, tileFontSize } from '../palette';
-import { applyTheme, darken, toast } from '../ui';
+import { applyTheme, darken, toast, setupCamera } from '../ui';
+import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
@@ -60,6 +61,7 @@ export class Game extends Scene {
     this.swipeFrom = null;
 
     applyTheme(this);
+    setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.session = this.registry.get('session') as Session;
@@ -213,12 +215,14 @@ export class Game extends Scene {
       .text(W - 20, 24, t(this.locale, 'game.score', { n: this.core.score }), {
         fontFamily: FONT, fontSize: 16, color: COLORS.headText, fontStyle: 'bold',
       })
-      .setOrigin(1, 0.5);
+      .setOrigin(1, 0.5)
+      .setResolution(DPR);
     this.bestText = this.add
       .text(W - 20, 46, t(this.locale, 'game.best', { n: this.best }), {
         fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
       })
-      .setOrigin(1, 0.5);
+      .setOrigin(1, 0.5)
+      .setResolution(DPR);
   }
 
   /** Обновляет счёт и, при необходимости, рекорд в шапке по состоянию ядра. */
@@ -249,7 +253,8 @@ export class Game extends Scene {
     face.strokePath();
     const label = this.add
       .text(ax + 12, 0, t(this.locale, 'menu.back'), { fontFamily: FONT, fontSize: 16, color: COLORS.headText })
-      .setOrigin(0, 0.5);
+      .setOrigin(0, 0.5)
+      .setResolution(DPR);
     faceC.add([face, label]);
     const hit = this.add.rectangle(0, -lip / 2, w, h + lip, 0x000000, 0).setInteractive({ useHandCursor: true });
     container.add([base, faceC, hit]);
@@ -321,7 +326,8 @@ export class Game extends Scene {
       .text(0, 0, String(value), {
         fontFamily: FONT, fontSize: tileFontSize(value), color: tileTextColor(value), fontStyle: 'bold',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
     cont.add([g, txt]);
     this.tileLayer.add(cont);
     return cont;
@@ -337,12 +343,13 @@ export class Game extends Scene {
     kb?.on('keydown-DOWN', () => this.tryMove('down'));
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      this.swipeFrom = { x: p.x, y: p.y };
+      this.swipeFrom = this.pointerXY(p);
     });
     this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
       if (!this.swipeFrom) return;
-      const dx = p.x - this.swipeFrom.x;
-      const dy = p.y - this.swipeFrom.y;
+      const to = this.pointerXY(p);
+      const dx = to.x - this.swipeFrom.x;
+      const dy = to.y - this.swipeFrom.y;
       this.swipeFrom = null;
       if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_MIN) return;
       const dir: Dir = Math.abs(dx) >= Math.abs(dy)
@@ -350,6 +357,15 @@ export class Game extends Scene {
         : (dy > 0 ? 'down' : 'up');
       this.tryMove(dir);
     });
+  }
+
+  /**
+   * Указатель в логических координатах сцены. Холст в DPR раз плотнее, камера зумится
+   * обратно — без пересчёта порог свайпа сжался бы в DPR раз.
+   */
+  private pointerXY(p: Phaser.Input.Pointer): { x: number; y: number } {
+    const w = this.cameras.main.getWorldPoint(p.x, p.y);
+    return { x: w.x, y: w.y };
   }
 
   /** Клетка, появившаяся после спавна: единственное отличие от чистого хода. */

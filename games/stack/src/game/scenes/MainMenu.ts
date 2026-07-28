@@ -1,8 +1,9 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, darken } from '../ui';
+import { makeButton, applyTheme, darken, setupCamera } from '../ui';
 import { COLORS, FONT, blockColor } from '../palette';
+import { DPR } from '../dpr';
 import { loadBest } from '../../core/persistence';
 import type { Session } from '../../bridge/session';
 
@@ -24,6 +25,7 @@ export class MainMenu extends Scene {
   create() {
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     applyTheme(this);
+    setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
     this.buildCatalogLink();
@@ -32,13 +34,15 @@ export class MainMenu extends Scene {
       .text(CX, 96, t(this.locale, 'app.title'), {
         fontFamily: FONT, fontSize: 44, color: COLORS.headText, fontStyle: 'bold',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
     this.add
       .text(CX, 134, t(this.locale, 'app.tagline'), {
         fontFamily: FONT, fontSize: 14, color: COLORS.headMuted, align: 'center',
         wordWrap: { width: 300 },
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
 
     this.buildTowerArt(320);
 
@@ -59,7 +63,8 @@ export class MainMenu extends Scene {
       .text(CX, 524, best === null ? '' : t(this.locale, 'menu.best', { score: best }), {
         fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
 
     makeButton(this, CX, 584, t(this.locale, 'menu.howto'), () => this.showHowto());
   }
@@ -102,6 +107,7 @@ export class MainMenu extends Scene {
         fontFamily: FONT, fontSize: 15, color: COLORS.headText, fontStyle: 'bold',
       })
       .setOrigin(0, 0.5)
+      .setResolution(DPR)
       .setInteractive({ useHandCursor: true });
     link.on('pointerup', () => this.exitToCatalog());
   }
