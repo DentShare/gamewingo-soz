@@ -8,7 +8,8 @@ import { pickDailyWord, dailyIndex } from '../../core/dailyWord';
 import { saveDaily, loadDaily, hasOnboarded, setOnboarded } from '../../core/persistence';
 import { keyboardFor, ENTER, BACKSPACE, UZ_DIGRAPH_KEYS, type Key } from '../keyboards';
 import { paletteFor, statusColor, COLORS, FONT, type Palette } from '../palette';
-import { toast, applyTheme, darken } from '../ui';
+import { toast, applyTheme, darken, setupCamera } from '../ui';
+import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
@@ -72,6 +73,7 @@ export class Game extends Scene {
     this.keyObjects = new Map();
 
     applyTheme(this);
+    setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.mode = (this.registry.get('mode') as 'daily' | 'practice') ?? 'daily';
@@ -170,7 +172,8 @@ export class Game extends Scene {
         const rect = this.add.rectangle(x, y, TILE, TILE, COLORS.panel).setStrokeStyle(2, COLORS.emptyBorder);
         const text = this.add
           .text(x, y, '', { fontFamily: FONT, fontSize: 26, color: COLORS.tileTextDark })
-          .setOrigin(0.5);
+          .setOrigin(0.5)
+          .setResolution(DPR);
         container.add([shadow, rect, text]);
         rowTiles.push({ rect, text });
       }
@@ -215,7 +218,8 @@ export class Game extends Scene {
               fontFamily: FONT, fontSize: key.length > 1 ? 15 : 16,
               color: COLORS.keyText,
             })
-            .setOrigin(0.5);
+            .setOrigin(0.5)
+            .setResolution(DPR);
           this.keyObjects.set(key, { rect, text });
         }
         x += w + kgap;

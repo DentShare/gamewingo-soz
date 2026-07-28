@@ -1,8 +1,9 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, type Button } from '../ui';
+import { makeButton, applyTheme, setupCamera, type Button } from '../ui';
 import { COLORS, FONT } from '../palette';
+import { DPR } from '../dpr';
 import { loadDaily } from '../../core/persistence';
 
 const CX = 200;
@@ -17,13 +18,15 @@ export class MainMenu extends Scene {
   create() {
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     applyTheme(this);
+    setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
     this.add
       .text(CX, 96, t(this.locale, 'app.title'), {
         fontFamily: FONT, fontSize: 44, color: COLORS.headText, fontStyle: 'bold',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(DPR);
 
     // Выбор языка — две пилюли.
     this.langPill(CX - 78, 168, 'ru', 'Русский');
@@ -47,7 +50,8 @@ export class MainMenu extends Scene {
         .text(CX, 466, t(this.locale, 'menu.dailyDone'), {
           fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
         })
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setResolution(DPR);
     }
 
     const label = () =>
@@ -87,6 +91,7 @@ export class MainMenu extends Scene {
         wordWrap: { width: 340 },
       })
       .setOrigin(0.5)
+      .setResolution(DPR)
       .setDepth(51);
     overlay.on('pointerup', () => {
       overlay.destroy();
