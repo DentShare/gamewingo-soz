@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Игры WinGo</title>
+<style>
+  @font-face {
+    font-family: 'Rubik'; font-style: normal; font-weight: 400; font-display: swap;
+    src: url('fonts/rubik-latin-400.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2122, U+2212;
+  }
+  @font-face {
+    font-family: 'Rubik'; font-style: normal; font-weight: 400; font-display: swap;
+    src: url('fonts/rubik-cyrillic-400.woff2') format('woff2');
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+  }
+  :root {
+    --peach: #fbebe1; --orange: #f26522; --orange-d: #d34e12; --green: #2fb84c;
+    --ink: #241a12; --muted: #8a7a6d; --card: #ffffff; --border: #e7d3c7; --amber: #eb9d2e; --grey: #8d7f72;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body {
+    font-family: 'Rubik', system-ui, sans-serif; color: var(--ink);
+    background: var(--peach); min-height: 100vh;
+  }
+  .wrap { max-width: 440px; margin: 0 auto; padding-bottom: 40px; }
+
+  header {
+    background: linear-gradient(135deg, #f5841f, #f15a24);
+    color: #fff; padding: calc(env(safe-area-inset-top) + 22px) 20px 24px;
+    border-radius: 0 0 22px 22px;
+  }
+  header .kicker { font-size: 13px; opacity: .9; letter-spacing: .12em; text-transform: uppercase; }
+  header h1 { margin: 4px 0 0; font-size: 30px; font-weight: 500; }
+  header p { margin: 6px 0 0; font-size: 14px; opacity: .92; }
+
+  .langs { display: flex; gap: 8px; margin: 16px 20px 4px; }
+  .lang {
+    flex: 1; text-align: center; padding: 9px 0; border-radius: 12px; font-size: 15px;
+    background: var(--card); color: var(--ink); border: 1px solid var(--border); cursor: pointer;
+    box-shadow: 0 2px 0 var(--border);
+  }
+  .lang.active { background: var(--orange); color: #fff; border-color: var(--orange); box-shadow: 0 3px 0 var(--orange-d); }
+
+  .section-title { font-size: 14px; color: var(--muted); margin: 20px 20px 10px; }
+
+  .grid { display: flex; flex-direction: column; gap: 14px; padding: 0 16px; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 18px;
+    padding: 14px; display: flex; gap: 14px; align-items: center;
+    box-shadow: 0 4px 0 var(--border); transition: transform .08s ease, box-shadow .08s ease;
+  }
+  .card.playable { cursor: pointer; }
+  .card.playable:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--border); }
+
+  .thumb {
+    width: 92px; height: 92px; border-radius: 14px; flex: none;
+    background: var(--peach); display: grid; place-items: center; border: 1px solid var(--border);
+  }
+  .mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .mini i {
+    width: 20px; height: 20px; border-radius: 4px; display: grid; place-items: center;
+    font-size: 12px; font-weight: 500; color: #fff; font-style: normal;
+  }
+
+  .info { flex: 1; min-width: 0; }
+  .info h2 { margin: 0; font-size: 19px; font-weight: 500; }
+  .info .desc { margin: 3px 0 0; font-size: 13px; color: var(--muted); line-height: 1.4; }
+  .tags { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .tag { font-size: 11px; padding: 3px 9px; border-radius: 20px; background: #fbe9df; color: var(--orange-d); }
+  .tag.g { background: #e3f6e8; color: #1c7a32; }
+
+  .play {
+    margin-top: 10px; display: inline-block; background: var(--orange); color: #fff;
+    font-size: 15px; padding: 9px 20px; border-radius: 12px; box-shadow: 0 3px 0 var(--orange-d);
+    border: none; font-family: inherit; cursor: pointer;
+  }
+  .play:active { transform: translateY(3px); box-shadow: 0 0 0 var(--orange-d); }
+
+  .card.soon { opacity: .72; }
+  .card.soon .thumb { color: var(--muted); font-size: 30px; }
+  .soon-badge { font-size: 11px; padding: 3px 9px; border-radius: 20px; background: #efe4da; color: var(--muted); }
+
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin: 26px 20px 0; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="kicker">WinGo</div>
+      <h1 id="hTitle">Игры</h1>
+      <p id="hSub">Играй, зарабатывай бонусы</p>
+    </header>
+
+    <div class="langs">
+      <div class="lang active" data-lang="ru">Русский</div>
+      <div class="lang" data-lang="uz">Oʻzbekcha</div>
+    </div>
+
+    <div class="section-title" id="sAvail">Доступные</div>
+    <div class="grid" id="grid"></div>
+
+    <div class="section-title" id="sSoon">Скоро</div>
+    <div class="grid" id="gridSoon"></div>
+
+    <footer>WinGo Games · v1 · <span id="count"></span></footer>
+  </div>
+
+<script>
+  // Каталог игр (в проде читается из games/manifest.json).
+  const GAMES = [
+    {
+      id: 'soz',
+      title: { ru: '5 букв', uz: '5 harf' },
+      desc: { ru: 'Угадай слово из 5 букв за 6 попыток', uz: '5 harfli soʻzni 6 urinishda top' },
+      url: 'https://soz-wingo.vercel.app',
+      tags: ['RU', 'UZ', { ru: 'Слова', uz: 'Soʻzlar', accent: true }],
+      thumb: [
+        { l: 'С', c: 'green' }, { l: 'Л', c: 'grey' }, { l: 'О', c: 'amber' },
+        { l: 'В', c: 'green' }, { l: 'О', c: 'grey' }, { l: 'О', c: 'green' },
+        { l: 'К', c: 'amber' }, { l: 'Н', c: 'grey' }, { l: 'О', c: 'green' },
+      ],
+    },
+  ];
+  const SOON = [
+    { icon: '🧩', title: { ru: 'Пазл', uz: 'Pazl' } },
+    { icon: '🎯', title: { ru: 'Меткий глаз', uz: 'Nishonga' } },
+    { icon: '🐍', title: { ru: 'Змейка', uz: 'Ilon' } },
+  ];
+  const STR = {
+    ru: { title: 'Игры', sub: 'Играй, зарабатывай бонусы', avail: 'Доступные', soon: 'Скоро', play: 'Играть', soonBadge: 'Скоро' },
+    uz: { title: 'Oʻyinlar', sub: 'Oʻyna, bonus yigʻ', avail: 'Mavjud', soon: 'Tez orada', play: 'Oʻynash', soonBadge: 'Tez orada' },
+  };
+  const C = { green: '#2fb84c', amber: '#eb9d2e', grey: '#8d7f72' };
+  let lang = localStorage.getItem('wingoHubLang') || 'ru';
+
+  function render() {
+    const s = STR[lang];
+    document.getElementById('hTitle').textContent = s.title;
+    document.getElementById('hSub').textContent = s.sub;
+    document.getElementById('sAvail').textContent = s.avail;
+    document.getElementById('sSoon').textContent = s.soon;
+    document.getElementById('count').textContent = GAMES.length + ' / ' + (GAMES.length + SOON.length);
+    document.querySelectorAll('.lang').forEach(el =>
+      el.classList.toggle('active', el.dataset.lang === lang));
+
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    GAMES.forEach(g => {
+      const card = document.createElement('div');
+      card.className = 'card playable';
+      const tags = g.tags.map(tg => typeof tg === 'string'
+        ? `<span class="tag">${tg}</span>`
+        : `<span class="tag ${tg.accent ? 'g' : ''}">${tg[lang]}</span>`).join('');
+      const mini = g.thumb.map(t =>
+        `<i style="background:${C[t.c]}">${t.l}</i>`).join('');
+      card.innerHTML = `
+        <div class="thumb"><div class="mini">${mini}</div></div>
+        <div class="info">
+          <h2>${g.title[lang]}</h2>
+          <p class="desc">${g.desc[lang]}</p>
+          <div class="tags">${tags}</div>
+          <button class="play">${s.play} ↗</button>
+        </div>`;
+      const open = () => { window.location.href = g.url; };
+      card.addEventListener('click', open);
+      grid.appendChild(card);
+    });
+
+    const soon = document.getElementById('gridSoon');
+    soon.innerHTML = '';
+    SOON.forEach(g => {
+      const card = document.createElement('div');
+      card.className = 'card soon';
+      card.innerHTML = `
+        <div class="thumb">${g.icon}</div>
+        <div class="info">
+          <h2>${g.title[lang]}</h2>
+          <div class="tags"><span class="soon-badge">${s.soonBadge}</span></div>
+        </div>`;
+      soon.appendChild(card);
+    });
+  }
+
+  document.querySelectorAll('.lang').forEach(el =>
+    el.addEventListener('click', () => {
+      lang = el.dataset.lang;
+      try { localStorage.setItem('wingoHubLang', lang); } catch (e) {}
+      render();
+    }));
+  render();
+</script>
+</body>
+</html>
