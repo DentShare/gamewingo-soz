@@ -1,0 +1,18 @@
+{
+  "app.title": "Boshqotirma 15",
+  "menu.kids": "Bolalar · 3×3",
+  "menu.classic": "Klassika · 4×4",
+  "menu.howto": "Qanday oʻynash",
+  "menu.back": "Orqaga",
+  "menu.best": "Rekord: {score}",
+  "howto.body": "Plitkalarni boʻsh katakka suring\nva raqamlarni tartib bilan yigʻing.\nKamroq yurish va vaqt —\nkoʻproq ochko!",
+  "game.moves": "Yurishlar: {n}",
+  "result.title": "Yigʻildi!",
+  "result.score": "Ochko: {score}",
+  "result.moves": "Yurishlar: {moves} · Vaqt: {time}",
+  "result.newBest": "Yangi rekord!",
+  "result.playAgain": "Yana",
+  "result.menu": "Menyuga",
+  "result.leaderboard": "Reyting",
+  "error.network": "Aloqa yoʻq"
+}

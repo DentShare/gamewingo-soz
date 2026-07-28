@@ -1,0 +1,18 @@
+{
+  "app.title": "Пятнашки",
+  "menu.kids": "Детский · 3×3",
+  "menu.classic": "Классика · 4×4",
+  "menu.howto": "Как играть",
+  "menu.back": "Назад",
+  "menu.best": "Рекорд: {score}",
+  "howto.body": "Двигайте плитки на пустую клетку\nи соберите числа по порядку.\nЧем меньше ходов и времени —\nтем больше очков!",
+  "game.moves": "Ходы: {n}",
+  "result.title": "Собрано!",
+  "result.score": "Очки: {score}",
+  "result.moves": "Ходов: {moves} · Время: {time}",
+  "result.newBest": "Новый рекорд!",
+  "result.playAgain": "Ещё раз",
+  "result.menu": "В меню",
+  "result.leaderboard": "Таблица лидеров",
+  "error.network": "Нет соединения"
+}
