@@ -6,11 +6,11 @@
 ```
 https://gamewingo-soz.vercel.app/            ← хаб (hub/)
 https://gamewingo-soz.vercel.app/manifest.json
-https://gamewingo-soz.vercel.app/soz/        ← игры (games/<slug>/dist)
-https://gamewingo-soz.vercel.app/pairs/
-https://gamewingo-soz.vercel.app/fifteen/
-https://gamewingo-soz.vercel.app/2048/
-https://gamewingo-soz.vercel.app/sudoku-kids/
+
+головоломки (games/<slug>/dist):
+  /soz/  /pairs/  /fifteen/  /2048/  /sudoku-kids/
+аркады:
+  /stack/  /flyer/  /targets/  /snake/
 ```
 
 ## Как это устроено

@@ -107,6 +107,94 @@
       "streak": false,
       "status": "mvp",
       "buildSizeMb": 1.4
+    },
+    {
+      "gameId": "stack",
+      "title": {
+        "ru": "Башня",
+        "uz": "Minora"
+      },
+      "genre": "arcade",
+      "mechanic": "stacker",
+      "locales": [
+        "ru",
+        "uz"
+      ],
+      "orientation": "portrait",
+      "url": "https://gamewingo-soz.vercel.app/stack/",
+      "modes": [
+        "endless"
+      ],
+      "leaderboard": true,
+      "streak": false,
+      "status": "mvp",
+      "buildSizeMb": 1.5
+    },
+    {
+      "gameId": "flyer",
+      "title": {
+        "ru": "Полёт",
+        "uz": "Parvoz"
+      },
+      "genre": "arcade",
+      "mechanic": "tap-flyer",
+      "locales": [
+        "ru",
+        "uz"
+      ],
+      "orientation": "portrait",
+      "url": "https://gamewingo-soz.vercel.app/flyer/",
+      "modes": [
+        "endless"
+      ],
+      "leaderboard": true,
+      "streak": false,
+      "status": "mvp",
+      "buildSizeMb": 1.5
+    },
+    {
+      "gameId": "targets",
+      "title": {
+        "ru": "Меткий глаз",
+        "uz": "Nishonga ur"
+      },
+      "genre": "arcade",
+      "mechanic": "tap-targets",
+      "locales": [
+        "ru",
+        "uz"
+      ],
+      "orientation": "portrait",
+      "url": "https://gamewingo-soz.vercel.app/targets/",
+      "modes": [
+        "timed"
+      ],
+      "leaderboard": true,
+      "streak": false,
+      "status": "mvp",
+      "buildSizeMb": 1.5
+    },
+    {
+      "gameId": "snake",
+      "title": {
+        "ru": "Змейка",
+        "uz": "Ilon"
+      },
+      "genre": "arcade",
+      "mechanic": "snake",
+      "locales": [
+        "ru",
+        "uz"
+      ],
+      "orientation": "portrait",
+      "url": "https://gamewingo-soz.vercel.app/snake/",
+      "modes": [
+        "endless"
+      ],
+      "leaderboard": true,
+      "streak": false,
+      "status": "mvp",
+      "buildSizeMb": 1.5
     }
   ]
 }
