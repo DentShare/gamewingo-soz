@@ -100,6 +100,9 @@
       <div class="lang" data-lang="uz">Oʻzbekcha</div>
     </div>
 
+    <div class="section-title" id="sKids">Малышам · без проигрыша</div>
+    <div class="grid" id="gridKids"></div>
+
     <div class="section-title" id="sArcade">Аркады · играй сразу</div>
     <div class="grid" id="gridArcade"></div>
 
@@ -161,6 +164,25 @@
       tags: ['RU', 'UZ', { ru: 'Детям', uz: 'Bolalarga', accent: true }],
     },
   ];
+  // Малышам: нет таймера и проигрыша, ошибка — мягкая подсказка.
+  const KIDS = [
+    {
+      id: 'sorting',
+      title: { ru: 'Сортировка', uz: 'Saralash' },
+      desc: { ru: 'Разложи фигурки по цвету и форме', uz: 'Shakllarni rang va shaklga ajrat' },
+      url: 'sorting/',
+      icon: '🎨',
+      tags: ['RU', 'UZ', { ru: '3–6 лет', uz: '3–6 yosh', accent: true }],
+    },
+    {
+      id: 'counting',
+      title: { ru: 'Счёт', uz: 'Sanoq' },
+      desc: { ru: 'Посчитай предметы и найди цифру', uz: 'Buyumlarni sanab, raqamni top' },
+      url: 'counting/',
+      icon: '🔢',
+      tags: ['RU', 'UZ', { ru: '4–7 лет', uz: '4–7 yosh', accent: true }],
+    },
+  ];
   // Аркады: заходишь и играешь — партия на 30–60 секунд, управление одним пальцем.
   const ARCADE = [
     {
@@ -198,8 +220,8 @@
   ];
   const SOON = [];
   const STR = {
-    ru: { title: 'Игры', sub: 'Играй, зарабатывай бонусы', arcade: 'Аркады · играй сразу', avail: 'Головоломки', soon: 'Скоро', play: 'Играть', soonBadge: 'Скоро' },
-    uz: { title: 'Oʻyinlar', sub: 'Oʻyna, bonus yigʻ', arcade: 'Arkada · darrov oʻyna', avail: 'Boshqotirmalar', soon: 'Tez orada', play: 'Oʻynash', soonBadge: 'Tez orada' },
+    ru: { title: 'Игры', sub: 'Играй, зарабатывай бонусы', kids: 'Малышам · без проигрыша', arcade: 'Аркады · играй сразу', avail: 'Головоломки', soon: 'Скоро', play: 'Играть', soonBadge: 'Скоро' },
+    uz: { title: 'Oʻyinlar', sub: 'Oʻyna, bonus yigʻ', kids: 'Kichkintoylarga · yutqazish yoʻq', arcade: 'Arkada · darrov oʻyna', avail: 'Boshqotirmalar', soon: 'Tez orada', play: 'Oʻynash', soonBadge: 'Tez orada' },
   };
   const C = { green: '#2fb84c', amber: '#eb9d2e', grey: '#8d7f72' };
   let lang = localStorage.getItem('wingoHubLang') || 'ru';
@@ -232,9 +254,10 @@
 
   function render() {
     const s = STR[lang];
-    const total = ARCADE.length + GAMES.length;
+    const total = KIDS.length + ARCADE.length + GAMES.length;
     document.getElementById('hTitle').textContent = s.title;
     document.getElementById('hSub').textContent = s.sub;
+    document.getElementById('sKids').textContent = s.kids;
     document.getElementById('sArcade').textContent = s.arcade;
     document.getElementById('sAvail').textContent = s.avail;
     document.getElementById('sSoon').textContent = s.soon;
@@ -242,6 +265,7 @@
     document.querySelectorAll('.lang').forEach(el =>
       el.classList.toggle('active', el.dataset.lang === lang));
 
+    renderPlayable('gridKids', KIDS, s);
     renderPlayable('gridArcade', ARCADE, s);
     renderPlayable('grid', GAMES, s);
 

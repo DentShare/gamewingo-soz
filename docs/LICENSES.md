@@ -33,6 +33,8 @@
 | flyer (аркада) | github.com/phaserjs/template-vite-ts (через структуру pairs); механика реализована с нуля, чужие ассеты/названия не используются | MIT | сохранён `games/flyer/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
 | targets (аркада) | github.com/phaserjs/template-vite-ts (через структуру pairs); механика реализована с нуля | MIT | сохранён `games/targets/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
 | snake (аркада) | github.com/phaserjs/template-vite-ts (через структуру pairs); механика — публичная классика, реализация с нуля | MIT | сохранён `games/snake/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
+| sorting (детская) | github.com/phaserjs/template-vite-ts (через структуру pairs); фигурки и корзины — собственная векторная отрисовка | MIT | сохранён `games/sorting/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
+| counting (детская) | github.com/phaserjs/template-vite-ts (через структуру pairs); механика реализована с нуля | MIT | сохранён `games/counting/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
 |  |  |  |  |  |  |
 
 ## Ассеты (графика, звук, шрифты)
