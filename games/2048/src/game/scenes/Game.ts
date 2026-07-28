@@ -8,7 +8,10 @@ import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
-import { loadBest } from '../../core/persistence';
+import {
+  loadBest, loadSave, saveGame, clearSave, hasOnboarded, setOnboarded,
+} from '../../core/persistence';
+import { startOnboarding, type Rect } from '../onboarding';
 
 const W = 400;
 const TILE = 80;
@@ -18,6 +21,17 @@ const BOARD = SIZE * TILE + (SIZE - 1) * GAP + 2 * PAD; // 374
 const BOARD_LEFT = (W - BOARD) / 2;
 const BOARD_TOP = 140;
 const SWIPE_MIN = 24; // порог свайпа, px
+
+/**
+ * Показательное поле для обучения: две «2» рядом в верхнем ряду сливаются ходом влево,
+ * а плитки в нулевой колонке остаются на месте — слияние видно без лишнего движения.
+ */
+const TUTORIAL_CELLS: number[][] = [
+  [2, 2, 0, 0],
+  [4, 0, 0, 0],
+  [8, 0, 0, 0],
+  [0, 0, 0, 0],
+];
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
@@ -30,6 +44,8 @@ export class Game extends Scene {
   private timer!: RoundTimer;
   private finished = false;
   private wonShown = false;
+  /** Идёт обучение: игровой ввод (свайпы и стрелки) заблокирован. */
+  private tutorialActive = false;
   private swipeFrom: { x: number; y: number } | null = null;
 
   constructor() {
@@ -40,6 +56,7 @@ export class Game extends Scene {
     // Сцена переиспользуется между рестартами — сбрасываем изменяемое состояние.
     this.finished = false;
     this.wonShown = false;
+    this.tutorialActive = false;
     this.swipeFrom = null;
 
     applyTheme(this);
@@ -47,7 +64,22 @@ export class Game extends Scene {
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.session = this.registry.get('session') as Session;
 
-    this.core = createGrid2048(mulberry32(Math.floor(Math.random() * 2 ** 31)));
+    // «Как играть» из меню: обучение поверх настоящего поля, без сессии и таймера.
+    if (this.registry.get('howto')) {
+      this.runHowto();
+      return;
+    }
+
+    // Продолжение сохранённой партии или новая игра.
+    const resume = !!this.registry.get('resume');
+    this.registry.set('resume', false);
+    const saved = resume ? loadSave() : null;
+    if (saved) {
+      this.core = createGrid2048(this.freshRng(), saved);
+    } else {
+      clearSave(); // старая партия больше не нужна
+      this.core = createGrid2048(this.freshRng());
+    }
     this.best = loadBest();
 
     this.buildHud();
@@ -64,6 +96,113 @@ export class Game extends Scene {
       else if (e.type === 'RESUME') this.timer.resume();
     });
     this.events.once('shutdown', off);
+
+    this.maybeShowOnboarding(!!saved);
+  }
+
+  private freshRng(): () => number {
+    return mulberry32(Math.floor(Math.random() * 2 ** 31));
+  }
+
+  // ── Обучение ────────────────────────────────────────────────────────────────
+
+  /**
+   * «Как играть» из меню: строим настоящее поле с показательной раскладкой,
+   * НЕ стартуем сессию/таймер, НЕ трогаем сохранение партии и рекорд.
+   * По завершении/пропуску — обратно в меню.
+   */
+  private runHowto() {
+    this.registry.set('howto', false); // одноразовый вход
+    this.tutorialActive = true;
+    this.best = loadBest();
+    this.core = createGrid2048(this.freshRng(), { cells: TUTORIAL_CELLS });
+
+    this.buildHud();
+    this.buildBoard();
+    this.tileLayer = this.add.container(0, 0);
+    this.redraw();
+    this.bindInput(); // ввод связан, но tryMove заблокирован флагом обучения
+
+    this.time.delayedCall(360, () => {
+      this.launchOnboarding(() => {
+        setOnboarded();
+        this.scene.start('MainMenu');
+      });
+    });
+  }
+
+  /**
+   * Первая партия: показываем обучение один раз поверх настоящего поля.
+   * На время обучения поле подменяется показательной раскладкой, таймер на паузе;
+   * после — возвращается свежая партия игрока.
+   */
+  private maybeShowOnboarding(resumed: boolean) {
+    if (resumed || hasOnboarded() || this.core.moves > 0) return;
+    const realCore = this.core;
+    this.tutorialActive = true;
+    this.timer.pause();
+    this.core = createGrid2048(this.freshRng(), { cells: TUTORIAL_CELLS });
+    this.redraw();
+    this.refreshScore();
+
+    this.time.delayedCall(360, () => {
+      this.launchOnboarding(() => {
+        setOnboarded();
+        this.core = realCore;
+        this.redraw();
+        this.refreshScore();
+        this.tutorialActive = false;
+        this.timer.resume();
+      });
+    });
+  }
+
+  private launchOnboarding(onDone: () => void) {
+    let demoDone = false;
+    startOnboarding(
+      this,
+      this.locale,
+      { board: this.boardRect(), hud: this.hudRect() },
+      {
+        demoMerge: () => {
+          if (demoDone) return null;
+          demoDone = true;
+          return this.tutorialMove('left');
+        },
+      },
+      onDone,
+    );
+  }
+
+  private boardRect(): Rect {
+    return { x: BOARD_LEFT, y: BOARD_TOP, w: BOARD, h: BOARD };
+  }
+
+  /** Зона счёта и рекорда в шапке — для подсветки на третьем шаге обучения. */
+  private hudRect(): Rect {
+    const a = this.scoreText.getBounds();
+    const b = this.bestText.getBounds();
+    const x = Math.min(a.x, b.x);
+    const y = Math.min(a.y, b.y);
+    return { x, y, w: Math.max(a.right, b.right) - x, h: Math.max(a.bottom, b.bottom) - y };
+  }
+
+  /**
+   * Настоящий ход в режиме обучения: ядро, анимации и счёт работают как в игре,
+   * но сохранение партии и конец игры не трогаются.
+   * Возвращает прямоугольник слитой плитки — обучение её подсвечивает.
+   */
+  private tutorialMove(dir: Dir): Rect | null {
+    const before = this.core.cells.map((row) => [...row]);
+    const expected = applyMove(before, dir);
+    if (!expected.moved) return null;
+    this.core.move(dir);
+    this.redraw({ spawn: this.findSpawn(expected.cells), merged: expected.merges.map((m) => [m.row, m.col]) });
+    this.refreshScore();
+    const m = expected.merges[0];
+    if (!m) return null;
+    const { x, y } = this.cellXY(m.row, m.col);
+    return { x: x - TILE / 2, y: y - TILE / 2, w: TILE, h: TILE };
   }
 
   // ── HUD: кнопка назад + счёт + рекорд ────────────────────────────────────────
@@ -71,7 +210,7 @@ export class Game extends Scene {
   private buildHud() {
     this.buildBackButton();
     this.scoreText = this.add
-      .text(W - 20, 24, t(this.locale, 'game.score', { n: 0 }), {
+      .text(W - 20, 24, t(this.locale, 'game.score', { n: this.core.score }), {
         fontFamily: FONT, fontSize: 16, color: COLORS.headText, fontStyle: 'bold',
       })
       .setOrigin(1, 0.5);
@@ -80,6 +219,17 @@ export class Game extends Scene {
         fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
       })
       .setOrigin(1, 0.5);
+  }
+
+  /** Обновляет счёт и, при необходимости, рекорд в шапке по состоянию ядра. */
+  private refreshScore() {
+    this.scoreText.setText(t(this.locale, 'game.score', { n: this.core.score }));
+    // Показательный ход обучения — не игровой: рекорд он двигать не должен.
+    if (this.tutorialActive) return;
+    if (this.core.score > this.best) {
+      this.best = this.core.score;
+      this.bestText.setText(t(this.locale, 'game.best', { n: this.best }));
+    }
   }
 
   /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
@@ -111,7 +261,7 @@ export class Game extends Scene {
   }
 
   private goBack() {
-    if (this.finished) return;
+    if (this.finished || this.tutorialActive) return;
     this.finished = true;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
@@ -202,27 +352,27 @@ export class Game extends Scene {
     });
   }
 
+  /** Клетка, появившаяся после спавна: единственное отличие от чистого хода. */
+  private findSpawn(expectedCells: number[][]): [number, number] | null {
+    let spawn: [number, number] | null = null;
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (this.core.cells[r][c] !== expectedCells[r][c]) spawn = [r, c];
+      }
+    }
+    return spawn;
+  }
+
   private tryMove(dir: Dir) {
-    if (this.finished) return;
+    if (this.finished || this.tutorialActive) return;
     const before = this.core.cells.map((row) => [...row]);
     const res = this.core.move(dir);
     if (!res.moved) return;
 
     // Спавн и слитые клетки для подскока: сравниваем с чистым ходом без спавна.
     const expected = applyMove(before, dir);
-    let spawn: [number, number] | null = null;
-    for (let r = 0; r < SIZE; r++) {
-      for (let c = 0; c < SIZE; c++) {
-        if (this.core.cells[r][c] !== expected.cells[r][c]) spawn = [r, c];
-      }
-    }
-    this.redraw({ spawn, merged: expected.merges.map((m) => [m.row, m.col]) });
-
-    this.scoreText.setText(t(this.locale, 'game.score', { n: this.core.score }));
-    if (this.core.score > this.best) {
-      this.best = this.core.score;
-      this.bestText.setText(t(this.locale, 'game.best', { n: this.best }));
-    }
+    this.redraw({ spawn: this.findSpawn(expected.cells), merged: expected.merges.map((m) => [m.row, m.col]) });
+    this.refreshScore();
 
     if (!this.wonShown && this.core.hasWon()) {
       this.wonShown = true; // поздравление один раз, игра продолжается
@@ -231,8 +381,21 @@ export class Game extends Scene {
 
     if (this.core.isOver()) {
       this.finished = true;
+      clearSave(); // законченную партию продолжать нельзя
       this.time.delayedCall(450, () => this.endGame());
+    } else {
+      this.persist();
     }
+  }
+
+  /** Снимок партии после каждого результативного хода — чтобы можно было вернуться. */
+  private persist() {
+    saveGame({
+      cells: this.core.cells.map((row) => [...row]),
+      score: this.core.score,
+      moves: this.core.moves,
+      won: this.core.hasWon(),
+    });
   }
 
   private endGame() {

@@ -4,8 +4,11 @@ import uz from './uz.json';
 import { t } from './index';
 
 const REQUIRED = [
-  'app.title', 'menu.play', 'menu.howto', 'menu.back', 'menu.best',
-  'game.score', 'game.best', 'game.won', 'howto.body',
+  'app.title', 'menu.play', 'menu.continue', 'menu.restart', 'menu.howto',
+  'menu.back', 'menu.catalog', 'menu.best',
+  'game.score', 'game.best', 'game.won',
+  'onboarding.swipe', 'onboarding.merge', 'onboarding.score', 'onboarding.goal',
+  'onboarding.next', 'onboarding.done', 'onboarding.skip',
   'result.title', 'result.titleWon', 'result.score', 'result.newBest',
   'result.playAgain', 'result.menu', 'result.leaderboard',
   'error.network',

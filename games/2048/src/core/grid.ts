@@ -95,17 +95,29 @@ export interface Grid2048 {
   move(dir: Dir): MoveResult;
 }
 
+/** Полный снимок партии для восстановления после выхода из игры. */
+export interface Grid2048State {
+  cells: number[][];
+  score?: number;
+  moves?: number;
+  won?: boolean;
+}
+
 /**
- * Фабрика ядра. `initial` — стартовое состояние для тестов (глубоко копируется);
- * без него спавнятся две стартовые плитки.
+ * Фабрика ядра.
+ * `initial` — стартовое состояние (глубоко копируется):
+ *   • `number[][]` — только клетки (счёт/ходы с нуля) — удобно для тестов;
+ *   • `Grid2048State` — полное восстановление сохранённой партии (клетки + счёт + ходы + флаг победы).
+ * Без `initial` спавнятся две стартовые плитки.
  */
-export function createGrid2048(rng: () => number, initial?: number[][]): Grid2048 {
-  let cells: number[][] = initial
-    ? initial.map((row) => row.slice())
+export function createGrid2048(rng: () => number, initial?: number[][] | Grid2048State): Grid2048 {
+  const state: Grid2048State | undefined = Array.isArray(initial) ? { cells: initial } : initial;
+  let cells: number[][] = state
+    ? state.cells.map((row) => row.slice())
     : Array.from({ length: SIZE }, () => new Array<number>(SIZE).fill(0));
-  let score = 0;
-  let moves = 0;
-  let won = cells.some((row) => row.some((v) => v >= 2048));
+  let score = state?.score ?? 0;
+  let moves = state?.moves ?? 0;
+  let won = (state?.won ?? false) || cells.some((row) => row.some((v) => v >= 2048));
 
   function spawn(): void {
     const empties: Array<[number, number]> = [];
@@ -115,7 +127,7 @@ export function createGrid2048(rng: () => number, initial?: number[][]): Grid204
     cells[r][c] = rng() < 0.9 ? 2 : 4;
   }
 
-  if (!initial) { spawn(); spawn(); }
+  if (!state) { spawn(); spawn(); }
 
   return {
     get cells() { return cells; },

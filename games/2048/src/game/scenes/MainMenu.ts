@@ -3,9 +3,16 @@ import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import { makeButton, applyTheme, darken } from '../ui';
 import { COLORS, FONT, tileColor, tileTextColor } from '../palette';
-import { loadBest } from '../../core/persistence';
+import { loadBest, loadSave, clearSave } from '../../core/persistence';
+import type { Session } from '../../bridge/session';
 
 const CX = 200;
+/**
+ * Каталог игр WinGo (для автономного/веб-режима). В приложении выход обрабатывает мост.
+ * Путь относительный: игра лежит на /2048/, хаб — на корне того же домена,
+ * поэтому ссылка не зависит от того, на каком домене развёрнут каталог.
+ */
+const HUB_URL = '../';
 
 export class MainMenu extends Scene {
   private locale: Locale = 'ru';
@@ -19,26 +26,64 @@ export class MainMenu extends Scene {
     applyTheme(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
+    this.buildCatalogLink();
     this.buildLogo(t(this.locale, 'app.title'));
 
     // Выбор языка — две пилюли.
-    this.langPill(CX - 78, 214, 'ru', 'Русский');
-    this.langPill(CX + 78, 214, 'uz', 'Oʻzbekcha');
+    this.langPill(CX - 78, 220, 'ru', 'Русский');
+    this.langPill(CX + 78, 220, 'uz', 'Oʻzbekcha');
 
-    // Одна большая кнопка «Играть» + рекорд под ней.
-    makeButton(this, CX, 322, t(this.locale, 'menu.play'), () => this.startGame(), {
-      primary: true, width: 248, height: 56,
-    });
+    // Незаконченная партия → «Продолжить» + «Начать заново», иначе одна «Играть».
+    const saved = loadSave();
+    let bestY = 368;
+    let howtoY = 430;
+    if (saved) {
+      makeButton(
+        this, CX, 304, `${t(this.locale, 'menu.continue')} · ${saved.score}`,
+        () => this.startGame(true), { primary: true, width: 248, height: 56 },
+      );
+      makeButton(this, CX, 374, t(this.locale, 'menu.restart'), () => this.startGame(false), {
+        width: 248, height: 52,
+      });
+      bestY = 416;
+      howtoY = 478;
+    } else {
+      makeButton(this, CX, 328, t(this.locale, 'menu.play'), () => this.startGame(false), {
+        primary: true, width: 248, height: 56,
+      });
+    }
+
     const best = loadBest();
     if (best > 0) {
       this.add
-        .text(CX, 362, t(this.locale, 'menu.best', { n: best }), {
+        .text(CX, bestY, t(this.locale, 'menu.best', { n: best }), {
           fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
         })
         .setOrigin(0.5);
     }
 
-    makeButton(this, CX, 424, t(this.locale, 'menu.howto'), () => this.showHowto());
+    makeButton(this, CX, howtoY, t(this.locale, 'menu.howto'), () => this.showHowto());
+  }
+
+  /** Ссылка «‹ К играм» слева вверху — выход в каталог игр WinGo. */
+  private buildCatalogLink() {
+    const link = this.add
+      .text(16, 30, `‹ ${t(this.locale, 'menu.catalog')}`, {
+        fontFamily: FONT, fontSize: 15, color: COLORS.headText, fontStyle: 'bold',
+      })
+      .setOrigin(0, 0.5)
+      .setInteractive({ useHandCursor: true });
+    link.on('pointerup', () => this.exitToCatalog());
+  }
+
+  /** Выход в каталог: событие мосту (реальный WebView вернётся к списку), а в вебе — переход на хаб. */
+  private exitToCatalog() {
+    const session = this.registry.get('session') as Session | undefined;
+    session?.exit();
+    if (this.registry.get('demo')) {
+      const hub = (this.registry.get('catalogUrl') as string) || HUB_URL;
+      window.location.href = hub;
+    }
   }
 
   /** Заголовок-логотип: цифры названия как мини-плитки нарастающих номиналов. */
@@ -51,7 +96,7 @@ export class MainMenu extends Scene {
     chars.forEach((ch, i) => {
       const v = values[Math.min(i, values.length - 1)];
       const x = startX + i * (size + gap);
-      const cont = this.add.container(x, 118).setScale(0);
+      const cont = this.add.container(x, 128).setScale(0);
       const g = this.add.graphics();
       g.fillStyle(darken(tileColor(v), 0.18), 1).fillRoundedRect(-size / 2, -size / 2 + 3, size, size, 14);
       g.fillStyle(tileColor(v), 1).fillRoundedRect(-size / 2, -size / 2, size, size, 14);
@@ -72,26 +117,18 @@ export class MainMenu extends Scene {
     }, { width: 148, height: 44, primary: this.locale === loc });
   }
 
-  private startGame() {
+  /** `resume` — продолжить сохранённую партию; иначе стартует новая (сохранение стирается). */
+  private startGame(resume: boolean) {
+    if (!resume) clearSave();
+    this.registry.set('resume', resume);
     this.registry.set('locale', this.locale);
     this.scene.start('Game');
   }
 
+  /** «Как играть» — интерактивное обучение поверх настоящего поля; по концу → обратно в меню. */
   private showHowto() {
-    const overlay = this.add
-      .rectangle(CX, 360, 400, 720, 0x241a12, 0.82)
-      .setInteractive()
-      .setDepth(50);
-    const text = this.add
-      .text(CX, 360, t(this.locale, 'howto.body'), {
-        fontFamily: FONT, fontSize: 18, color: '#ffffff', align: 'center',
-        wordWrap: { width: 340 }, lineSpacing: 6,
-      })
-      .setOrigin(0.5)
-      .setDepth(51);
-    overlay.on('pointerup', () => {
-      overlay.destroy();
-      text.destroy();
-    });
+    this.registry.set('howto', true);
+    this.registry.set('locale', this.locale);
+    this.scene.start('Game');
   }
 }
