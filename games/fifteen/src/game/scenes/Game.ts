@@ -8,6 +8,8 @@ import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
+import { hasOnboarded, setOnboarded } from '../../core/persistence';
+import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
 
 const W = 400;
 const GRID_TOP = 96;
@@ -36,6 +38,12 @@ export class Game extends Scene {
   private cellSize = 0;
   private gridLeft = 0;   // центр первой клетки по X
   private gridTop = 0;    // центр первой клетки по Y
+  /** Идёт обучение: игровой ввод (тапы и стрелки) не принимаем. */
+  private tutorialActive = false;
+  /** Клетка, из которой нужно вернуть плитку после обучающего показа (−1 — нечего). */
+  private demoUndoCell = -1;
+  private boardBounds: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private hudBounds: Rect = { x: 0, y: 0, w: 0, h: 0 };
 
   constructor() {
     super('Game');
@@ -45,6 +53,8 @@ export class Game extends Scene {
     // Сцена переиспользуется между рестартами — сбрасываем изменяемое состояние.
     this.views = [];
     this.finished = false;
+    this.tutorialActive = false;
+    this.demoUndoCell = -1;
 
     applyTheme(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
@@ -52,8 +62,13 @@ export class Game extends Scene {
     this.level = (this.registry.get('level') as LevelId) ?? '3x3';
     this.session = this.registry.get('session') as Session;
 
-    const size = LEVELS[this.level].size;
-    this.board = createBoard(size, mulberry32(Math.floor(Math.random() * 2 ** 31)));
+    // Режим «Как играть» из меню: обучение на настоящем поле, партия не начинается.
+    if (this.registry.get('howto')) {
+      this.runHowto();
+      return;
+    }
+
+    this.board = this.newBoard();
 
     this.buildHud();
     this.buildGrid();
@@ -67,6 +82,103 @@ export class Game extends Scene {
       else if (e.type === 'RESUME') this.timer.resume();
     });
     this.events.once('shutdown', off);
+
+    this.maybeShowOnboarding();
+  }
+
+  /** Свежий решаемый расклад текущего уровня. */
+  private newBoard(): Board {
+    return createBoard(LEVELS[this.level].size, mulberry32(Math.floor(Math.random() * 2 ** 31)));
+  }
+
+  // ── Обучение ─────────────────────────────────────────────────────────────────
+
+  /** «Как играть» из меню: строим настоящее поле, но без сессии и таймера; по концу — в меню. */
+  private runHowto() {
+    this.registry.set('howto', false); // одноразовый вход
+    this.tutorialActive = true;
+
+    this.board = this.newBoard();
+    this.buildHud();
+    this.buildGrid();
+    this.bindKeyboard();
+    // Таймер нужен только чтобы update() было что показывать: не стартуем — стоит на 00:00.
+    this.timer = createRoundTimer(() => performance.now());
+
+    this.time.delayedCall(360, () => {
+      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
+        setOnboarded();
+        this.scene.start('MainMenu');
+      });
+    });
+  }
+
+  /** Первая партия — показываем обучение один раз. Таймер на паузе, ввод заблокирован. */
+  private maybeShowOnboarding() {
+    if (this.finished || hasOnboarded()) return;
+    this.tutorialActive = true;
+    this.timer.pause();
+    // Даём кадру отрисоваться (и завершиться fade-in камеры), затем открываем оверлей.
+    this.time.delayedCall(360, () => {
+      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
+        setOnboarded();
+        this.undoDemoMove();
+        this.tutorialActive = false;
+        this.timer.resume();
+      });
+    });
+  }
+
+  /**
+   * Четыре шага на живом поле: всё поле → конкретная подвижная плитка → настоящий
+   * ход этой плиткой → HUD (ходы и время).
+   */
+  private tutorialSteps(): OnboardingStep[] {
+    const from = this.movableCell();
+    let to = from;
+    return [
+      { rect: () => this.boardBounds, textKey: 'onboarding.board', pad: 10, radius: 20, gap: 12 },
+      { rect: () => this.tileRect(from), textKey: 'onboarding.tile', pad: 6, radius: 16 },
+      {
+        rect: () => this.tileRect(to),
+        textKey: 'onboarding.move',
+        pad: 6,
+        radius: 16,
+        before: (done) => {
+          to = this.board.tiles.indexOf(0); // пустая клетка = куда приедет плитка
+          this.performMove(from);
+          this.demoUndoCell = to;           // вернём плитку на место после обучения
+          this.time.delayedCall(SLIDE_MS + 180, done);
+        },
+      },
+      { rect: () => this.hudBounds, textKey: 'onboarding.goal', pad: 10, radius: 12, gap: 40 },
+    ];
+  }
+
+  /** Любая плитка, соседняя с пустой клеткой (по горизонтали — нагляднее). */
+  private movableCell(): number {
+    const n = this.board.size;
+    const e = this.board.tiles.indexOf(0);
+    const row = Math.floor(e / n);
+    const col = e % n;
+    if (col > 0) return e - 1;
+    if (col < n - 1) return e + 1;
+    return row > 0 ? e - n : e + n;
+  }
+
+  private tileRect(cell: number): Rect {
+    const { x, y } = this.cellXY(cell);
+    const s = this.cellSize;
+    return { x: x - s / 2, y: y - s / 2, w: s, h: s };
+  }
+
+  /** Возврат плитки после обучающего показа: расклад и счётчик как до обучения. */
+  private undoDemoMove() {
+    if (this.demoUndoCell < 0) return;
+    this.performMove(this.demoUndoCell);
+    this.demoUndoCell = -1;
+    this.board.resetMoves();
+    this.movesText.setText(t(this.locale, 'game.moves', { n: 0 }));
   }
 
   update() {
@@ -90,6 +202,12 @@ export class Game extends Scene {
     this.timeText = this.add
       .text(W - 20, 34, '00:00', { fontFamily: FONT, fontSize: 16, color: COLORS.headMuted })
       .setOrigin(1, 0.5);
+
+    // Общая рамка «ходы + время» — её подсвечивает последний шаг обучения.
+    const a = this.movesText.getBounds();
+    const b = this.timeText.getBounds();
+    const top = Math.min(a.y, b.y);
+    this.hudBounds = { x: a.x, y: top, w: b.x + b.width - a.x, h: Math.max(a.bottom, b.bottom) - top };
   }
 
   /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
@@ -147,6 +265,12 @@ export class Game extends Scene {
     const gridH = n * this.cellSize + (n - 1) * GAP;
     this.gridLeft = (W - gridW) / 2 + this.cellSize / 2;
     this.gridTop = GRID_TOP + (GRID_BOTTOM - GRID_TOP - gridH) / 2 + this.cellSize / 2;
+    this.boardBounds = {
+      x: this.gridLeft - this.cellSize / 2,
+      y: this.gridTop - this.cellSize / 2,
+      w: gridW,
+      h: gridH,
+    };
 
     // «Лунка» поля — мягкая подложка под плитками.
     const pad = 10;
@@ -214,7 +338,14 @@ export class Game extends Scene {
     kb.on('keydown-RIGHT', () => fromEmpty(0, -1));
   }
 
+  /** Ход по воле игрока (тап или стрелка). Во время обучения ввод игнорируем. */
   private tryMoveCell(cell: number) {
+    if (this.tutorialActive) return;
+    this.performMove(cell);
+  }
+
+  /** Сам ход. Этим же путём ходит обучающий показ — мимо блокировки ввода. */
+  private performMove(cell: number) {
     if (this.finished) return;
     const view = this.views[cell];
     if (!view || view.animating) return;

@@ -4,9 +4,11 @@ import uz from './uz.json';
 import { t } from './index';
 
 const REQUIRED = [
-  'app.title', 'menu.kids', 'menu.classic', 'menu.howto', 'menu.back',
+  'app.title', 'menu.kids', 'menu.classic', 'menu.howto', 'menu.back', 'menu.catalog',
   'game.moves', 'result.title', 'result.score', 'result.playAgain', 'result.leaderboard',
   'error.network',
+  'onboarding.board', 'onboarding.tile', 'onboarding.move', 'onboarding.goal',
+  'onboarding.next', 'onboarding.done', 'onboarding.skip',
 ];
 
 describe('i18n (fifteen)', () => {

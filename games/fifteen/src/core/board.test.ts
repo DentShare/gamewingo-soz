@@ -45,6 +45,17 @@ describe('move', () => {
     expect(b.tiles[empty]).toBe(val);
     expect(b.tiles[near]).toBe(0);
   });
+
+  it('resetMoves обнуляет счётчик, не трогая расклад', () => {
+    const b = createBoard(3, mulberry32(11));
+    const empty = b.tiles.indexOf(0);
+    const near = Math.floor(empty / 3) > 0 ? empty - 3 : empty + 3;
+    expect(b.move(near)).toBe(true);
+    const snapshot = [...b.tiles];
+    b.resetMoves();
+    expect(b.moves).toBe(0);
+    expect([...b.tiles]).toEqual(snapshot);
+  });
 });
 
 describe('решаемость', () => {
