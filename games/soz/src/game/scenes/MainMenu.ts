@@ -79,23 +79,11 @@ export class MainMenu extends Scene {
     this.scene.start('Game');
   }
 
+  /** «Как играть» — запускает интерактивное обучение поверх игрового поля; по концу → в меню. */
   private showHowto() {
-    const lines = t(this.locale, 'howto.body');
-    const overlay = this.add
-      .rectangle(CX, 360, 400, 720, 0x241a12, 0.82)
-      .setInteractive()
-      .setDepth(50);
-    const text = this.add
-      .text(CX, 360, lines, {
-        fontFamily: FONT, fontSize: 18, color: '#ffffff', align: 'center',
-        wordWrap: { width: 340 },
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR)
-      .setDepth(51);
-    overlay.on('pointerup', () => {
-      overlay.destroy();
-      text.destroy();
-    });
+    this.registry.set('howto', true);
+    this.registry.set('mode', 'practice');
+    this.registry.set('locale', this.locale);
+    this.scene.start('Game');
   }
 }

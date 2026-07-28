@@ -81,6 +81,12 @@ export class Game extends Scene {
     this.session = this.registry.get('session') as Session;
     this.palette = paletteFor(!!this.registry.get('highContrast'));
 
+    // Режим «Как играть»: показываем обучение поверх пустого поля, по концу — в меню.
+    if (this.registry.get('howto')) {
+      this.runHowto();
+      return;
+    }
+
     const { answers, allowed } = DATA[this.locale];
     this.dict = loadDictionary(this.locale, answers, allowed);
 
@@ -126,6 +132,28 @@ export class Game extends Scene {
 
     this.bindPhysicalKeyboard();
     this.maybeShowOnboarding();
+  }
+
+  /** «Как играть» из меню: строим поле, показываем обучение, по завершении — обратно в меню. */
+  private runHowto() {
+    this.registry.set('howto', false); // одноразовый вход
+    this.tutorialActive = true;
+    this.buildBoard();
+    this.buildKeyboard();
+    this.buildBackButton();
+    const back = () => {
+      setOnboarded();
+      this.scene.start('MainMenu');
+    };
+    this.time.delayedCall(360, () => {
+      startOnboarding(
+        this,
+        this.locale,
+        this.palette,
+        { board: this.boardBounds, keyboard: this.keyboardBounds, enterKey: this.enterKeyBounds },
+        back,
+      );
+    });
   }
 
   /** Первый запуск (свежая партия) — показываем обучение один раз. Таймер на паузе. */
