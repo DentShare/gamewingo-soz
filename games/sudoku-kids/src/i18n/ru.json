@@ -1,0 +1,19 @@
+{
+  "app.title": "Мини-судоку",
+  "menu.easy4": "Детский · 4×4",
+  "menu.easy6": "Лёгкий · 6×6",
+  "menu.hard6": "Сложнее · 6×6",
+  "menu.howto": "Как играть",
+  "menu.back": "Назад",
+  "menu.best": "Рекорд: {score}",
+  "game.hints": "Подсказки: {n}",
+  "howto.body": "Заполните сетку так, чтобы цифра не повторялась в строке, столбце и блоке.\nВыберите клетку и нажмите цифру внизу.\n💡 — подсказка (максимум 3 за партию).",
+  "result.title": "Решено!",
+  "result.score": "Очки: {score}",
+  "result.time": "Время: {time}",
+  "result.newBest": "Новый рекорд!",
+  "result.playAgain": "Ещё раз",
+  "result.menu": "В меню",
+  "result.leaderboard": "Таблица лидеров",
+  "error.network": "Нет соединения"
+}

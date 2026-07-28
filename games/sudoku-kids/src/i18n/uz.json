@@ -1,0 +1,19 @@
+{
+  "app.title": "Mini sudoku",
+  "menu.easy4": "Bolalar · 4×4",
+  "menu.easy6": "Oson · 6×6",
+  "menu.hard6": "Qiyinroq · 6×6",
+  "menu.howto": "Qanday oʻynash",
+  "menu.back": "Orqaga",
+  "menu.best": "Rekord: {score}",
+  "game.hints": "Yordam: {n}",
+  "howto.body": "Jadvalni shunday toʻldiring: raqam qator, ustun va blokda takrorlanmasin.\nKatakni tanlab, pastdagi raqamni bosing.\n💡 — yordam (bir oʻyinda koʻpi bilan 3 ta).",
+  "result.title": "Yechildi!",
+  "result.score": "Ochko: {score}",
+  "result.time": "Vaqt: {time}",
+  "result.newBest": "Yangi rekord!",
+  "result.playAgain": "Yana",
+  "result.menu": "Menyuga",
+  "result.leaderboard": "Reyting",
+  "error.network": "Aloqa yoʻq"
+}
