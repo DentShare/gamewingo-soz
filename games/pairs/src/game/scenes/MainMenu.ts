@@ -5,8 +5,15 @@ import { makeButton, applyTheme } from '../ui';
 import { COLORS, FONT } from '../palette';
 import type { LevelId } from '../../core/deck';
 import { loadBest } from '../../core/persistence';
+import type { Session } from '../../bridge/session';
 
 const CX = 200;
+/**
+ * Каталог игр WinGo (для автономного/веб-режима). В приложении выход обрабатывает мост.
+ * Путь относительный: игра лежит на /<slug>/, хаб — на корне того же домена,
+ * поэтому ссылка не зависит от того, на каком домене развёрнут каталог.
+ */
+const HUB_URL = '../';
 
 export class MainMenu extends Scene {
   private locale: Locale = 'ru';
@@ -20,8 +27,10 @@ export class MainMenu extends Scene {
     applyTheme(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
+    this.buildCatalogLink();
+
     this.add
-      .text(CX, 90, '🐾', { fontFamily: FONT, fontSize: 40 })
+      .text(CX, 92, '🐾', { fontFamily: FONT, fontSize: 40 })
       .setOrigin(0.5);
     this.add
       .text(CX, 148, t(this.locale, 'app.title'), {
@@ -67,21 +76,32 @@ export class MainMenu extends Scene {
     this.scene.start('Game');
   }
 
-  private showHowto() {
-    const overlay = this.add
-      .rectangle(CX, 360, 400, 720, 0x241a12, 0.82)
-      .setInteractive()
-      .setDepth(50);
-    const text = this.add
-      .text(CX, 360, t(this.locale, 'howto.body'), {
-        fontFamily: FONT, fontSize: 18, color: '#ffffff', align: 'center',
-        wordWrap: { width: 340 }, lineSpacing: 6,
+  /** Ссылка «‹ К играм» слева вверху — выход в каталог игр WinGo. */
+  private buildCatalogLink() {
+    const link = this.add
+      .text(16, 30, `‹ ${t(this.locale, 'menu.catalog')}`, {
+        fontFamily: FONT, fontSize: 15, color: COLORS.headText, fontStyle: 'bold',
       })
-      .setOrigin(0.5)
-      .setDepth(51);
-    overlay.on('pointerup', () => {
-      overlay.destroy();
-      text.destroy();
-    });
+      .setOrigin(0, 0.5)
+      .setInteractive({ useHandCursor: true });
+    link.on('pointerup', () => this.exitToCatalog());
+  }
+
+  /** Выход в каталог: событие мосту (реальный WebView вернётся к списку), а в вебе — переход на хаб. */
+  private exitToCatalog() {
+    const session = this.registry.get('session') as Session | undefined;
+    session?.exit();
+    if (this.registry.get('demo')) {
+      const hub = (this.registry.get('catalogUrl') as string) || HUB_URL;
+      window.location.href = hub;
+    }
+  }
+
+  /** «Как играть» — интерактивное обучение поверх настоящего поля; по концу → в меню. */
+  private showHowto() {
+    this.registry.set('howto', true);
+    this.registry.set('locale', this.locale);
+    this.registry.set('level', 'easy');
+    this.scene.start('Game');
   }
 }

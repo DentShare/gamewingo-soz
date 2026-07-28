@@ -26,3 +26,22 @@ export function saveBest(level: LevelId, result: BestResult): boolean {
   }
   return true;
 }
+
+const ONBOARDED_KEY = 'pairs:onboarded';
+
+/** Прошёл ли игрок обучение (показываем один раз — при первой партии). */
+export function hasOnboarded(): boolean {
+  try {
+    return localStorage.getItem(ONBOARDED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function setOnboarded(): void {
+  try {
+    localStorage.setItem(ONBOARDED_KEY, '1');
+  } catch {
+    /* quota / приватный режим */
+  }
+}
