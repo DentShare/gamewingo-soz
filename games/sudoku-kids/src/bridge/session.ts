@@ -13,6 +13,8 @@ export interface Session {
   start(): void;
   /** Конец партии: GAME_OVER хосту + отправка результата на сервер (начисление — там). */
   finish(input: FinishInput): Promise<{ accepted: boolean; pointsAwarded?: number } | null>;
+  /** Выйти из игры в каталог игр (приложение вернёт WebView к списку). */
+  exit(): void;
   leaderboard(limit?: number): Promise<LeaderboardEntry[]>;
   /** Проброс PAUSE/RESUME наверх — для игрового таймера. Возвращает отписку. */
   onApp(cb: (e: AppToGameEvent) => void): () => void;
@@ -54,6 +56,7 @@ export function createSession(
         return null;
       }
     },
+    exit() { bridge.exit(sessionId); },
     async leaderboard(limit = 10) {
       if (!api) return [];
       try {

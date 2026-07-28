@@ -5,8 +5,11 @@ import { makeButton, applyTheme } from '../ui';
 import { COLORS, FONT } from '../palette';
 import type { LevelId } from '../../core/sudoku';
 import { loadBest } from '../../core/persistence';
+import type { Session } from '../../bridge/session';
 
 const CX = 200;
+/** Каталог лежит на `/`, игра — на `/<slug>/`, поэтому путь относительный. */
+const HUB_URL = '../';
 
 export class MainMenu extends Scene {
   private locale: Locale = 'ru';
@@ -20,8 +23,10 @@ export class MainMenu extends Scene {
     applyTheme(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
+    this.buildCatalogLink();
+
     this.add
-      .text(CX, 90, '🧩', { fontFamily: FONT, fontSize: 40 })
+      .text(CX, 96, '🧩', { fontFamily: FONT, fontSize: 40 })
       .setOrigin(0.5);
     this.add
       .text(CX, 148, t(this.locale, 'app.title'), {
@@ -52,6 +57,26 @@ export class MainMenu extends Scene {
     makeButton(this, CX, y + 8, t(this.locale, 'menu.howto'), () => this.showHowto());
   }
 
+  /** Ссылка «‹ К играм» в левом верхнем углу — выход в каталог WinGo. */
+  private buildCatalogLink() {
+    const link = this.add
+      .text(16, 30, `‹ ${t(this.locale, 'menu.catalog')}`, {
+        fontFamily: FONT, fontSize: 15, color: COLORS.headText, fontStyle: 'bold',
+      })
+      .setOrigin(0, 0.5)
+      .setInteractive({ useHandCursor: true });
+    link.on('pointerup', () => this.exitToCatalog());
+  }
+
+  /** Выход в каталог: событие мосту (реальный WebView вернётся к списку), а в вебе — переход на хаб. */
+  private exitToCatalog() {
+    const session = this.registry.get('session') as Session | undefined;
+    session?.exit();
+    if (this.registry.get('demo')) {
+      window.location.href = (this.registry.get('catalogUrl') as string) || HUB_URL;
+    }
+  }
+
   /** Пилюля выбора языка. Выбранная подсвечена; по тапу переключает и перерисовывает меню. */
   private langPill(x: number, y: number, loc: Locale, label: string) {
     return makeButton(this, x, y, label, () => {
@@ -67,21 +92,11 @@ export class MainMenu extends Scene {
     this.scene.start('Game');
   }
 
+  /** «Как играть» — интерактивное обучение на настоящей сетке 4×4; по концу → обратно в меню. */
   private showHowto() {
-    const overlay = this.add
-      .rectangle(CX, 360, 400, 720, 0x241a12, 0.82)
-      .setInteractive()
-      .setDepth(50);
-    const text = this.add
-      .text(CX, 360, t(this.locale, 'howto.body'), {
-        fontFamily: FONT, fontSize: 18, color: '#ffffff', align: 'center',
-        wordWrap: { width: 340 }, lineSpacing: 6,
-      })
-      .setOrigin(0.5)
-      .setDepth(51);
-    overlay.on('pointerup', () => {
-      overlay.destroy();
-      text.destroy();
-    });
+    this.registry.set('howto', true);
+    this.registry.set('locale', this.locale);
+    this.registry.set('level', 'easy4'); // на 4×4 правила нагляднее
+    this.scene.start('Game');
   }
 }

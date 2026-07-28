@@ -5,7 +5,10 @@ import { t } from './index';
 
 const REQUIRED = [
   'app.title', 'menu.easy4', 'menu.easy6', 'menu.hard6', 'menu.howto', 'menu.back',
-  'menu.best', 'game.hints', 'howto.body', 'result.title', 'result.score', 'result.time',
+  'menu.catalog', 'menu.best', 'game.hints',
+  'onboarding.grid', 'onboarding.row', 'onboarding.block', 'onboarding.input', 'onboarding.hint',
+  'onboarding.next', 'onboarding.done', 'onboarding.skip',
+  'result.title', 'result.score', 'result.time',
   'result.newBest', 'result.playAgain', 'result.menu', 'result.leaderboard', 'error.network',
 ];
 
