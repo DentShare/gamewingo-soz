@@ -195,6 +195,54 @@
       "streak": false,
       "status": "mvp",
       "buildSizeMb": 1.5
+    },
+    {
+      "gameId": "sorting",
+      "title": {
+        "ru": "Сортировка",
+        "uz": "Saralash"
+      },
+      "genre": "kids",
+      "mechanic": "sorting",
+      "locales": [
+        "ru",
+        "uz"
+      ],
+      "orientation": "portrait",
+      "url": "https://gamewingo-soz.vercel.app/sorting/",
+      "modes": [
+        "practice"
+      ],
+      "leaderboard": true,
+      "streak": false,
+      "status": "mvp",
+      "buildSizeMb": 1.5,
+      "ageHint": "3-6",
+      "noFailState": true
+    },
+    {
+      "gameId": "counting",
+      "title": {
+        "ru": "Счёт",
+        "uz": "Sanoq"
+      },
+      "genre": "kids",
+      "mechanic": "counting",
+      "locales": [
+        "ru",
+        "uz"
+      ],
+      "orientation": "portrait",
+      "url": "https://gamewingo-soz.vercel.app/counting/",
+      "modes": [
+        "practice"
+      ],
+      "leaderboard": true,
+      "streak": false,
+      "status": "mvp",
+      "buildSizeMb": 1.5,
+      "ageHint": "4-7",
+      "noFailState": true
     }
   ]
 }

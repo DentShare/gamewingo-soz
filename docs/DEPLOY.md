@@ -11,6 +11,8 @@ https://gamewingo-soz.vercel.app/manifest.json
   /soz/  /pairs/  /fifteen/  /2048/  /sudoku-kids/
 аркады:
   /stack/  /flyer/  /targets/  /snake/
+малышам:
+  /sorting/  /counting/
 ```
 
 ## Как это устроено

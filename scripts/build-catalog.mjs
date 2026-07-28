@@ -20,6 +20,8 @@ const GAMES = [
   'soz', 'pairs', 'fifteen', '2048', 'sudoku-kids',
   // аркадные
   'stack', 'flyer', 'targets', 'snake',
+  // для малышей
+  'sorting', 'counting',
 ];
 
 rmSync(out, { recursive: true, force: true });
