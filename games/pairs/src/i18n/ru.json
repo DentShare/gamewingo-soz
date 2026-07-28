@@ -1,0 +1,19 @@
+{
+  "app.title": "Найди пару",
+  "menu.easy": "Лёгкий · 6 пар",
+  "menu.medium": "Средний · 10 пар",
+  "menu.hard": "Сложный · 15 пар",
+  "menu.howto": "Как играть",
+  "menu.back": "Назад",
+  "menu.best": "Рекорд: {score}",
+  "howto.body": "Открывайте карточки по две.\nНашли одинаковые — пара остаётся открытой.\nНайдите все пары за меньшее число ходов!",
+  "game.moves": "Ходы: {n}",
+  "result.title": "Все пары найдены!",
+  "result.score": "Очки: {score}",
+  "result.moves": "Ходов: {moves} · Время: {time}",
+  "result.newBest": "Новый рекорд!",
+  "result.playAgain": "Ещё раз",
+  "result.menu": "В меню",
+  "result.leaderboard": "Таблица лидеров",
+  "error.network": "Нет соединения"
+}

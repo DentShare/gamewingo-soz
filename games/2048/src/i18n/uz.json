@@ -1,0 +1,19 @@
+{
+  "app.title": "2048",
+  "menu.play": "Oʻynash",
+  "menu.howto": "Qanday oʻynash",
+  "menu.back": "Orqaga",
+  "menu.best": "Rekord: {n}",
+  "game.score": "Hisob: {n}",
+  "game.best": "Rekord: {n}",
+  "game.won": "2048! Davom eting!",
+  "howto.body": "Plitkalarni siljitish uchun suring.\nBir xillari bittaga qoʻshiladi.\n2048 plitkasini yigʻing!",
+  "result.title": "Yurishlar tugadi",
+  "result.titleWon": "Gʻalaba!",
+  "result.score": "Ochko: {n}",
+  "result.newBest": "Yangi rekord!",
+  "result.playAgain": "Yana",
+  "result.menu": "Menyuga",
+  "result.leaderboard": "Reyting",
+  "error.network": "Aloqa yoʻq"
+}
