@@ -14,6 +14,58 @@
       "streak": true,
       "status": "mvp",
       "buildSizeMb": 1.4
+    },
+    {
+      "gameId": "pairs",
+      "title": { "ru": "Найди пару", "uz": "Juftini top" },
+      "mechanic": "memory",
+      "locales": ["ru", "uz"],
+      "orientation": "portrait",
+      "url": "https://gamewingo-pairs.vercel.app",
+      "modes": ["practice"],
+      "leaderboard": true,
+      "streak": false,
+      "status": "mvp",
+      "buildSizeMb": 1.4
+    },
+    {
+      "gameId": "fifteen",
+      "title": { "ru": "Пятнашки", "uz": "Boshqotirma 15" },
+      "mechanic": "sliding-puzzle",
+      "locales": ["ru", "uz"],
+      "orientation": "portrait",
+      "url": "https://gamewingo-fifteen.vercel.app",
+      "modes": ["practice"],
+      "leaderboard": true,
+      "streak": false,
+      "status": "mvp",
+      "buildSizeMb": 1.4
+    },
+    {
+      "gameId": "2048",
+      "title": { "ru": "2048", "uz": "2048" },
+      "mechanic": "merge",
+      "locales": ["ru", "uz"],
+      "orientation": "portrait",
+      "url": "https://gamewingo-2048.vercel.app",
+      "modes": ["practice"],
+      "leaderboard": true,
+      "streak": false,
+      "status": "mvp",
+      "buildSizeMb": 1.4
+    },
+    {
+      "gameId": "sudoku-kids",
+      "title": { "ru": "Мини-судоку", "uz": "Mini sudoku" },
+      "mechanic": "sudoku",
+      "locales": ["ru", "uz"],
+      "orientation": "portrait",
+      "url": "https://gamewingo-sudoku-kids.vercel.app",
+      "modes": ["practice"],
+      "leaderboard": true,
+      "streak": false,
+      "status": "mvp",
+      "buildSizeMb": 1.4
     }
   ]
 }
