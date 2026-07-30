@@ -31,5 +31,20 @@
   "onboarding.win": "Все зелёные — слово отгадано!",
   "onboarding.next": "Далее",
   "onboarding.done": "Понятно",
-  "onboarding.skip": "Пропустить"
+  "onboarding.skip": "Пропустить",
+  "menu.ladder": "Уровень {n} из {total}",
+  "menu.play": "Тренировка · уровень {n}",
+  "game.level": "Уровень {n}",
+  "game.strictPosition": "{n}-я буква — {unit}",
+  "game.strictMissing": "Используйте букву {unit}",
+  "game.fail.time": "Время вышло",
+  "result.level": "Уровень {n} из {total}",
+  "result.nextLevel": "Уровень {n}",
+  "result.unlocked": "Открыт уровень {n}!",
+  "result.tryAgain": "Попробуйте ещё раз",
+  "menu.strict": "Строгий режим",
+  "menu.noHints": "Без подсветки",
+  "menu.guessesOne": "{n} попытка",
+  "menu.guessesFew": "{n} попытки",
+  "menu.guessesMany": "{n} попыток"
 }

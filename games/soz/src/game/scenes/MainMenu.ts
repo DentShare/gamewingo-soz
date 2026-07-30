@@ -1,13 +1,19 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, makeTopBar, applyTheme, setupCamera, type Button, makeGameIcon } from '../ui';
+import {
+  makeButton, makeTopBar, applyTheme, setupCamera, type Button, makeLevelGrid, makeLadderSummary,
+  type LevelTileState,
+} from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { loadDaily, setHighContrast } from '../../core/persistence';
+import { LADDER, LADDER_SIZE } from '../../core/levels';
+import { isUnlocked, loadProgress, nextLevel, totalStars } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 
 const CX = 200;
+const SLUG = 'soz';
 /**
  * Каталог игр WinGo (для автономного/веб-режима). В приложении выход обрабатывает мост.
  * Путь относительный: игра лежит на /<slug>/, хаб — на корне того же домена,
@@ -28,43 +34,84 @@ export class MainMenu extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
-    this.buildHeader();
+    makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
 
-    // Выбор языка — две пилюли.
-    this.langPill(CX - 92, 208, 'ru', 'Русский');
-    this.langPill(CX + 92, 208, 'uz', 'Oʻzbekcha');
-
-    // Разгадано ли сегодняшнее слово дня.
+    // Слово дня — отдельный режим со своей наградой, он не входит в лестницу.
     const dayId = (this.registry.get('dayId') as number) ?? 0;
     const savedDaily = loadDaily(this.locale, dayId);
     const dailyDone = !!savedDaily && savedDaily.status !== 'in_progress';
-
-    // Слово дня. Если уже разгадано — помечаем галочкой, а «Тренировка» становится главной CTA.
     const dailyLabel = dailyDone
       ? `${t(this.locale, 'menu.daily')}  ✓`
       : t(this.locale, 'menu.daily');
-    makeButton(this, CX, 318, dailyLabel, () => this.startMode('daily'), { primary: !dailyDone });
-    makeButton(this, CX, 384, t(this.locale, 'menu.practice'), () => this.startMode('practice'), { primary: dailyDone });
-    makeButton(this, CX, 450, t(this.locale, 'menu.howto'), () => this.showHowto());
+    makeButton(this, CX, 92, dailyLabel, () => this.startDaily(), { primary: !dailyDone });
 
-    if (dailyDone) {
-      this.add
-        .text(CX, 492, t(this.locale, 'menu.dailyDone'), {
-          fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
-        })
-        .setOrigin(0.5)
-        .setResolution(DPR);
-    }
+    const progress = loadProgress(SLUG);
+    const next = nextLevel(progress, LADDER_SIZE);
+
+    makeLadderSummary(
+      this,
+      CX,
+      146,
+      t(this.locale, 'menu.ladder', { n: next, total: LADDER_SIZE }),
+      totalStars(progress),
+      LADDER_SIZE * 3,
+    );
+
+    // Лестница тренировки: пройденные со звёздами, следующий выделен, дальше — замки.
+    const tiles: LevelTileState[] = LADDER.map((lv) => ({
+      n: lv.n,
+      unlocked: isUnlocked(progress, lv.n),
+      stars: progress.stars[lv.n - 1] ?? 0,
+      current: lv.n === next,
+    }));
+    const grid = makeLevelGrid(this, CX, 190, tiles, (n) => this.startLevel(n));
+
+    // Подпись к следующему уровню: чем именно он отличается.
+    this.add
+      .text(CX, 190 + grid.height + 14, this.levelRules(next), {
+        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
+      })
+      .setOrigin(0.5)
+      .setResolution(DPR);
+
+    const belowGrid = 190 + grid.height + 44;
+    makeButton(this, CX, belowGrid, t(this.locale, 'menu.play', { n: next }), () => this.startLevel(next), {
+      primary: dailyDone,
+    });
+    makeButton(this, CX, belowGrid + 52, t(this.locale, 'menu.howto'), () => this.showHowto());
 
     const label = () =>
       `${t(this.locale, 'a11y.highContrast')}: ${this.registry.get('highContrast') ? '✓' : '×'}`;
     let btn: Button;
-    btn = makeButton(this, CX, 574, label(), () => {
-      const next = !this.registry.get('highContrast');
-      this.registry.set('highContrast', next);
-      setHighContrast(next);
+    btn = makeButton(this, CX, belowGrid + 104, label(), () => {
+      const on = !this.registry.get('highContrast');
+      this.registry.set('highContrast', on);
+      setHighContrast(on);
       btn.setLabel(label());
     });
+
+    // Выбор языка — две пилюли.
+    this.langPill(CX - 92, belowGrid + 156, 'ru', 'Русский');
+    this.langPill(CX + 92, belowGrid + 156, 'uz', 'Oʻzbekcha');
+  }
+
+  /** Строка «6 попыток · строгий режим · без подсветки» — что именно ждёт на уровне. */
+  private levelRules(n: number): string {
+    const p = LADDER[n - 1].params;
+    const parts = [this.guessesLabel(p.guesses)];
+    if (p.strict) parts.push(t(this.locale, 'menu.strict'));
+    if (!p.keyboardHints) parts.push(t(this.locale, 'menu.noHints'));
+    return parts.join(' · ');
+  }
+
+  /** «4 попытки» / «5 попыток» — русский требует согласования числительного. */
+  private guessesLabel(n: number): string {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    let key = 'menu.guessesMany';
+    if (mod10 === 1 && mod100 !== 11) key = 'menu.guessesOne';
+    else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) key = 'menu.guessesFew';
+    return t(this.locale, key, { n });
   }
 
   /** Пилюля выбора языка. Выбранная подсвечена; по тапу переключает и перерисовывает меню. */
@@ -77,24 +124,17 @@ export class MainMenu extends Scene {
     }, { width: 176, height: 40, primary: selected });
   }
 
-  private startMode(mode: 'daily' | 'practice') {
-    this.registry.set('mode', mode);
+  private startDaily() {
+    this.registry.set('mode', 'daily');
     this.registry.set('locale', this.locale);
     this.scene.start('Game');
   }
 
-  /** Шапка каталога, иконка игры и короткая подпись. */
-  private buildHeader() {
-    makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
-
-    // Заголовок уже в шапке — здесь иконка каталога и подпись под ней.
-    makeGameIcon(this, CX, 110, 92);
-    this.add
-      .text(CX, 172, t(this.locale, 'app.subtitle'), {
-        fontFamily: FONT, fontSize: 14, color: COLORS.headMuted,
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
+  private startLevel(n: number) {
+    this.registry.set('mode', 'practice');
+    this.registry.set('level', n);
+    this.registry.set('locale', this.locale);
+    this.scene.start('Game');
   }
 
   /** Выход в каталог: событие мосту (реальный WebView вернётся к списку), а в вебе — переход на хаб. */
@@ -111,6 +151,7 @@ export class MainMenu extends Scene {
   private showHowto() {
     this.registry.set('howto', true);
     this.registry.set('mode', 'practice');
+    this.registry.set('level', 1);
     this.registry.set('locale', this.locale);
     this.scene.start('Game');
   }

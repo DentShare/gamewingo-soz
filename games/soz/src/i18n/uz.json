@@ -31,5 +31,20 @@
   "onboarding.win": "Hammasi yashil — soʻz topildi!",
   "onboarding.next": "Keyingi",
   "onboarding.done": "Tushunarli",
-  "onboarding.skip": "Oʻtkazib yuborish"
+  "onboarding.skip": "Oʻtkazib yuborish",
+  "menu.ladder": "{total} dan {n}-daraja",
+  "menu.play": "Mashq · {n}-daraja",
+  "game.level": "{n}-daraja",
+  "game.strictPosition": "{n}-harf — {unit}",
+  "game.strictMissing": "{unit} harfidan foydalaning",
+  "game.fail.time": "Vaqt tugadi",
+  "result.level": "{total} dan {n}-daraja",
+  "result.nextLevel": "{n}-daraja",
+  "result.unlocked": "{n}-daraja ochildi!",
+  "result.tryAgain": "Yana urinib koʻring",
+  "menu.strict": "Qatʼiy rejim",
+  "menu.noHints": "Yoritishsiz",
+  "menu.guessesOne": "{n} urinish",
+  "menu.guessesFew": "{n} urinish",
+  "menu.guessesMany": "{n} urinish"
 }

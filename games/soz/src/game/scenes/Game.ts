@@ -1,6 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
-import { WORD_LENGTH, MAX_GUESSES } from '../../core/locale';
+import { WORD_LENGTH } from '../../core/locale';
+import { levelAt, DAILY_PARAMS, type SozParams } from '../../core/levels';
 import { tokenizeWord } from '../../core/tokenizer';
 import { loadDictionary, type Dictionary } from '../../core/dictionary';
 import { createGame, type Game as CoreGame } from '../../core/gameState';
@@ -39,6 +40,8 @@ export class Game extends Scene {
   private locale: Locale = 'ru';
   private mode: 'daily' | 'practice' = 'daily';
   private dayId = 0;
+  private level = 1;
+  private params: SozParams = DAILY_PARAMS;
   private session!: Session;
   private dict!: Dictionary;
   private coreGame!: CoreGame;
@@ -77,6 +80,9 @@ export class Game extends Scene {
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.mode = (this.registry.get('mode') as 'daily' | 'practice') ?? 'daily';
+    this.level = (this.registry.get('level') as number) ?? 1;
+    // Слово дня играется по классическим правилам, тренировка — по правилам уровня.
+    this.params = this.mode === 'daily' ? DAILY_PARAMS : levelAt(this.level).params;
     this.dayId = (this.registry.get('dayId') as number) ?? 0;
     this.session = this.registry.get('session') as Session;
     this.palette = paletteFor(!!this.registry.get('highContrast'));
@@ -92,7 +98,10 @@ export class Game extends Scene {
 
     this.answerWord =
       this.mode === 'daily' ? pickDailyWord(this.dict.answers, this.dayId) : this.randomPracticeWord();
-    this.coreGame = createGame(tokenizeWord(this.answerWord, this.locale));
+    this.coreGame = createGame(tokenizeWord(this.answerWord, this.locale), {
+      maxGuesses: this.params.guesses,
+      strict: this.params.strict,
+    });
 
     // Анти-реплей + восстановление для daily.
     if (this.mode === 'daily') {
@@ -188,9 +197,9 @@ export class Game extends Scene {
   private rowCenterY(row: number) { return BOARD_Y + TILE / 2 + row * (TILE + GAP); }
 
   private buildBoard() {
-    const boardH = MAX_GUESSES * (TILE + GAP) - GAP;
+    const boardH = this.params.guesses * (TILE + GAP) - GAP;
     this.boardBounds = { x: BOARD_X, y: BOARD_Y, w: BOARD_W, h: boardH };
-    for (let r = 0; r < MAX_GUESSES; r++) {
+    for (let r = 0; r < this.params.guesses; r++) {
       const container = this.add.container(0, 0);
       const rowTiles: Tile[] = [];
       for (let c = 0; c < WORD_LENGTH; c++) {
@@ -212,7 +221,7 @@ export class Game extends Scene {
 
   private buildKeyboard() {
     const rows = keyboardFor(this.locale);
-    const kbTop = BOARD_Y + MAX_GUESSES * (TILE + GAP) + 24;
+    const kbTop = BOARD_Y + this.params.guesses * (TILE + GAP) + 24;
     let y = kbTop;
     const kh = 46;
     // Русский ряд из 12 клавиш не влезал в 400 логических пикселей — крайние «й» и «ъ»
@@ -297,6 +306,15 @@ export class Game extends Scene {
   /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню. */
   private buildBackButton() {
     makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+    // Справа — что именно сейчас играется: слово дня или уровень тренировки.
+    this.add
+      .text(386, 34, this.mode === 'daily'
+        ? t(this.locale, 'menu.daily')
+        : t(this.locale, 'game.level', { n: this.level }), {
+        fontFamily: FONT, fontSize: 14, color: COLORS.headMuted,
+      })
+      .setOrigin(1, 0.5)
+      .setResolution(DPR);
   }
 
   /** Выход в главное меню. Незавершённую партию слова дня сохраняем, чтобы прогресс не потерялся. */
@@ -359,6 +377,15 @@ export class Game extends Scene {
     if (!this.dict.has(word)) {
       this.shake(row);
       toast(this, 200, 640, t(this.locale, 'game.notInList'));
+      return;
+    }
+    const violation = this.coreGame.checkStrict(this.current);
+    if (violation) {
+      this.shake(row);
+      const message = violation.kind === 'position'
+        ? t(this.locale, 'game.strictPosition', { unit: violation.unit.toUpperCase(), n: violation.index + 1 })
+        : t(this.locale, 'game.strictMissing', { unit: violation.unit.toUpperCase() });
+      toast(this, 200, 640, message);
       return;
     }
     this.coreGame.submit(this.current);
@@ -456,6 +483,8 @@ export class Game extends Scene {
   }
 
   private refreshKeyColors() {
+    // На поздних уровнях подсветку отбирают: статусы букв приходится держать в голове.
+    if (!this.params.keyboardHints) return;
     for (const [key, obj] of this.keyObjects) {
       const st = this.coreGame.letterStatus(key);
       if (st) {
@@ -496,7 +525,7 @@ export class Game extends Scene {
 
   private goToResult(solved: boolean, guessesUsed: number, rows: CoreGame['rows'], rewardClaimed: boolean) {
     this.registry.set('lastGame', {
-      mode: this.mode, locale: this.locale, dayId: this.dayId,
+      mode: this.mode, level: this.level, locale: this.locale, dayId: this.dayId,
       solved, guessesUsed, answer: this.answerWord, rows, rewardClaimed,
     });
     this.cameras.main.fadeOut(220, ...COLORS.fade);
