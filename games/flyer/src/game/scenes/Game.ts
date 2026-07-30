@@ -2,8 +2,8 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import { COLORS, FONT } from '../palette';
-import { darken, setupCamera, shakeCamera } from '../ui';
-import { DPR } from '../dpr';
+import { setupCamera, shakeCamera, makeBackButton } from '../ui';
+import { DPR, VIEW_TOP, VIEW_BOTTOM } from '../dpr';
 import { mulberry32 } from '../../core/rng';
 import {
   createFlight, FIELD_H, FIELD_W, FLOOR_Y, GAP_H, HERO_X, WALL_W, type Flight,
@@ -209,10 +209,11 @@ export class Game extends Scene {
   // ── Отрисовка мира ───────────────────────────────────────────────────────────
 
   private buildSky() {
-    // С запасом за края экрана — тряска при смерти не должна оголять фон камеры.
+    // До кромок экрана и с запасом на тряску: небо не должно оголять фон камеры
+    // ни на вытянутом телефоне, ни при встряске камеры на проигрыше.
     const g = this.add.graphics().setDepth(-10);
     g.fillGradientStyle(COLORS.skyTop, COLORS.skyTop, COLORS.skyBottom, COLORS.skyBottom, 1);
-    g.fillRect(-40, -40, W + 80, H + 80);
+    g.fillRect(-40, VIEW_TOP - 40, W + 80, VIEW_BOTTOM - VIEW_TOP + 80);
 
     const spec: Array<[number, number, number]> = [
       [70, 120, 1], [280, 210, 0.75], [150, 330, 0.9], [350, 430, 0.62],
@@ -335,32 +336,7 @@ export class Game extends Scene {
 
   /** Маленькая кнопка выхода — только до старта партии, чтобы не ловить её вместо взмаха. */
   private buildBackButton(): Phaser.GameObjects.Container {
-    const w = 92, h = 40, lip = 4, r = 12;
-    const container = this.add.container(14 + w / 2, 34).setDepth(30);
-    const base = this.add.graphics();
-    base.fillStyle(darken(COLORS.panel, 0.14), 1).fillRoundedRect(-w / 2, -h / 2, w, h, r);
-    const faceC = this.add.container(0, -lip);
-    const face = this.add.graphics();
-    face.fillStyle(COLORS.panel, 1).fillRoundedRect(-w / 2, -h / 2, w, h, r);
-    face.lineStyle(1.5, COLORS.panelBorder, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, r);
-    const ax = -w / 2 + 18;
-    face.lineStyle(2.5, COLORS.iconDark, 1);
-    face.beginPath();
-    face.moveTo(ax + 5, -6); face.lineTo(ax - 4, 0); face.lineTo(ax + 5, 6);
-    face.strokePath();
-    const label = this.add
-      .text(ax + 12, 0, t(this.locale, 'menu.back'), { fontFamily: FONT, fontSize: 16, color: COLORS.headText })
-      .setOrigin(0, 0.5)
-      .setResolution(DPR);
-    faceC.add([face, label]);
-    const hit = this.add.rectangle(0, -lip / 2, w, h + lip, 0x000000, 0).setInteractive({ useHandCursor: true });
-    container.add([base, faceC, hit]);
-    let pressed = false;
-    const press = (down: boolean) => { faceC.y = down ? -1 : -lip; };
-    hit.on('pointerdown', () => { pressed = true; press(true); });
-    hit.on('pointerup', () => { if (pressed) { pressed = false; press(false); this.goBack(); } });
-    hit.on('pointerout', () => { if (pressed) { pressed = false; press(false); } });
-    return container;
+    return makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
   }
 
   private goBack() {

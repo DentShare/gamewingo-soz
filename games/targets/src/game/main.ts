@@ -3,18 +3,19 @@ import { Boot } from './scenes/Boot';
 import { MainMenu } from './scenes/MainMenu';
 import { Game } from './scenes/Game';
 import { GameOver } from './scenes/GameOver';
-import { DPR, LOGICAL_W, LOGICAL_H } from './dpr';
+import { DPR, LOGICAL_W, VIEW_H } from './dpr';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: AUTO,
   parent: 'game-container',
   backgroundColor: '#f9f9f9',
-  // Холст в DPR раз плотнее логических 400×720 → чёткий рендер на retina.
+  // Холст в DPR раз плотнее логических 400×720 и вытянут по высоте экрана,
+  // чтобы Scale.FIT не оставлял полос сверху и снизу.
   scale: {
     mode: Scale.FIT,
     autoCenter: Scale.CENTER_BOTH,
     width: LOGICAL_W * DPR,
-    height: LOGICAL_H * DPR,
+    height: VIEW_H * DPR,
     autoRound: true,
   },
   render: { antialias: true, roundPixels: true },

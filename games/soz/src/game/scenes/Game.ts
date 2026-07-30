@@ -8,7 +8,7 @@ import { pickDailyWord, dailyIndex } from '../../core/dailyWord';
 import { saveDaily, loadDaily, hasOnboarded, setOnboarded } from '../../core/persistence';
 import { keyboardFor, ENTER, BACKSPACE, UZ_DIGRAPH_KEYS, type Key } from '../keyboards';
 import { paletteFor, statusColor, COLORS, FONT, type Palette } from '../palette';
-import { toast, applyTheme, darken, setupCamera } from '../ui';
+import { toast, applyTheme, setupCamera, makeBackButton } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -215,12 +215,20 @@ export class Game extends Scene {
     const kbTop = BOARD_Y + MAX_GUESSES * (TILE + GAP) + 24;
     let y = kbTop;
     const kh = 46;
-    const kgap = 5;
+    // Русский ряд из 12 клавиш не влезал в 400 логических пикселей — крайние «й» и «ъ»
+    // срезались краем экрана. Считаем общий коэффициент по самому широкому ряду.
+    const BASE_W = 30, SPEC_W = 52, BASE_GAP = 5, AVAIL = 388;
+    const fit = rows.reduce((k, row) => {
+      const total = row.reduce((a, key) => a + (key === ENTER || key === BACKSPACE ? SPEC_W : BASE_W), 0)
+        + BASE_GAP * (row.length - 1);
+      return Math.min(k, AVAIL / total);
+    }, 1);
+    const kgap = BASE_GAP * fit;
     let kbMinX = Infinity;
     let kbMaxX = -Infinity;
     let kbBottom = kbTop;
     for (const row of rows) {
-      const widths = row.map((k) => (k === ENTER || k === BACKSPACE ? 52 : 30));
+      const widths = row.map((k) => (k === ENTER || k === BACKSPACE ? SPEC_W : BASE_W) * fit);
       const totalW = widths.reduce((a, b) => a + b, 0) + kgap * (row.length - 1);
       let x = (400 - totalW) / 2;
       row.forEach((key, i) => {
@@ -243,7 +251,7 @@ export class Game extends Scene {
         } else {
           const text = this.add
             .text(cx, y + kh / 2, key, {
-              fontFamily: FONT, fontSize: key.length > 1 ? 15 : 16,
+              fontFamily: FONT, fontSize: Math.round((key.length > 1 ? 15 : 16) * Math.min(1, fit + 0.05)),
               color: COLORS.keyText,
             })
             .setOrigin(0.5)
@@ -296,50 +304,7 @@ export class Game extends Scene {
 
   /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню. */
   private buildBackButton() {
-    const w = 92;
-    const h = 40;
-    const cx = 14 + w / 2; // отступ 14px от левого края
-    const cy = 34;
-    const lip = 4;
-    const r = 12;
-    const container = this.add.container(cx, cy).setDepth(30);
-
-    // Нижний бортик (тёмная база).
-    const base = this.add.graphics();
-    base.fillStyle(darken(COLORS.panel, 0.14), 1).fillRoundedRect(-w / 2, -h / 2, w, h, r);
-
-    // Лицевая часть (приподнята на `lip`).
-    const faceC = this.add.container(0, -lip);
-    const face = this.add.graphics();
-    face.fillStyle(COLORS.panel, 1).fillRoundedRect(-w / 2, -h / 2, w, h, r);
-    face.lineStyle(1.5, COLORS.panelBorder, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, r);
-
-    // Иконка «стрелка влево» (шеврон) — символ не входит в сабсет шрифта, рисуем вектором.
-    const ax = -w / 2 + 18;
-    face.lineStyle(2.5, COLORS.iconDark, 1);
-    face.beginPath();
-    face.moveTo(ax + 5, -6);
-    face.lineTo(ax - 4, 0);
-    face.lineTo(ax + 5, 6);
-    face.strokePath();
-
-    const label = this.add
-      .text(ax + 12, 0, t(this.locale, 'menu.back'), {
-        fontFamily: FONT, fontSize: 16, color: COLORS.headText,
-      })
-      .setOrigin(0, 0.5);
-    faceC.add([face, label]);
-
-    const hit = this.add
-      .rectangle(0, -lip / 2, w, h + lip, 0x000000, 0)
-      .setInteractive({ useHandCursor: true });
-    container.add([base, faceC, hit]);
-
-    let pressed = false;
-    const press = (down: boolean) => { faceC.y = down ? -1 : -lip; };
-    hit.on('pointerdown', () => { pressed = true; press(true); });
-    hit.on('pointerup', () => { if (pressed) { pressed = false; press(false); this.goBack(); } });
-    hit.on('pointerout', () => { if (pressed) { pressed = false; press(false); } });
+    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
   }
 
   /** Выход в главное меню. Незавершённую партию слова дня сохраняем, чтобы прогресс не потерялся. */

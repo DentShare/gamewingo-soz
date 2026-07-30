@@ -12,6 +12,8 @@ export const COLORS = {
   panelBorder: C.divider,
   primary: C.primary,
   iconDark: C.ink,
+  /** Силуэт формы на нейтральной корзине — мягче чёрного. */
+  binGlyph: C.muted,
   toastBg: S.ink,
   toastText: S.white,
   /** Фон камеры для fade (RGB, совпадает с bg). */

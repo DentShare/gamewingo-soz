@@ -31,8 +31,8 @@ export class MainMenu extends Scene {
     this.buildHeader();
 
     // Выбор языка — две пилюли.
-    this.langPill(CX - 78, 344, 'ru', 'Русский');
-    this.langPill(CX + 78, 344, 'uz', 'Oʻzbekcha');
+    this.langPill(CX - 92, 344, 'ru', 'Русский');
+    this.langPill(CX + 92, 344, 'uz', 'Oʻzbekcha');
 
     // Аркада: одна кнопка «Играть», никакого выбора уровней.
     const play = makeButton(this, CX, 446, t(this.locale, 'menu.play'), () => this.startGame(), { primary: true });
@@ -94,7 +94,7 @@ export class MainMenu extends Scene {
       if (this.locale === loc) return;
       this.registry.set('locale', loc);
       this.scene.restart();
-    }, { width: 148, height: 44, primary: this.locale === loc });
+    }, { width: 176, height: 40, primary: this.locale === loc });
   }
 
   private startGame() {

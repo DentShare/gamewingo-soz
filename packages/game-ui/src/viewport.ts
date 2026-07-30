@@ -13,6 +13,22 @@ export const DPR = Math.min(
 export const LOGICAL_W = 400;
 export const LOGICAL_H = 720;
 
+/**
+ * Высота холста под пропорции конкретного экрана. Вёрстка остаётся в 400×720,
+ * но холст вытягивается по высоте телефона — иначе Scale.FIT оставляет полосы
+ * сверху и снизу. Никогда не меньше LOGICAL_H, чтобы вёрстка всегда помещалась.
+ */
+export const VIEW_H = (() => {
+  if (typeof window === 'undefined') return LOGICAL_H;
+  const { innerWidth: w, innerHeight: h } = window;
+  if (!w || !h) return LOGICAL_H;
+  return Math.min(1024, Math.max(LOGICAL_H, Math.round((LOGICAL_W * h) / w)));
+})();
+
+/** Мировые координаты верхней и нижней кромки экрана (вёрстка центрируется по 360). */
+export const VIEW_TOP = LOGICAL_H / 2 - VIEW_H / 2;
+export const VIEW_BOTTOM = LOGICAL_H / 2 + VIEW_H / 2;
+
 /** Настраивает камеру сцены на плотный рендер: zoom = DPR, вёрстка в логических 400×720. */
 export function setupCamera(scene: Scene): void {
   scene.cameras.main.setZoom(DPR);

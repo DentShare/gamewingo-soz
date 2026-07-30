@@ -32,8 +32,8 @@ export class MainMenu extends Scene {
     this.buildLogo(t(this.locale, 'app.title'));
 
     // Выбор языка — две пилюли.
-    this.langPill(CX - 78, 220, 'ru', 'Русский');
-    this.langPill(CX + 78, 220, 'uz', 'Oʻzbekcha');
+    this.langPill(CX - 92, 220, 'ru', 'Русский');
+    this.langPill(CX + 92, 220, 'uz', 'Oʻzbekcha');
 
     // Незаконченная партия → «Продолжить» + «Начать заново», иначе одна «Играть».
     const saved = loadSave();
@@ -42,16 +42,15 @@ export class MainMenu extends Scene {
     if (saved) {
       makeButton(
         this, CX, 304, `${t(this.locale, 'menu.continue')} · ${saved.score}`,
-        () => this.startGame(true), { primary: true, width: 248, height: 56 },
+        () => this.startGame(true), { primary: true },
       );
       makeButton(this, CX, 374, t(this.locale, 'menu.restart'), () => this.startGame(false), {
-        width: 248, height: 52,
       });
       bestY = 416;
       howtoY = 478;
     } else {
       makeButton(this, CX, 328, t(this.locale, 'menu.play'), () => this.startGame(false), {
-        primary: true, width: 248, height: 56,
+        primary: true,
       });
     }
 
@@ -109,7 +108,7 @@ export class MainMenu extends Scene {
       if (this.locale === loc) return;
       this.registry.set('locale', loc);
       this.scene.restart();
-    }, { width: 148, height: 44, primary: this.locale === loc });
+    }, { width: 176, height: 40, primary: this.locale === loc });
   }
 
   /** `resume` — продолжить сохранённую партию; иначе стартует новая (сохранение стирается). */

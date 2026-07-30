@@ -44,11 +44,11 @@ export class MainMenu extends Scene {
       .setResolution(DPR);
 
     // Выбор языка — две пилюли.
-    this.langPill(CX - 78, 296, 'ru', 'Русский');
-    this.langPill(CX + 78, 296, 'uz', 'Oʻzbekcha');
+    this.langPill(CX - 92, 296, 'ru', 'Русский');
+    this.langPill(CX + 92, 296, 'uz', 'Oʻzbekcha');
 
     makeButton(this, CX, 402, t(this.locale, 'menu.play'), () => this.startGame(), {
-      primary: true, width: 260, height: 64,
+      primary: true, height: 48,
     });
 
     const best = loadBest();
@@ -70,7 +70,7 @@ export class MainMenu extends Scene {
       if (this.locale === loc) return;
       this.registry.set('locale', loc);
       this.scene.restart();
-    }, { width: 148, height: 44, primary: this.locale === loc });
+    }, { width: 176, height: 40, primary: this.locale === loc });
   }
 
   private startGame() {

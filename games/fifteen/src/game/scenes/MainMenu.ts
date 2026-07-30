@@ -40,8 +40,8 @@ export class MainMenu extends Scene {
       .setResolution(DPR);
 
     // Выбор языка — две пилюли.
-    this.langPill(CX - 78, 214, 'ru', 'Русский');
-    this.langPill(CX + 78, 214, 'uz', 'Oʻzbekcha');
+    this.langPill(CX - 92, 214, 'ru', 'Русский');
+    this.langPill(CX + 92, 214, 'uz', 'Oʻzbekcha');
 
     // Кнопки режимов + рекорд под каждой.
     const levels: { level: LevelId; key: string }[] = [
@@ -84,7 +84,7 @@ export class MainMenu extends Scene {
       if (this.locale === loc) return;
       this.registry.set('locale', loc);
       this.scene.restart();
-    }, { width: 148, height: 44, primary: this.locale === loc });
+    }, { width: 176, height: 40, primary: this.locale === loc });
   }
 
   private startLevel(level: LevelId) {
