@@ -2,7 +2,7 @@ import { Scene } from 'phaser';
 import type { Locale } from '../core/locale';
 import { COLORS, FONT } from './palette';
 import { t } from '../i18n';
-import { makeButton } from './ui';
+import { makeButton, VIEW_TOP, VIEW_BOTTOM } from './ui';
 import { DPR } from './dpr';
 
 /** Прямоугольник в координатах сцены (400×720). */
@@ -100,7 +100,7 @@ class Onboarding {
     this.layer = layer;
 
     // Полноэкранный перехватчик ввода: пока идёт обучение, тапы не доходят до игры.
-    const blocker = this.scene.add.rectangle(0, 0, W, H, 0, 0).setOrigin(0, 0).setInteractive();
+    const blocker = this.scene.add.rectangle(0, VIEW_TOP, W, VIEW_BOTTOM - VIEW_TOP, 0, 0).setOrigin(0, 0).setInteractive();
     blocker.on('pointerdown', () => { /* поглощаем */ });
     layer.add(blocker);
 
@@ -183,14 +183,14 @@ class Onboarding {
       if (w <= 0 || h <= 0) return;
       layer.add(this.scene.add.rectangle(x, y, w, h, DIM, DIM_ALPHA).setOrigin(0, 0));
     };
-    let cursor = 0;
+    let cursor = VIEW_TOP;
     for (const hole of holes) {
       strip(0, cursor, W, hole.y - cursor); // над дыркой
       strip(0, hole.y, hole.x, hole.h); // слева
       strip(hole.x + hole.w, hole.y, W - (hole.x + hole.w), hole.h); // справа
       cursor = Math.max(cursor, hole.y + hole.h);
     }
-    strip(0, cursor, W, H - cursor); // под последней дыркой
+    strip(0, cursor, W, VIEW_BOTTOM - cursor); // под последней дыркой
   }
 
   /** Яркая рамка вокруг подсвеченной зоны + мягкая пульсация. */

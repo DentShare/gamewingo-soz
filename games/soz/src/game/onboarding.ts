@@ -3,7 +3,7 @@ import type { Locale } from '../core/locale';
 import type { UnitStatus } from '../core/evaluate';
 import { COLORS, FONT, statusColor, type Palette } from './palette';
 import { t } from '../i18n';
-import { makeButton } from './ui';
+import { makeButton, VIEW_TOP, VIEW_BOTTOM } from './ui';
 
 /** Прямоугольник в координатах сцены (400×720). */
 export interface Rect { x: number; y: number; w: number; h: number; }
@@ -68,7 +68,7 @@ class Onboarding {
     this.layer = layer;
 
     // Полноэкранный перехватчик ввода: пока идёт обучение, тапы не доходят до игры.
-    const blocker = this.scene.add.rectangle(0, 0, W, H, 0, 0).setOrigin(0, 0).setInteractive();
+    const blocker = this.scene.add.rectangle(0, VIEW_TOP, W, VIEW_BOTTOM - VIEW_TOP, 0, 0).setOrigin(0, 0).setInteractive();
     blocker.on('pointerdown', () => { /* поглощаем */ });
     layer.add(blocker);
 
@@ -109,8 +109,8 @@ class Onboarding {
       if (w <= 0 || h <= 0) return;
       layer.add(this.scene.add.rectangle(x, y, w, h, DIM, DIM_ALPHA).setOrigin(0, 0));
     };
-    strip(0, 0, W, hole.y); // сверху
-    strip(0, hole.y + hole.h, W, H - (hole.y + hole.h)); // снизу
+    strip(0, VIEW_TOP, W, hole.y - VIEW_TOP); // сверху
+    strip(0, hole.y + hole.h, W, VIEW_BOTTOM - (hole.y + hole.h)); // снизу
     strip(0, hole.y, hole.x, hole.h); // слева
     strip(hole.x + hole.w, hole.y, W - (hole.x + hole.w), hole.h); // справа
   }
@@ -142,7 +142,7 @@ class Onboarding {
   // ── Легенда цветов ──────────────────────────────────────────────────────────
 
   private renderLegend(layer: Phaser.GameObjects.Container, step: number): void {
-    layer.add(this.scene.add.rectangle(0, 0, W, H, DIM, DIM_ALPHA).setOrigin(0, 0));
+    layer.add(this.scene.add.rectangle(0, VIEW_TOP, W, VIEW_BOTTOM - VIEW_TOP, DIM, DIM_ALPHA).setOrigin(0, 0));
 
     const cx = 200;
     const cardCy = 360;
