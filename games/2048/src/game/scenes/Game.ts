@@ -1,5 +1,6 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
+import { levelAt, type Grid2048Params } from '../../core/levels';
 import { createGrid2048, applyMove, SIZE, type Grid2048, type Dir } from '../../core/grid';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT, tileColor, tileTextColor, tileFontSize } from '../palette';
@@ -36,6 +37,8 @@ const TUTORIAL_CELLS: number[][] = [
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
+  private level = 1;
+  private params: Grid2048Params = levelAt(1).params;
   private session!: Session;
   private core!: Grid2048;
   private tileLayer!: Phaser.GameObjects.Container;
@@ -64,6 +67,8 @@ export class Game extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
+    this.level = (this.registry.get('level') as number) ?? 1;
+    this.params = levelAt(this.level).params;
     this.session = this.registry.get('session') as Session;
 
     // «Как играть» из меню: обучение поверх настоящего поля, без сессии и таймера.
@@ -80,7 +85,7 @@ export class Game extends Scene {
       this.core = createGrid2048(this.freshRng(), saved);
     } else {
       clearSave(); // старая партия больше не нужна
-      this.core = createGrid2048(this.freshRng());
+      this.core = createGrid2048(this.freshRng(), undefined, { startClutter: this.params.startClutter });
     }
     this.best = loadBest();
 
@@ -366,9 +371,14 @@ export class Game extends Scene {
     this.redraw({ spawn: this.findSpawn(expected.cells), merged: expected.merges.map((m) => [m.row, m.col]) });
     this.refreshScore();
 
-    if (!this.wonShown && this.core.hasWon()) {
-      this.wonShown = true; // поздравление один раз, игра продолжается
-      toast(this, W / 2, 580, t(this.locale, 'game.won'));
+    // Уровень пройден, как только собрана плитка-цель: партия не тянется без нужды.
+    if (!this.wonShown && this.core.maxTile() >= this.params.targetTile) {
+      this.wonShown = true;
+      toast(this, W / 2, 580, t(this.locale, 'game.reached', { tile: this.params.targetTile }));
+      this.finished = true;
+      clearSave();
+      this.time.delayedCall(900, () => this.endGame());
+      return;
     }
 
     if (this.core.isOver()) {
@@ -401,7 +411,8 @@ export class Game extends Scene {
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
-      locale: this.locale, score, maxTile, moves, durationMs, won: this.core.hasWon(),
+      locale: this.locale, level: this.level, score, maxTile, moves, durationMs,
+      cleared: maxTile >= this.params.targetTile,
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));

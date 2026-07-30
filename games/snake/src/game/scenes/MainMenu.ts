@@ -1,16 +1,21 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, darken, setupCamera, makeTopBar } from '../ui';
+import {
+  makeButton, applyTheme, setupCamera, makeTopBar, makeGameIcon, makeLevelGrid, makeLadderSummary,
+  type LevelTileState,
+} from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
-import { loadBest } from '../../core/persistence';
+import { LADDER, LADDER_SIZE, levelAt } from '../../core/levels';
+import { isUnlocked, loadProgress, nextLevel, totalStars, isLadderComplete } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 
 const CX = 200;
+const SLUG = 'snake';
 /**
  * Каталог игр WinGo (для автономного/веб-режима). В приложении выход обрабатывает мост.
- * Путь относительный: игра лежит на /snake/, хаб — на корне того же домена,
+ * Путь относительный: игра лежит на /<slug>/, хаб — на корне того же домена,
  * поэтому ссылка не зависит от того, на каком домене развёрнут каталог.
  */
 const HUB_URL = '../';
@@ -29,92 +34,54 @@ export class MainMenu extends Scene {
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
-    this.buildLogo();
 
+    makeGameIcon(this, CX, 92, 64);
+
+    const progress = loadProgress(SLUG);
+    const next = nextLevel(progress, LADDER_SIZE);
+
+    makeLadderSummary(
+      this,
+      CX,
+      142,
+      t(this.locale, 'menu.ladder', { n: next, total: LADDER_SIZE }),
+      totalStars(progress),
+      LADDER_SIZE * 3,
+    );
+
+    // Лестница целей: пройденные со звёздами, следующая выделена, дальше — замки.
+    const tiles: LevelTileState[] = LADDER.map((lv) => ({
+      n: lv.n,
+      unlocked: isUnlocked(progress, lv.n),
+      stars: progress.stars[lv.n - 1] ?? 0,
+      current: lv.n === next,
+    }));
+    const grid = makeLevelGrid(this, CX, 186, tiles, (n) => this.startLevel(n));
+
+    // Что именно нужно сделать на следующем уровне.
     this.add
-      .text(CX, 232, t(this.locale, 'app.title'), {
-        fontFamily: FONT, fontSize: 44, color: COLORS.headText, fontStyle: 'bold',
+      .text(CX, 186 + grid.height + 14, t(this.locale, 'menu.goal', { n: levelAt(next).params.target }), {
+        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
       })
       .setOrigin(0.5)
       .setResolution(DPR);
 
-    // Выбор языка — две пилюли.
-    this.langPill(CX - 92, 300, 'ru', 'Русский');
-    this.langPill(CX + 92, 300, 'uz', 'Oʻzbekcha');
-
-    // Аркада: одна кнопка «Играть», никакого выбора уровней.
-    makeButton(this, CX, 392, t(this.locale, 'menu.play'), () => this.startGame(), {
-      primary: true, height: 48,
+    const belowGrid = 186 + grid.height + 44;
+    makeButton(this, CX, belowGrid, t(this.locale, 'menu.play', { n: next }), () => this.startLevel(next), {
+      primary: true,
     });
 
-    const best = loadBest();
-    if (best > 0) {
-      this.add
-        .text(CX, 438, t(this.locale, 'menu.best', { score: best }), {
-          fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
-        })
-        .setOrigin(0.5)
-        .setResolution(DPR);
+    // Бесконечный режим открывается, когда вся лестница пройдена.
+    let y = belowGrid + 52;
+    if (isLadderComplete(progress, LADDER_SIZE)) {
+      makeButton(this, CX, y, t(this.locale, 'menu.endless'), () => this.startEndless());
+      y += 52;
     }
+    makeButton(this, CX, y, t(this.locale, 'menu.howto'), () => this.showHowto());
 
-    makeButton(this, CX, 496, t(this.locale, 'menu.howto'), () => this.showHowto());
-  }
-
-  /** Ссылка «‹ К играм» слева вверху — выход в каталог игр WinGo. */
-
-  /** Выход в каталог: событие мосту (реальный WebView вернётся к списку), а в вебе — переход на хаб. */
-  private exitToCatalog() {
-    const session = this.registry.get('session') as Session | undefined;
-    session?.exit();
-    if (this.registry.get('demo')) {
-      const hub = (this.registry.get('catalogUrl') as string) || HUB_URL;
-      window.location.href = hub;
-    }
-  }
-
-  /** Логотип: векторная змейка волной ползёт к ягоде (те же цвета, что в игре). */
-  private buildLogo() {
-    const n = 7;
-    const gap = 30;
-    const seg = 26;
-    const wave = (i: number) => Math.sin(i * 0.85) * 12;
-
-    for (let i = 0; i < n; i++) {
-      const isHead = i === n - 1;
-      const x = CX + (i - (n - 1) / 2) * gap;
-      const y = 150 + wave(i);
-      const color = isHead ? COLORS.snakeHead : (i % 2 === 0 ? COLORS.snakeBody : COLORS.snakeBodyAlt);
-      const size = isHead ? seg + 4 : seg;
-
-      const cont = this.add.container(x, y).setScale(0);
-      const g = this.add.graphics();
-      g.fillStyle(darken(color, 0.22), 1).fillRoundedRect(-size / 2, -size / 2 + 3, size, size, 9);
-      g.fillStyle(color, 1).fillRoundedRect(-size / 2, -size / 2, size, size, 9);
-      cont.add(g);
-      if (isHead) {
-        cont.add([
-          this.add.circle(4, -6, 3.6, COLORS.snakeEye),
-          this.add.circle(4, 6, 3.6, COLORS.snakeEye),
-          this.add.circle(6, -6, 1.7, COLORS.snakeEyeDot),
-          this.add.circle(6, 6, 1.7, COLORS.snakeEyeDot),
-        ]);
-      }
-      this.tweens.add({ targets: cont, scale: 1, duration: 300, delay: 60 + i * 70, ease: 'Back.easeOut' });
-    }
-
-    // Ягода перед головой — цель змейки.
-    const fx = CX + ((n - 1) / 2) * gap + 34;
-    const fy = 150 + wave(n - 1);
-    const food = this.add.container(fx, fy).setScale(0);
-    const fg = this.add.graphics();
-    fg.fillStyle(darken(COLORS.food, 0.25), 1).fillCircle(0, 2, 9);
-    fg.fillStyle(COLORS.food, 1).fillCircle(0, 0, 9);
-    food.add([fg, this.add.circle(-3, -4, 2.6, 0xffffff, 0.75)]);
-    this.tweens.add({ targets: food, scale: 1, duration: 320, delay: 60 + n * 70, ease: 'Back.easeOut' });
-    this.tweens.add({
-      targets: food, scale: 1.14, duration: 620, yoyo: true, repeat: -1,
-      delay: 400 + n * 70, ease: 'Sine.easeInOut',
-    });
+    // Выбор языка — две пилюли под кнопками.
+    this.langPill(CX - 92, y + 56, 'ru', 'Русский');
+    this.langPill(CX + 92, y + 56, 'uz', 'Oʻzbekcha');
   }
 
   /** Пилюля выбора языка. Выбранная подсвечена; по тапу переключает и перерисовывает меню. */
@@ -126,15 +93,36 @@ export class MainMenu extends Scene {
     }, { width: 176, height: 40, primary: this.locale === loc });
   }
 
-  private startGame() {
+  private startLevel(n: number) {
+    this.registry.set('level', n);
+    this.registry.set('endless', false);
     this.registry.set('locale', this.locale);
     this.scene.start('Game');
   }
 
-  /** «Как играть» — интерактивное обучение поверх настоящего поля; по концу → обратно в меню. */
+  /** Забег без цели: играется на максимальной сложности, в лестницу не пишется. */
+  private startEndless() {
+    this.registry.set('level', LADDER_SIZE);
+    this.registry.set('endless', true);
+    this.registry.set('locale', this.locale);
+    this.scene.start('Game');
+  }
+
+  /** Выход в каталог: событие мосту (реальный WebView вернётся к списку), а в вебе — переход на хаб. */
+  private exitToCatalog() {
+    const session = this.registry.get('session') as Session | undefined;
+    session?.exit();
+    if (this.registry.get('demo')) {
+      const hub = (this.registry.get('catalogUrl') as string) || HUB_URL;
+      window.location.href = hub;
+    }
+  }
+
+  /** «Как играть» — интерактивное обучение поверх настоящего поля; по концу → в меню. */
   private showHowto() {
     this.registry.set('howto', true);
     this.registry.set('locale', this.locale);
+    this.registry.set('level', 1);
     this.scene.start('Game');
   }
 }

@@ -1,18 +1,27 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeStarRow } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
-import { saveBest } from '../../core/persistence';
+import { levelAt, LADDER_SIZE } from '../../core/levels';
+import {
+  recordLevelResult, recordEndlessResult, starsFor, loadProgress, isUnlocked, type RecordResult,
+} from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 import confetti from 'canvas-confetti';
 
 interface LastGame {
-  locale: Locale; score: number; eaten: number; length: number; durationMs: number;
+  locale: Locale;
+  level: number;
+  score: number;
+  durationMs: number;
+  /** Забег без цели — в лестницу не пишется. */
+  endless: boolean;
 }
 
 const CX = 200;
+const SLUG = 'snake';
 
 export class GameOver extends Scene {
   constructor() {
@@ -23,87 +32,117 @@ export class GameOver extends Scene {
     applyTheme(this);
     setupCamera(this);
     this.cameras.main.fadeIn(220, ...COLORS.fade);
-    const session = this.registry.get('session') as Session;
+    const session = this.registry.get('session') as Session | undefined;
     const last = this.registry.get('lastGame') as LastGame;
     const loc = last.locale;
 
-    const isNewBest = saveBest(last.score);
-    if (isNewBest) {
+    const level = levelAt(last.level);
+    const target = level.params.target;
+    const cleared = !last.endless && last.score >= target;
+
+    let starCount = 0;
+    let record: RecordResult | null = null;
+    if (cleared) {
+      const stars = starsFor(level.goals, last.score);
+      starCount = stars;
+      record = recordLevelResult({ slug: SLUG, n: last.level, stars, score: last.score });
       confetti({ disableForReducedMotion: true, particleCount: 90, spread: 70, origin: { y: 0.4 } });
+    } else {
+      // Недобранная цель и бесконечный забег в лестницу не идут, но день считают.
+      recordEndlessResult(SLUG, last.score);
     }
 
+    const titleKey = last.endless ? 'result.endless' : cleared ? 'result.title' : 'result.failed';
     const title = this.add
-      .text(CX, 112, t(loc, 'result.title'), {
+      .text(CX, 100, t(loc, titleKey), {
         fontFamily: FONT, fontSize: 30, color: COLORS.headText, fontStyle: 'bold',
       })
       .setOrigin(0.5)
       .setResolution(DPR)
       .setScale(0.7)
       .setAlpha(0);
-    this.tweens.add({ targets: title, scale: 1, alpha: 1, duration: 360, delay: 100, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: title, scale: 1, alpha: 1, duration: 380, delay: 120, ease: 'Back.easeOut' });
 
-    // Счёт — крупно, как в аркаде.
-    const score = this.add
-      .text(CX, 200, t(loc, 'result.score', { score: last.score }), {
-        fontFamily: FONT, fontSize: 40, color: COLORS.headText, fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR)
-      .setScale(0.6)
-      .setAlpha(0);
-    this.tweens.add({ targets: score, scale: 1, alpha: 1, duration: 400, delay: 260, ease: 'Back.easeOut' });
+    if (!last.endless) {
+      this.add
+        .text(CX, 138, t(loc, 'result.level', { n: last.level, total: LADDER_SIZE }), {
+          fontFamily: FONT, fontSize: 15, color: COLORS.headMuted,
+        })
+        .setOrigin(0.5)
+        .setResolution(DPR);
+
+      const stars = makeStarRow(this, CX, 190, starCount, 22).setScale(0);
+      this.tweens.add({ targets: stars, scale: 1, duration: 380, delay: 300, ease: 'Back.easeOut' });
+    }
 
     this.appear(
       this.add
-        .text(CX, 248, t(loc, 'result.length', { n: last.length }), {
-          fontFamily: FONT, fontSize: 18, color: COLORS.headMuted,
+        .text(CX, 246, t(loc, 'result.score', { score: last.score }), {
+          fontFamily: FONT, fontSize: 26, color: COLORS.headText, fontStyle: 'bold',
         })
         .setOrigin(0.5)
         .setResolution(DPR),
-      540,
+      460,
     );
-    if (isNewBest) {
+
+    const hint = this.hintText(loc, last, cleared, target, record);
+    if (hint) {
       this.appear(
         this.add
-          .text(CX, 292, t(loc, 'result.newBest'), {
-            fontFamily: FONT, fontSize: 18, color: COLORS.headText, fontStyle: 'bold',
-          })
+          .text(CX, 284, hint, { fontFamily: FONT, fontSize: 17, color: COLORS.headText, fontStyle: 'bold' })
           .setOrigin(0.5)
           .setResolution(DPR),
-        600,
+        520,
       );
     }
 
-    // Аркада: «Ещё раз» сразу запускает партию, без промежуточных экранов.
-    const again = makeButton(this, CX, 382, t(loc, 'result.playAgain'), () => this.scene.start('Game'), {
-      primary: true, width: 248, height: 56,
-    });
-    this.appear(again.root, 690);
-    const menu = makeButton(this, CX, 446, t(loc, 'result.menu'), () => this.scene.start('MainMenu'));
-    this.appear(menu.root, 760);
+    this.buildButtons(loc, last, cleared);
+    void session;
+  }
 
-    // Лидерборд.
-    const lbTitle = this.add
-      .text(CX, 508, t(loc, 'result.leaderboard'), {
-        fontFamily: FONT, fontSize: 17, color: COLORS.headText, fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-    const listText = this.add
-      .text(CX, 534, '…', { fontFamily: FONT, fontSize: 15, color: COLORS.headMuted, align: 'center' })
-      .setOrigin(0.5, 0)
-      .setResolution(DPR);
-    this.appear(lbTitle, 830);
-    this.appear(listText, 870);
-    void session.leaderboard(5).then((entries) => {
-      if (!entries.length) {
-        listText.setText(t(loc, 'error.network'));
-        return;
-      }
-      listText.setText(
-        entries.map((e) => `${e.rank}. ${e.name}  ${e.score}${e.isCurrentUser ? '  ←' : ''}`).join('\n'),
-      );
+  /** Кнопки итога: следующий уровень (если открылся), повтор, меню. */
+  private buildButtons(loc: Locale, last: LastGame, cleared: boolean) {
+    const nextN = last.level + 1;
+    const hasNext = cleared && nextN <= LADDER_SIZE && isUnlocked(loadProgress(SLUG), nextN);
+    let y = 360;
+
+    if (hasNext) {
+      const next = makeButton(this, CX, y, t(loc, 'result.nextLevel', { n: nextN }), () => this.play(nextN, false), {
+        primary: true,
+      });
+      this.appear(next.root, 600);
+      y += 56;
+    }
+
+    const again = makeButton(this, CX, y, t(loc, 'result.playAgain'), () => this.play(last.level, last.endless), {
+      primary: !hasNext,
     });
+    this.appear(again.root, hasNext ? 660 : 600);
+    y += 56;
+
+    const menu = makeButton(this, CX, y, t(loc, 'result.menu'), () => this.scene.start('MainMenu'));
+    this.appear(menu.root, hasNext ? 720 : 670);
+  }
+
+  private play(n: number, endless: boolean) {
+    this.registry.set('level', n);
+    this.registry.set('endless', endless);
+    this.scene.start('Game');
+  }
+
+  /** Одна строка о том, что изменилось: открылся уровень, побит рекорд или сколько не хватило. */
+  private hintText(
+    loc: Locale,
+    last: LastGame,
+    cleared: boolean,
+    target: number,
+    record: RecordResult | null,
+  ): string {
+    if (last.endless) return '';
+    if (!cleared) return t(loc, 'result.goalMissed', { n: target });
+    if (record?.unlockedNext && last.level < LADDER_SIZE) return t(loc, 'result.unlocked', { n: last.level + 1 });
+    if (record?.isRecord) return t(loc, 'result.newBest');
+    return '';
   }
 
   /** Появление снизу вверх с fade. */

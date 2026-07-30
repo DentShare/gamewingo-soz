@@ -1,6 +1,6 @@
 {
   "app.title": "Parvoz",
-  "menu.play": "Oʻynash",
+  "menu.play": "Oʻynash · {n}-daraja",
   "menu.howto": "Qanday oʻynash",
   "menu.catalog": "Oʻyinlarga",
   "menu.back": "Orqaga",
@@ -20,5 +20,14 @@
   "result.playAgain": "Yana",
   "result.menu": "Menyuga",
   "result.leaderboard": "Reyting",
-  "error.network": "Aloqa yoʻq"
+  "error.network": "Aloqa yoʻq",
+  "menu.ladder": "{total} dan {n}-daraja",
+  "menu.goal": "Maqsad: {n} ochko",
+  "menu.endless": "Cheksiz rejim",
+  "result.level": "{total} dan {n}-daraja",
+  "result.nextLevel": "{n}-daraja",
+  "result.unlocked": "{n}-daraja ochildi!",
+  "result.goalMissed": "Maqsadga yetilmadi: {n} kerak",
+  "result.endless": "Cheksiz rejim",
+  "game.goal": "Maqsad: {n}"
 }

@@ -1,7 +1,7 @@
 {
   "app.title": "Меткий глаз",
   "app.tagline": "60 секунд на реакцию",
-  "menu.play": "Играть",
+  "menu.play": "Играть · уровень {n}",
   "menu.howto": "Как играть",
   "menu.catalog": "К играм",
   "menu.back": "Назад",
@@ -23,5 +23,14 @@
   "onboarding.time": "У вас 60 секунд. Промах не штрафует, но сбивает серию.",
   "onboarding.next": "Далее",
   "onboarding.done": "Понятно",
-  "onboarding.skip": "Пропустить"
+  "onboarding.skip": "Пропустить",
+  "menu.ladder": "Уровень {n} из {total}",
+  "menu.goal": "Цель: {n} очков",
+  "menu.endless": "Бесконечный режим",
+  "result.level": "Уровень {n} из {total}",
+  "result.nextLevel": "Уровень {n}",
+  "result.unlocked": "Открыт уровень {n}!",
+  "result.goalMissed": "Цель не достигнута: нужно {n}",
+  "result.endless": "Бесконечный режим",
+  "game.goal": "Цель: {n}"
 }

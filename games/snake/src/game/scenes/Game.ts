@@ -3,6 +3,7 @@ import type { Locale } from '../../core/locale';
 import { COLORS, FONT } from '../palette';
 import { applyTheme, darken, setupCamera, makeBackButton } from '../ui';
 import { t } from '../../i18n';
+import { levelAt } from '../../core/levels';
 import {
   createSnakeGame, COLS, ROWS, type Dir, type Point, type SnakeGame,
 } from '../../core/snake';
@@ -46,6 +47,10 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
+  private level = 1;
+  private endless = false;
+  private startPhase = 0;
+  private target = 0;
   private session!: Session;
   private core!: SnakeGame;
 
@@ -90,10 +95,17 @@ export class Game extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
+    this.level = (this.registry.get('level') as number) ?? 1;
+    this.endless = !!this.registry.get('endless');
+    const params = levelAt(this.level).params;
+    this.startPhase = params.startPhase;
+    this.target = params.target;
     this.session = this.registry.get('session') as Session;
 
     this.ensureTextures();
-    this.core = createSnakeGame(COLS, ROWS, mulberry32(Math.floor(Math.random() * 2 ** 31)));
+    this.core = createSnakeGame(COLS, ROWS, mulberry32(Math.floor(Math.random() * 2 ** 31)), {
+      startPhase: this.startPhase,
+    });
     this.prevBody = this.core.body.map((p) => ({ ...p }));
 
     this.buildHud();
@@ -188,7 +200,9 @@ export class Game extends Scene {
       .finish({ score, eaten, length, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
-    this.registry.set('lastGame', { locale: this.locale, score, eaten, length, durationMs });
+    this.registry.set('lastGame', {
+      locale: this.locale, level: this.level, endless: this.endless, score, eaten, length, durationMs,
+    });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }
@@ -332,6 +346,17 @@ export class Game extends Scene {
       })
       .setOrigin(0.5)
       .setResolution(DPR);
+    // Цель уровня — под счётом; в бесконечном режиме цели нет.
+    if (!this.endless) {
+      this.add
+        .text(W / 2, 146, this.goalLabel(), {
+          fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
+        })
+        .setOrigin(0.5)
+        .setResolution(DPR)
+        .setDepth(20);
+    }
+
     this.hintText = this.add
       .text(W / 2, BOARD_TOP + BOARD_H + 32, t(this.locale, 'game.swipeToStart'), {
         fontFamily: FONT, fontSize: 16, color: COLORS.headMuted,
@@ -346,6 +371,11 @@ export class Game extends Scene {
   /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
   private buildBackButton() {
     makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+  }
+
+  /** «Цель: 1200» — сколько очков нужно набрать на этом уровне. */
+  private goalLabel(): string {
+    return t(this.locale, 'game.goal', { n: this.target });
   }
 
   private goBack() {

@@ -55,6 +55,12 @@ export interface StackOptions {
   rng?: () => number;
   fieldWidth?: number;
   startWidth?: number;
+  /**
+   * Фаза старта: сколько блоков засчитывается башне до первого броска.
+   * Влияет только на скорость — поздний уровень начинается в темпе, до которого
+   * раньше приходилось доигрывать минуту.
+   */
+  startPhase?: number;
 }
 
 export interface StackGame {
@@ -83,6 +89,7 @@ export function createStackGame(opts: StackOptions = {}): StackGame {
   const startWidth = Math.min(opts.startWidth ?? START_WIDTH, fieldWidth);
   const rnd = opts.rng ?? mulberry32(opts.seed ?? 1);
 
+  const phase = Math.max(0, Math.round(opts.startPhase ?? 0));
   const blocks: StackBlock[] = [{ x: (fieldWidth - startWidth) / 2, width: startWidth }];
   let perfects = 0;
   let over = false;
@@ -90,7 +97,7 @@ export function createStackGame(opts: StackOptions = {}): StackGame {
   const spawn = (width: number): CurrentBlock => {
     const dir: 1 | -1 = rnd() < 0.5 ? 1 : -1;
     // Блок появляется у того края, от которого поедет внутрь поля.
-    return { x: dir === 1 ? 0 : fieldWidth - width, width, dir, speed: speedAt(blocks.length - 1) };
+    return { x: dir === 1 ? 0 : fieldWidth - width, width, dir, speed: speedAt(blocks.length - 1 + phase) };
   };
 
   let current = spawn(startWidth);

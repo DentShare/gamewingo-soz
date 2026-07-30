@@ -1,13 +1,18 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, darken, setupCamera, makeTopBar } from '../ui';
-import { COLORS, FONT, blockColor } from '../palette';
+import {
+  makeButton, applyTheme, setupCamera, makeTopBar, makeGameIcon, makeLevelGrid, makeLadderSummary,
+  type LevelTileState,
+} from '../ui';
+import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
-import { loadBest } from '../../core/persistence';
+import { LADDER, LADDER_SIZE, levelAt } from '../../core/levels';
+import { isUnlocked, loadProgress, nextLevel, totalStars, isLadderComplete } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 
 const CX = 200;
+const SLUG = 'stack';
 /**
  * Каталог игр WinGo (для автономного/веб-режима). В приложении выход обрабатывает мост.
  * Путь относительный: игра лежит на /<slug>/, хаб — на корне того же домена,
@@ -30,60 +35,53 @@ export class MainMenu extends Scene {
 
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
 
+    makeGameIcon(this, CX, 92, 64);
+
+    const progress = loadProgress(SLUG);
+    const next = nextLevel(progress, LADDER_SIZE);
+
+    makeLadderSummary(
+      this,
+      CX,
+      142,
+      t(this.locale, 'menu.ladder', { n: next, total: LADDER_SIZE }),
+      totalStars(progress),
+      LADDER_SIZE * 3,
+    );
+
+    // Лестница целей: пройденные со звёздами, следующая выделена, дальше — замки.
+    const tiles: LevelTileState[] = LADDER.map((lv) => ({
+      n: lv.n,
+      unlocked: isUnlocked(progress, lv.n),
+      stars: progress.stars[lv.n - 1] ?? 0,
+      current: lv.n === next,
+    }));
+    const grid = makeLevelGrid(this, CX, 186, tiles, (n) => this.startLevel(n));
+
+    // Что именно нужно сделать на следующем уровне.
     this.add
-      .text(CX, 96, t(this.locale, 'app.title'), {
-        fontFamily: FONT, fontSize: 44, color: COLORS.headText, fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-    this.add
-      .text(CX, 134, t(this.locale, 'app.tagline'), {
-        fontFamily: FONT, fontSize: 14, color: COLORS.headMuted, align: 'center',
-        wordWrap: { width: 300 },
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-
-    this.buildTowerArt(320);
-
-    // Выбор языка — две пилюли.
-    this.langPill(CX - 92, 386, 'ru', 'Русский');
-    this.langPill(CX + 92, 386, 'uz', 'Oʻzbekcha');
-
-    // Аркада: одна большая кнопка «Играть», без выбора сложности.
-    const play = makeButton(this, CX, 476, t(this.locale, 'menu.play'), () => this.startGame(), {
-      primary: true, height: 48,
-    });
-    this.tweens.add({
-      targets: play.root, scale: 1.03, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-    });
-
-    const best = loadBest();
-    this.add
-      .text(CX, 524, best === null ? '' : t(this.locale, 'menu.best', { score: best }), {
+      .text(CX, 186 + grid.height + 14, t(this.locale, 'menu.goal', { n: levelAt(next).params.target }), {
         fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
       })
       .setOrigin(0.5)
       .setResolution(DPR);
 
-    makeButton(this, CX, 584, t(this.locale, 'menu.howto'), () => this.showHowto());
-  }
-
-  /** Декоративная башенка на меню — сразу объясняет, во что играем. */
-  private buildTowerArt(bottomY: number) {
-    const g = this.add.graphics();
-    const h = 22;
-    const widths = [168, 152, 152, 134, 118, 96];
-    const offsets = [0, 10, -8, 6, -4, 12];
-    widths.forEach((w, i) => {
-      const color = blockColor(i);
-      const y = bottomY - (widths.length - i) * (h + 3);
-      const x = CX - w / 2 + offsets[i];
-      g.fillStyle(darken(color, 0.22), 1).fillRoundedRect(x, y + 3, w, h, 5);
-      g.fillStyle(color, 1).fillRoundedRect(x, y, w, h, 5);
+    const belowGrid = 186 + grid.height + 44;
+    makeButton(this, CX, belowGrid, t(this.locale, 'menu.play', { n: next }), () => this.startLevel(next), {
+      primary: true,
     });
-    // Тень-основание.
-    g.fillStyle(COLORS.shade, 1).fillRoundedRect(CX - 96, bottomY - 6, 192, 10, 5);
+
+    // Бесконечный режим открывается, когда вся лестница пройдена.
+    let y = belowGrid + 52;
+    if (isLadderComplete(progress, LADDER_SIZE)) {
+      makeButton(this, CX, y, t(this.locale, 'menu.endless'), () => this.startEndless());
+      y += 52;
+    }
+    makeButton(this, CX, y, t(this.locale, 'menu.howto'), () => this.showHowto());
+
+    // Выбор языка — две пилюли под кнопками.
+    this.langPill(CX - 92, y + 56, 'ru', 'Русский');
+    this.langPill(CX + 92, y + 56, 'uz', 'Oʻzbekcha');
   }
 
   /** Пилюля выбора языка. Выбранная подсвечена; по тапу переключает и перерисовывает меню. */
@@ -95,12 +93,20 @@ export class MainMenu extends Scene {
     }, { width: 176, height: 40, primary: this.locale === loc });
   }
 
-  private startGame() {
+  private startLevel(n: number) {
+    this.registry.set('level', n);
+    this.registry.set('endless', false);
     this.registry.set('locale', this.locale);
     this.scene.start('Game');
   }
 
-  /** Ссылка «‹ К играм» слева вверху — выход в каталог игр WinGo. */
+  /** Забег без цели: играется на максимальной сложности, в лестницу не пишется. */
+  private startEndless() {
+    this.registry.set('level', LADDER_SIZE);
+    this.registry.set('endless', true);
+    this.registry.set('locale', this.locale);
+    this.scene.start('Game');
+  }
 
   /** Выход в каталог: событие мосту (реальный WebView вернётся к списку), а в вебе — переход на хаб. */
   private exitToCatalog() {
@@ -116,6 +122,7 @@ export class MainMenu extends Scene {
   private showHowto() {
     this.registry.set('howto', true);
     this.registry.set('locale', this.locale);
+    this.registry.set('level', 1);
     this.scene.start('Game');
   }
 }

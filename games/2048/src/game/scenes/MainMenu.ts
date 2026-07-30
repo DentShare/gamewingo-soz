@@ -1,13 +1,19 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, darken, setupCamera, makeTopBar } from '../ui';
+import {
+  makeButton, applyTheme, darken, setupCamera, makeTopBar, makeLevelGrid, makeLadderSummary,
+  type LevelTileState,
+} from '../ui';
+import { LADDER, LADDER_SIZE, levelAt } from '../../core/levels';
+import { isUnlocked, loadProgress, nextLevel, totalStars } from '@gamewingo/game-progress';
 import { COLORS, FONT, tileColor, tileTextColor } from '../palette';
 import { DPR } from '../dpr';
-import { loadBest, loadSave, clearSave } from '../../core/persistence';
+import { loadSave, clearSave } from '../../core/persistence';
 import type { Session } from '../../bridge/session';
 
 const CX = 200;
+const SLUG = '2048';
 /**
  * Каталог игр WinGo (для автономного/веб-режима). В приложении выход обрабатывает мост.
  * Путь относительный: игра лежит на /2048/, хаб — на корне того же домена,
@@ -31,40 +37,60 @@ export class MainMenu extends Scene {
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
     this.buildLogo(t(this.locale, 'app.title'));
 
-    // Выбор языка — две пилюли.
-    this.langPill(CX - 92, 220, 'ru', 'Русский');
-    this.langPill(CX + 92, 220, 'uz', 'Oʻzbekcha');
+    const progress = loadProgress(SLUG);
+    const next = nextLevel(progress, LADDER_SIZE);
 
-    // Незаконченная партия → «Продолжить» + «Начать заново», иначе одна «Играть».
+    makeLadderSummary(
+      this,
+      CX,
+      196,
+      t(this.locale, 'menu.ladder', { n: next, total: LADDER_SIZE }),
+      totalStars(progress),
+      LADDER_SIZE * 3,
+    );
+
+    // Лестница целей: уровень пройден, когда собрана заданная плитка.
+    const tiles: LevelTileState[] = LADDER.map((lv) => ({
+      n: lv.n,
+      unlocked: isUnlocked(progress, lv.n),
+      stars: progress.stars[lv.n - 1] ?? 0,
+      current: lv.n === next,
+    }));
+    const grid = makeLevelGrid(this, CX, 238, tiles, (n) => this.startLevel(n));
+
+    this.add
+      .text(CX, 238 + grid.height + 14, t(this.locale, 'menu.goalTile', { tile: levelAt(next).params.targetTile }), {
+        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
+      })
+      .setOrigin(0.5)
+      .setResolution(DPR);
+
+    // Незаконченная партия — отдельной кнопкой над лестницей.
+    let y = 238 + grid.height + 44;
     const saved = loadSave();
-    let bestY = 368;
-    let howtoY = 430;
     if (saved) {
-      makeButton(
-        this, CX, 304, `${t(this.locale, 'menu.continue')} · ${saved.score}`,
-        () => this.startGame(true), { primary: true },
-      );
-      makeButton(this, CX, 374, t(this.locale, 'menu.restart'), () => this.startGame(false), {
-      });
-      bestY = 416;
-      howtoY = 478;
-    } else {
-      makeButton(this, CX, 328, t(this.locale, 'menu.play'), () => this.startGame(false), {
-        primary: true,
-      });
+      makeButton(this, CX, y, `${t(this.locale, 'menu.continue')} · ${saved.score}`,
+        () => this.startGame(true), { primary: true });
+      y += 52;
     }
+    makeButton(this, CX, y, t(this.locale, 'menu.play', { n: next }), () => this.startLevel(next), {
+      primary: !saved,
+    });
+    y += 52;
+    makeButton(this, CX, y, t(this.locale, 'menu.howto'), () => this.showHowto());
 
-    const best = loadBest();
-    if (best > 0) {
-      this.add
-        .text(CX, bestY, t(this.locale, 'menu.best', { n: best }), {
-          fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
-        })
-        .setOrigin(0.5)
-        .setResolution(DPR);
-    }
+    // Выбор языка — две пилюли под кнопками.
+    this.langPill(CX - 92, y + 56, 'ru', 'Русский');
+    this.langPill(CX + 92, y + 56, 'uz', 'Oʻzbekcha');
 
-    makeButton(this, CX, howtoY, t(this.locale, 'menu.howto'), () => this.showHowto());
+  }
+
+  private startLevel(n: number) {
+    this.registry.set('level', n);
+    this.registry.set('locale', this.locale);
+    clearSave();
+    this.registry.set('resume', false);
+    this.scene.start('Game');
   }
 
   /** Ссылка «‹ К играм» слева вверху — выход в каталог игр WinGo. */

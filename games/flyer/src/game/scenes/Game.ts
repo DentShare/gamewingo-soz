@@ -1,6 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
+import { levelAt } from '../../core/levels';
 import { COLORS, FONT } from '../palette';
 import { setupCamera, shakeCamera, makeBackButton } from '../ui';
 import { DPR, VIEW_TOP, VIEW_BOTTOM } from '../dpr';
@@ -33,6 +34,10 @@ function clamp(v: number, min: number, max: number): number {
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
+  private level = 1;
+  private endless = false;
+  private startPhase = 0;
+  private target = 0;
   private session?: Session;
   private core!: Flight;
 
@@ -65,8 +70,15 @@ export class Game extends Scene {
     this.leaving = false;
 
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
+    this.level = (this.registry.get('level') as number) ?? 1;
+    this.endless = !!this.registry.get('endless');
+    const params = levelAt(this.level).params;
+    this.startPhase = params.startPhase;
+    this.target = params.target;
     this.session = this.registry.get('session') as Session | undefined;
-    this.core = createFlight(mulberry32(Math.floor(Math.random() * 2 ** 31)));
+    this.core = createFlight(mulberry32(Math.floor(Math.random() * 2 ** 31)), {
+      startPhase: this.startPhase,
+    });
 
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
@@ -317,6 +329,17 @@ export class Game extends Scene {
       .setOrigin(0.5)
       .setResolution(DPR)
       .setDepth(20);
+    // Цель уровня — под счётом; в бесконечном режиме цели нет.
+    if (!this.endless) {
+      this.add
+        .text(W / 2, 138, this.goalLabel(), {
+          fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
+        })
+        .setOrigin(0.5)
+        .setResolution(DPR)
+        .setDepth(20);
+    }
+
 
     this.hintText = this.add
       .text(W / 2, 470, t(this.locale, 'game.tapToStart'), {
@@ -406,9 +429,17 @@ export class Game extends Scene {
       ?.finish({ score, passed, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
-    this.registry.set('lastGame', { locale: this.locale, passed, durationMs, score });
+    this.registry.set('lastGame', {
+      locale: this.locale, level: this.level, endless: this.endless, passed, durationMs, score,
+    });
     this.leaving = true;
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }
+
+  /** «Цель: 1200» — сколько очков нужно набрать на этом уровне. */
+  private goalLabel(): string {
+    return t(this.locale, 'game.goal', { n: this.target });
+  }
+
 }

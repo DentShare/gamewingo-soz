@@ -7,6 +7,7 @@ import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
 import { applyTheme, setupCamera, makeBackButton } from '../ui';
 import { t } from '../../i18n';
+import { levelAt } from '../../core/levels';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
@@ -38,6 +39,10 @@ interface TargetView {
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
+  private level = 1;
+  private endless = false;
+  private startPhase = 0;
+  private target = 0;
   private session?: Session;
   private core!: TargetsGame;
   private timer?: RoundTimer;
@@ -87,9 +92,16 @@ export class Game extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
+    this.level = (this.registry.get('level') as number) ?? 1;
+    this.endless = !!this.registry.get('endless');
+    const params = levelAt(this.level).params;
+    this.startPhase = params.startPhase;
+    this.target = params.target;
     this.session = this.registry.get('session') as Session | undefined;
 
-    this.core = createTargetsGame(mulberry32(Math.floor(Math.random() * 2 ** 31)));
+    this.core = createTargetsGame(mulberry32(Math.floor(Math.random() * 2 ** 31)), {
+      startPhase: this.startPhase,
+    });
 
     this.buildField();
     this.buildHud();
@@ -153,6 +165,17 @@ export class Game extends Scene {
       })
       .setOrigin(0, 0.5)
       .setResolution(DPR);
+    // Цель уровня — под счётом; в бесконечном режиме цели нет.
+    if (!this.endless) {
+      this.add
+        .text(18, HUD_ROW_Y + 22, this.goalLabel(), {
+          fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
+        })
+        .setOrigin(0, 0.5)
+        .setResolution(DPR)
+        .setDepth(20);
+    }
+
 
     this.comboText = this.add
       .text(W - 18, HUD_ROW_Y, '', {
@@ -442,7 +465,9 @@ export class Game extends Scene {
       ?.finish({ score, hits, maxCombo, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
-    this.registry.set('lastGame', { locale: this.locale, score, hits, maxCombo, durationMs });
+    this.registry.set('lastGame', {
+      locale: this.locale, level: this.level, endless: this.endless, score, hits, maxCombo, durationMs,
+    });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }
@@ -548,6 +573,11 @@ export class Game extends Scene {
     this.lastSec = -1;
     this.scoreText.setText(t(this.locale, 'game.score', { n: 0 }));
     this.comboText.setText('');
+  }
+
+  /** «Цель: 1200» — сколько очков нужно набрать на этом уровне. */
+  private goalLabel(): string {
+    return t(this.locale, 'game.goal', { n: this.target });
   }
 }
 

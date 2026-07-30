@@ -73,12 +73,23 @@ export interface SnakeGame {
  * Создаёт партию. `rnd` — инжектируемый RNG (например `mulberry32(seed)`),
  * благодаря чему раскладка еды воспроизводима в тестах.
  */
+export interface SnakeOptions {
+  /**
+   * Фаза старта: сколько «съеденного» засчитывается змейке до первого хода.
+   * Змейка выходит длиннее и быстрее — поздний уровень не начинается с медленного вступления.
+   */
+  startPhase?: number;
+}
+
 export function createSnakeGame(
   cols: number = COLS,
   rows: number = ROWS,
   rnd: () => number = Math.random,
+  opts: SnakeOptions = {},
 ): SnakeGame {
-  const startLen = Math.max(2, Math.min(START_LENGTH, cols - 1));
+  // Стартовая длина растёт с фазой, но змейка обязана помещаться в ряд.
+  const phase = Math.max(0, Math.round(opts.startPhase ?? 0));
+  const startLen = Math.max(2, Math.min(START_LENGTH + phase, cols - 1));
   const hx = Math.floor(cols / 2);
   const hy = Math.floor(rows / 2);
 

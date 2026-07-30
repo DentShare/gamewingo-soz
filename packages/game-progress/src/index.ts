@@ -5,6 +5,7 @@
  * трогает только localStorage, и то через безопасную обёртку.
  */
 export * from './ladder.js';
+export * from './arcade.js';
 export * from './progress.js';
 export * from './day.js';
 export * from './missions.js';

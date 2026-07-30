@@ -1,7 +1,7 @@
 {
   "app.title": "Nishonga ur",
   "app.tagline": "Reaksiya uchun 60 soniya",
-  "menu.play": "Oʻynash",
+  "menu.play": "Oʻynash · {n}-daraja",
   "menu.howto": "Qanday oʻynash",
   "menu.catalog": "Oʻyinlarga",
   "menu.back": "Orqaga",
@@ -23,5 +23,14 @@
   "onboarding.time": "Sizda 60 soniya bor. Xato urish jarima emas, lekin ketma-ketlikni uzadi.",
   "onboarding.next": "Keyingi",
   "onboarding.done": "Tushunarli",
-  "onboarding.skip": "Oʻtkazib yuborish"
+  "onboarding.skip": "Oʻtkazib yuborish",
+  "menu.ladder": "{total} dan {n}-daraja",
+  "menu.goal": "Maqsad: {n} ochko",
+  "menu.endless": "Cheksiz rejim",
+  "result.level": "{total} dan {n}-daraja",
+  "result.nextLevel": "{n}-daraja",
+  "result.unlocked": "{n}-daraja ochildi!",
+  "result.goalMissed": "Maqsadga yetilmadi: {n} kerak",
+  "result.endless": "Cheksiz rejim",
+  "game.goal": "Maqsad: {n}"
 }

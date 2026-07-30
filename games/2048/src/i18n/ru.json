@@ -1,6 +1,6 @@
 {
   "app.title": "2048",
-  "menu.play": "Играть",
+  "menu.play": "Играть · уровень {n}",
   "menu.continue": "Продолжить",
   "menu.restart": "Начать заново",
   "menu.howto": "Как играть",
@@ -24,5 +24,16 @@
   "result.playAgain": "Ещё раз",
   "result.menu": "В меню",
   "result.leaderboard": "Таблица лидеров",
-  "error.network": "Нет соединения"
+  "error.network": "Нет соединения",
+  "menu.ladder": "Уровень {n} из {total}",
+  "menu.goal": "Цель: {n} очков",
+  "menu.endless": "Бесконечный режим",
+  "result.level": "Уровень {n} из {total}",
+  "result.nextLevel": "Уровень {n}",
+  "result.unlocked": "Открыт уровень {n}!",
+  "result.goalMissed": "Цель не достигнута: нужно {n}",
+  "result.endless": "Бесконечный режим",
+  "game.goal": "Цель: {n}",
+  "menu.goalTile": "Цель: плитка {tile}",
+  "game.reached": "Плитка {tile} собрана!"
 }
