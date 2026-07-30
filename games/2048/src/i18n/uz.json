@@ -35,5 +35,6 @@
   "result.endless": "Cheksiz rejim",
   "game.goal": "Maqsad: {n}",
   "menu.goalTile": "Maqsad: {tile} plitka",
-  "game.reached": "{tile} plitka yigʻildi!"
+  "game.reached": "{tile} plitka yigʻildi!",
+  "result.failed": "Maqsadga yetilmadi"
 }

@@ -35,5 +35,6 @@
   "result.endless": "Бесконечный режим",
   "game.goal": "Цель: {n}",
   "menu.goalTile": "Цель: плитка {tile}",
-  "game.reached": "Плитка {tile} собрана!"
+  "game.reached": "Плитка {tile} собрана!",
+  "result.failed": "Цель не взята"
 }

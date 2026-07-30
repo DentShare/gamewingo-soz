@@ -10,8 +10,8 @@ export interface Palette {
   absent: number;
 }
 
-/** Статусы плиток на палитре каталога: бирюзовый (угадано) / оранжевый (не на месте) / серый. */
-export const NORMAL: Palette = { correct: C.accent, present: C.primary, absent: C.muted };
+/** Статусы плиток: зелёный (угадано) / оранжевый (не на месте) / серый (нет в слове). */
+export const NORMAL: Palette = { correct: C.success, present: C.primary, absent: C.muted };
 /** High-contrast для дальтоников: оранжевый / синий. */
 export const HIGH_CONTRAST: Palette = { correct: 0xf5793a, present: 0x2b8ce6, absent: C.muted };
 

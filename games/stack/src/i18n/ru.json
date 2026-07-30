@@ -31,5 +31,6 @@
   "result.unlocked": "Открыт уровень {n}!",
   "result.goalMissed": "Цель не достигнута: нужно {n}",
   "result.endless": "Бесконечный режим",
-  "game.goal": "Цель: {n}"
+  "game.goal": "Цель: {n}",
+  "result.failed": "Цель не взята"
 }

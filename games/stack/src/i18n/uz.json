@@ -31,5 +31,6 @@
   "result.unlocked": "{n}-daraja ochildi!",
   "result.goalMissed": "Maqsadga yetilmadi: {n} kerak",
   "result.endless": "Cheksiz rejim",
-  "game.goal": "Maqsad: {n}"
+  "game.goal": "Maqsad: {n}",
+  "result.failed": "Maqsadga yetilmadi"
 }
