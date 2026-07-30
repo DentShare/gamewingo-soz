@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeTopBar } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeTopBar, makeGlyph } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { loadBest } from '../../core/persistence';
@@ -30,10 +30,7 @@ export class MainMenu extends Scene {
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
 
     // Декоративная мишень над заголовком — «пульсирует», как живая цель.
-    const emblem = this.add
-      .text(CX, 128, '🎯', { fontFamily: FONT, fontSize: 68 })
-      .setOrigin(0.5)
-      .setResolution(DPR);
+    const emblem = makeGlyph(this, CX, 128, 'ring', 76);
     this.tweens.add({
       targets: emblem, scale: 1.08, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });

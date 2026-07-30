@@ -19,6 +19,7 @@
   "result.title": "Решено!",
   "result.score": "Очки: {score}",
   "result.time": "Время: {time}",
+  "result.hintsUsed": "Подсказок: {n}",
   "result.newBest": "Новый рекорд!",
   "result.playAgain": "Ещё раз",
   "result.menu": "В меню",

@@ -1,9 +1,12 @@
 import { shuffle } from './rng';
 
-/** Символы карточек — эмодзи-животные (системный emoji-шрифт, ничего не бандлим). */
+/**
+ * Символы карточек — имена векторных значков каталога (`makeGlyph`): каждый
+ * отличается и формой, и цветом. Эмодзи не используем — их рисует шрифт устройства.
+ */
 export const SYMBOLS = [
-  '🐱', '🐶', '🦊', '🐼', '🐸', '🦁', '🐷', '🐵',
-  '🐰', '🐻', '🐨', '🐯', '🦉', '🐢', '🐳',
+  'apple', 'star', 'ball', 'heart', 'flower', 'leaf', 'fish', 'balloon',
+  'drop', 'ring', 'square', 'triangle', 'diamond', 'hexagon', 'bolt',
 ] as const;
 
 export type LevelId = 'easy' | 'medium' | 'hard';

@@ -2,7 +2,7 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import type { LevelId } from '../../core/sudoku';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeGlyph } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { computeScore } from '../../core/score';
@@ -35,7 +35,7 @@ export class GameOver extends Scene {
     confetti({ disableForReducedMotion: true, particleCount: 90, spread: 70, origin: { y: 0.4 } });
 
     // Заголовок с pop-in.
-    this.add.text(CX, 100, '🧩', { fontFamily: FONT, fontSize: 40 }).setOrigin(0.5).setResolution(DPR);
+    makeGlyph(this, CX, 100, 'square', 44);
     const title = this.add
       .text(CX, 158, t(loc, 'result.title'), {
         fontFamily: FONT, fontSize: 32, color: COLORS.headText, fontStyle: 'bold',
@@ -59,7 +59,7 @@ export class GameOver extends Scene {
     );
     this.appear(
       this.add
-        .text(CX, 262, `${t(loc, 'result.time', { time })} · 💡 ${last.hints}`, {
+        .text(CX, 262, `${t(loc, 'result.time', { time })} · ${t(loc, 'result.hintsUsed', { n: last.hints })}`, {
           fontFamily: FONT, fontSize: 16, color: COLORS.headMuted,
         })
         .setOrigin(0.5)
@@ -69,7 +69,7 @@ export class GameOver extends Scene {
     if (isNewBest) {
       this.appear(
         this.add
-          .text(CX, 298, `🏆 ${t(loc, 'result.newBest')}`, {
+          .text(CX, 298, t(loc, 'result.newBest'), {
             fontFamily: FONT, fontSize: 17, color: COLORS.headText, fontStyle: 'bold',
           })
           .setOrigin(0.5)

@@ -7,8 +7,13 @@ import { shuffle } from './rng';
  * после чего можно ответить снова. Никакого Phaser/DOM здесь нет.
  */
 
-/** Предметы для счёта — системные эмодзи (ничего не бандлим). */
-export const ITEMS = ['🍎', '🦆', '⭐', '🐟', '🎈', '🍓', '🐝', '🌸', '🍌', '🐞'] as const;
+/**
+ * Предметы для счёта — имена векторных значков каталога (`makeGlyph`).
+ * Эмодзи не используем: их рисует шрифт устройства, вид и палитра непредсказуемы.
+ */
+export const ITEMS = [
+  'apple', 'star', 'ball', 'heart', 'flower', 'leaf', 'fish', 'balloon', 'drop', 'ring',
+] as const;
 
 /** Вопросов в партии. */
 export const TOTAL_QUESTIONS = 10;
@@ -24,7 +29,7 @@ export interface Question {
   count: number;
   /** Варианты для кнопок: правильный + соседние числа, перемешаны. */
   options: number[];
-  /** Индекс эмодзи в `ITEMS`. */
+  /** Индекс значка в `ITEMS`. */
   itemIndex: number;
 }
 

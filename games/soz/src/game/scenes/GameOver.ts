@@ -2,7 +2,7 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import type { Row } from '../../core/gameState';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, type Button } from '../ui';
+import { makeButton, applyTheme, setupCamera, type Button, makeGlyph } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { buildShareText } from '../share';
@@ -41,11 +41,7 @@ export class GameOver extends Scene {
     const won = this.last.solved;
 
     // Заголовок с pop-in (overshoot).
-    const emoji = this.add
-      .text(CX, 70, won ? '🎉' : '🙁', { fontFamily: FONT, fontSize: 40 })
-      .setOrigin(0.5)
-      .setResolution(DPR)
-      .setScale(0);
+    const emoji = makeGlyph(this, CX, 70, won ? 'star' : 'drop', 44).setScale(0);
     this.tweens.add({ targets: emoji, scale: 1, duration: 420, delay: 120, ease: 'Back.easeOut' });
 
     const title = this.add
@@ -75,7 +71,7 @@ export class GameOver extends Scene {
     if (won && this.last.mode === 'daily' && streak >= 1) {
       this.appear(
         this.add
-          .text(CX, 168, `🔥 ${t(loc, 'result.streak', { n: streak })}`, {
+          .text(CX, 168, t(loc, 'result.streak', { n: streak }), {
             fontFamily: FONT, fontSize: 20, color: COLORS.headText, fontStyle: 'bold',
           })
           .setOrigin(0.5)

@@ -65,7 +65,7 @@ export class GameOver extends Scene {
     if (isNewBest) {
       this.appear(
         this.add
-          .text(CX, 292, `🏆 ${t(loc, 'result.newBest')}`, {
+          .text(CX, 292, t(loc, 'result.newBest'), {
             fontFamily: FONT, fontSize: 18, color: COLORS.headText, fontStyle: 'bold',
           })
           .setOrigin(0.5)

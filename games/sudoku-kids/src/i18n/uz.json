@@ -19,6 +19,7 @@
   "result.title": "Yechildi!",
   "result.score": "Ochko: {score}",
   "result.time": "Vaqt: {time}",
+  "result.hintsUsed": "Yordam: {n}",
   "result.newBest": "Yangi rekord!",
   "result.playAgain": "Yana",
   "result.menu": "Menyuga",

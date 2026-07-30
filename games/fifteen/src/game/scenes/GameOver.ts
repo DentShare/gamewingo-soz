@@ -2,7 +2,7 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import type { LevelId } from '../../core/board';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeGlyph } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { computeScore } from '../../core/score';
@@ -46,11 +46,7 @@ export class GameOver extends Scene {
     this.tweens.add({ targets: title, scale: 1, alpha: 1, duration: 380, delay: 120, ease: 'Back.easeOut' });
 
     // Эмблема-пазл с отскоком.
-    const badge = this.add
-      .text(CX, 176, '🧩', { fontFamily: FONT, fontSize: 48 })
-      .setOrigin(0.5)
-      .setResolution(DPR)
-      .setScale(0);
+    const badge = makeGlyph(this, CX, 176, 'square', 52).setScale(0);
     this.tweens.add({ targets: badge, scale: 1, duration: 340, delay: 320, ease: 'Back.easeOut' });
 
     const sec = Math.floor(last.durationMs / 1000);
@@ -76,7 +72,7 @@ export class GameOver extends Scene {
     if (isNewBest) {
       this.appear(
         this.add
-          .text(CX, 316, `🏆 ${t(loc, 'result.newBest')}`, {
+          .text(CX, 316, t(loc, 'result.newBest'), {
             fontFamily: FONT, fontSize: 17, color: COLORS.headText, fontStyle: 'bold',
           })
           .setOrigin(0.5)

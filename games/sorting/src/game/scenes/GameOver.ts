@@ -2,7 +2,7 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import type { Mode } from '../../core/sorting';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeGlyph } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { computeScore, stars } from '../../core/score';
@@ -50,10 +50,8 @@ export class GameOver extends Scene {
 
     // Звёзды (заполненные/пустые) — по очереди с отскоком.
     for (let i = 0; i < 3; i++) {
-      const star = this.add
-        .text(CX + (i - 1) * 64, 186, i < starCount ? '⭐' : '☆', { fontFamily: FONT, fontSize: 46 })
-        .setOrigin(0.5)
-        .setResolution(DPR)
+      const star = makeGlyph(this, CX + (i - 1) * 64, 186, 'star', 46)
+        .setAlpha(i < starCount ? 1 : 0.22)
         .setScale(0);
       this.tweens.add({ targets: star, scale: 1, duration: 320, delay: 300 + i * 130, ease: 'Back.easeOut' });
     }
@@ -79,7 +77,7 @@ export class GameOver extends Scene {
     if (isNewBest) {
       this.appear(
         this.add
-          .text(CX, 328, `🏆 ${t(loc, 'result.newBest')}`, {
+          .text(CX, 328, t(loc, 'result.newBest'), {
             fontFamily: FONT, fontSize: 17, color: COLORS.headText, fontStyle: 'bold',
           })
           .setOrigin(0.5)

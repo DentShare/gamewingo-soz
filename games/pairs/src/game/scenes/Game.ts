@@ -4,7 +4,7 @@ import { LEVELS, buildDeck, type LevelId } from '../../core/deck';
 import { createPairsGame, type PairsGame } from '../../core/game';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, darken, setupCamera } from '../ui';
+import { applyTheme, darken, setupCamera, makeGlyph, type GlyphName } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -312,16 +312,13 @@ export class Game extends Scene {
       .setResolution(DPR);
     back.add([backG, mark]);
 
-    // Лицо: белая карточка с эмодзи (скрыто до переворота).
+    // Лицо: белая карточка со значком (скрыто до переворота).
     const front = this.add.container(0, 0).setVisible(false);
     const frontG = this.add.graphics();
     frontG.fillStyle(0x000000, 0.08).fillRoundedRect(-size / 2, -size / 2 + 3, size, size, r);
     frontG.fillStyle(COLORS.panel, 1).fillRoundedRect(-size / 2, -size / 2, size, size, r);
     frontG.lineStyle(1.5, COLORS.panelBorder, 1).strokeRoundedRect(-size / 2, -size / 2, size, size, r);
-    const symbol = this.add
-      .text(0, 0, this.core.deck[index].symbol, { fontSize: Math.round(size * 0.52) })
-      .setOrigin(0.5)
-      .setResolution(DPR);
+    const symbol = makeGlyph(this, 0, 0, this.core.deck[index].symbol as GlyphName, Math.round(size * 0.52));
     front.add([frontG, symbol]);
 
     const hit = this.add.rectangle(0, 0, size, size, 0x000000, 0).setInteractive({ useHandCursor: true });
