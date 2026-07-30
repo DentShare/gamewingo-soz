@@ -47,12 +47,12 @@ export class MainMenu extends Scene {
     this.buildTowerArt(320);
 
     // Выбор языка — две пилюли.
-    this.langPill(CX - 78, 386, 'ru', 'Русский');
-    this.langPill(CX + 78, 386, 'uz', 'Oʻzbekcha');
+    this.langPill(CX - 92, 386, 'ru', 'Русский');
+    this.langPill(CX + 92, 386, 'uz', 'Oʻzbekcha');
 
     // Аркада: одна большая кнопка «Играть», без выбора сложности.
     const play = makeButton(this, CX, 476, t(this.locale, 'menu.play'), () => this.startGame(), {
-      primary: true, width: 264, height: 62,
+      primary: true, height: 48,
     });
     this.tweens.add({
       targets: play.root, scale: 1.03, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
@@ -92,7 +92,7 @@ export class MainMenu extends Scene {
       if (this.locale === loc) return;
       this.registry.set('locale', loc);
       this.scene.restart();
-    }, { width: 148, height: 44, primary: this.locale === loc });
+    }, { width: 176, height: 40, primary: this.locale === loc });
   }
 
   private startGame() {

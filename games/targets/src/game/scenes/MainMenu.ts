@@ -49,12 +49,12 @@ export class MainMenu extends Scene {
       .setResolution(DPR);
 
     // Выбор языка — две пилюли.
-    this.langPill(CX - 78, 306, 'ru', 'Русский');
-    this.langPill(CX + 78, 306, 'uz', 'Oʻzbekcha');
+    this.langPill(CX - 92, 306, 'ru', 'Русский');
+    this.langPill(CX + 92, 306, 'uz', 'Oʻzbekcha');
 
     // Одна кнопка на всю аркаду: зашёл и играешь.
     const play = makeButton(this, CX, 416, t(this.locale, 'menu.play'), () => this.startRound(), {
-      primary: true, width: 264, height: 62,
+      primary: true, height: 48,
     });
     this.tweens.add({
       targets: play.root, scale: 1.03, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
@@ -77,7 +77,7 @@ export class MainMenu extends Scene {
       if (this.locale === loc) return;
       this.registry.set('locale', loc);
       this.scene.restart();
-    }, { width: 148, height: 44, primary: this.locale === loc });
+    }, { width: 176, height: 40, primary: this.locale === loc });
   }
 
   private startRound() {

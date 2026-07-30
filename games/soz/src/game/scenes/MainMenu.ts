@@ -31,8 +31,8 @@ export class MainMenu extends Scene {
     this.buildHeader();
 
     // Выбор языка — две пилюли.
-    this.langPill(CX - 78, 208, 'ru', 'Русский');
-    this.langPill(CX + 78, 208, 'uz', 'Oʻzbekcha');
+    this.langPill(CX - 92, 208, 'ru', 'Русский');
+    this.langPill(CX + 92, 208, 'uz', 'Oʻzbekcha');
 
     // Разгадано ли сегодняшнее слово дня.
     const dayId = (this.registry.get('dayId') as number) ?? 0;
@@ -74,7 +74,7 @@ export class MainMenu extends Scene {
       if (this.locale === loc) return;
       this.registry.set('locale', loc);
       this.scene.restart();
-    }, { width: 148, height: 44, primary: selected });
+    }, { width: 176, height: 40, primary: selected });
   }
 
   private startMode(mode: 'daily' | 'practice') {

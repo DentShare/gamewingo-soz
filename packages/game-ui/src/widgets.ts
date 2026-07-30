@@ -1,6 +1,6 @@
 import type { Scene } from 'phaser';
 import { C, S, FONT, RADIUS, TYPE, WEIGHT, TOP_BAR_H, BUTTON_H } from './tokens.js';
-import { DPR, LOGICAL_W } from './viewport.js';
+import { DPR, LOGICAL_W, VIEW_TOP } from './viewport.js';
 
 /** Тема бренда из INIT. Совпадает по форме с `BrandTheme` моста, но без зависимости на него. */
 export interface Theme {
@@ -54,7 +54,8 @@ export function makeButton(
   onClick: () => void,
   opts: { width?: number; height?: number; primary?: boolean } = {},
 ): Button {
-  const w = opts.width ?? 248;
+  // Размеры по умолчанию совпадают с кнопкой хаба (338×40 на ширине 402).
+  const w = opts.width ?? 336;
   const h = opts.height ?? BUTTON_H.md;
   const isPrimary = !!opts.primary;
   const brandPrimary = isPrimary ? hexToNum(getTheme(scene)?.primary) : undefined;
@@ -109,9 +110,10 @@ export function makeTopBar(
   const root = scene.add.container(0, 0);
 
   const bar = scene.add.graphics();
+  // Заливка уходит выше нуля: на вытянутом экране шапка доходит до самой кромки.
   bar
     .fillGradientStyle(C.topBarLeft, C.topBarRight, C.topBarLeft, C.topBarRight, 1)
-    .fillRect(0, 0, LOGICAL_W, TOP_BAR_H);
+    .fillRect(0, VIEW_TOP, LOGICAL_W, TOP_BAR_H - VIEW_TOP);
 
   const cy = TOP_BAR_H / 2;
   const chevron = scene.add.graphics();
@@ -192,6 +194,49 @@ export function makeChip(scene: Scene, x: number, y: number, text: string, minWi
     setText: (s: string) => { txt.setText(s); paint(); },
     destroy: () => root.destroy(),
   };
+}
+
+/**
+ * Кнопка «Назад» в игровом экране: плоская белая пилюля с шевроном —
+ * тот же язык, что у шапки каталога и кнопок дизайн-системы.
+ */
+export function makeBackButton(
+  scene: Scene,
+  x: number,
+  y: number,
+  label: string,
+  onClick: () => void,
+): Phaser.GameObjects.Container {
+  const w = 96, h = 40, r = RADIUS.button;
+  const root = scene.add.container(x, y).setDepth(30);
+  const g = scene.add.graphics();
+  const paint = (fill: number) => {
+    g.clear();
+    g.fillStyle(fill, 1).fillRoundedRect(-w / 2, -h / 2, w, h, r);
+    g.lineStyle(1, C.divider, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, r);
+    const ax = -w / 2 + 18;
+    g.lineStyle(2.5, C.ink, 1);
+    g.beginPath();
+    g.moveTo(ax + 5, -6); g.lineTo(ax - 4, 0); g.lineTo(ax + 5, 6);
+    g.strokePath();
+  };
+  paint(C.surface);
+
+  const txt = scene.add
+    .text(-w / 2 + 30, 0, label, {
+      fontFamily: FONT, fontSize: TYPE.body, fontStyle: WEIGHT.semibold, color: S.ink,
+    })
+    .setOrigin(0, 0.5)
+    .setResolution(DPR);
+
+  const hit = scene.add.rectangle(0, 0, w, h, 0x000000, 0).setInteractive({ useHandCursor: true });
+  root.add([g, txt, hit]);
+
+  let pressed = false;
+  hit.on('pointerdown', () => { pressed = true; paint(C.tint); });
+  hit.on('pointerup', () => { if (pressed) { pressed = false; paint(C.surface); onClick(); } });
+  hit.on('pointerout', () => { if (pressed) { pressed = false; paint(C.surface); } });
+  return root;
 }
 
 /** Ключ текстуры иконки игры (файл `icon.svg` рядом с index.html). */

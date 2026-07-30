@@ -5,7 +5,7 @@ import {
 } from '../../core/targets';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, darken, setupCamera } from '../ui';
+import { applyTheme, setupCamera, makeBackButton } from '../ui';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
@@ -164,31 +164,7 @@ export class Game extends Scene {
 
   /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
   private buildBackButton() {
-    const w = 92, h = 40, lip = 4, r = 12;
-    const container = this.add.container(14 + w / 2, HUD_TOP_Y).setDepth(30);
-    const base = this.add.graphics();
-    base.fillStyle(darken(COLORS.panel, 0.14), 1).fillRoundedRect(-w / 2, -h / 2, w, h, r);
-    const faceC = this.add.container(0, -lip);
-    const face = this.add.graphics();
-    face.fillStyle(COLORS.panel, 1).fillRoundedRect(-w / 2, -h / 2, w, h, r);
-    face.lineStyle(1.5, COLORS.panelBorder, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, r);
-    const ax = -w / 2 + 18;
-    face.lineStyle(2.5, COLORS.iconDark, 1);
-    face.beginPath();
-    face.moveTo(ax + 5, -6); face.lineTo(ax - 4, 0); face.lineTo(ax + 5, 6);
-    face.strokePath();
-    const label = this.add
-      .text(ax + 12, 0, t(this.locale, 'menu.back'), { fontFamily: FONT, fontSize: 16, color: COLORS.headText })
-      .setOrigin(0, 0.5)
-      .setResolution(DPR);
-    faceC.add([face, label]);
-    const hit = this.add.rectangle(0, -lip / 2, w, h + lip, 0x000000, 0).setInteractive({ useHandCursor: true });
-    container.add([base, faceC, hit]);
-    let pressed = false;
-    const press = (down: boolean) => { faceC.y = down ? -1 : -lip; };
-    hit.on('pointerdown', () => { pressed = true; press(true); });
-    hit.on('pointerup', () => { if (pressed) { pressed = false; press(false); this.goBack(); } });
-    hit.on('pointerout', () => { if (pressed) { pressed = false; press(false); } });
+    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
   }
 
   private goBack() {

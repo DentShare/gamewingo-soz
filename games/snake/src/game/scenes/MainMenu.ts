@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, darken, setupCamera, makeTopBar, makeGameIcon } from '../ui';
+import { makeButton, applyTheme, darken, setupCamera, makeTopBar } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { loadBest } from '../../core/persistence';
@@ -31,7 +31,6 @@ export class MainMenu extends Scene {
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
     this.buildLogo();
 
-    makeGameIcon(this, CX, 148, 104);
     this.add
       .text(CX, 232, t(this.locale, 'app.title'), {
         fontFamily: FONT, fontSize: 44, color: COLORS.headText, fontStyle: 'bold',
@@ -40,12 +39,12 @@ export class MainMenu extends Scene {
       .setResolution(DPR);
 
     // Выбор языка — две пилюли.
-    this.langPill(CX - 78, 300, 'ru', 'Русский');
-    this.langPill(CX + 78, 300, 'uz', 'Oʻzbekcha');
+    this.langPill(CX - 92, 300, 'ru', 'Русский');
+    this.langPill(CX + 92, 300, 'uz', 'Oʻzbekcha');
 
     // Аркада: одна кнопка «Играть», никакого выбора уровней.
     makeButton(this, CX, 392, t(this.locale, 'menu.play'), () => this.startGame(), {
-      primary: true, width: 248, height: 56,
+      primary: true, height: 48,
     });
 
     const best = loadBest();
@@ -124,7 +123,7 @@ export class MainMenu extends Scene {
       if (this.locale === loc) return;
       this.registry.set('locale', loc);
       this.scene.restart();
-    }, { width: 148, height: 44, primary: this.locale === loc });
+    }, { width: 176, height: 40, primary: this.locale === loc });
   }
 
   private startGame() {

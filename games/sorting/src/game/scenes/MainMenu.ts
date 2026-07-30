@@ -40,8 +40,8 @@ export class MainMenu extends Scene {
       .setResolution(DPR);
 
     // Выбор языка — две пилюли.
-    this.langPill(CX - 78, 208, 'ru', 'Русский');
-    this.langPill(CX + 78, 208, 'uz', 'Oʻzbekcha');
+    this.langPill(CX - 92, 208, 'ru', 'Русский');
+    this.langPill(CX + 92, 208, 'uz', 'Oʻzbekcha');
 
     // Два режима: сортируем по цвету либо по форме.
     const modes: Mode[] = ['color', 'shape'];
@@ -78,7 +78,7 @@ export class MainMenu extends Scene {
       if (this.locale === loc) return;
       this.registry.set('locale', loc);
       this.scene.restart();
-    }, { width: 148, height: 44, primary: this.locale === loc });
+    }, { width: 176, height: 40, primary: this.locale === loc });
   }
 
   /** Декоративная иллюстрация внизу: три корзины с фигурками — сразу понятно, что делать. */
