@@ -8,7 +8,7 @@ import { DPR, LOGICAL_W, LOGICAL_H } from './dpr';
 const config: Phaser.Types.Core.GameConfig = {
   type: AUTO,
   parent: 'game-container',
-  backgroundColor: '#fbebe1',
+  backgroundColor: '#f9f9f9',
   // Холст в DPR раз плотнее логических 400×720 → чёткий рендер на retina.
   scale: {
     mode: Scale.FIT,

@@ -1,19 +1,21 @@
-/** Бандл-шрифт с покрытием кириллица + латиница + ʻ (U+02BB). Фолбэк — системный sans-serif. */
-export const FONT = 'Rubik, sans-serif';
+import { C, S, FADE, FONT as UI_FONT } from '@gamewingo/game-ui';
+
+/** Шрифт каталога — системный шрифт платформы (см. docs/DESIGN.md). */
+export const FONT = UI_FONT;
 
 /** Централизованная палитра (светлая тема WinGo — общая для каталога). */
 export const COLORS = {
-  bg: 0xfbebe1,            // светлый персиковый фон WinGo
-  headText: '#241a12',     // заголовки/основной текст
-  headMuted: '#8a7a6d',    // приглушённый текст
-  panel: 0xffffff,         // белые карточки/кнопки
-  panelBorder: 0xe7d3c7,
-  primary: 0xf26522,       // WinGo оранжевый (дефолт CTA, если тема не задана)
-  iconDark: 0x3a2a1f,      // векторные иконки
-  toastBg: '#2a211a',
-  toastText: '#ffffff',
+  bg: C.bg,
+  headText: S.ink,
+  headMuted: S.muted,
+  panel: C.surface,
+  panelBorder: C.divider,
+  primary: C.primary,
+  iconDark: C.ink,
+  toastBg: S.ink,
+  toastText: S.white,
   /** Фон камеры для fade (RGB, совпадает с bg). */
-  fade: [251, 235, 225] as [number, number, number],
+  fade: FADE,
 
   // ── Игровые цвета «Сортировки» ───────────────────────────────────────────────
   /** Цвета фигурок и цветных корзин (яркие, различимые для малышей). */
@@ -21,13 +23,13 @@ export const COLORS = {
   yellow: 0xf6c026,
   blue: 0x2f80ed,
   /** Нейтральная корзина режима «по форме» (различается только формой). */
-  binNeutral: 0xf3e4da,
+  binNeutral: C.slot,
   /** Площадка, с которой ребёнок берёт фигурку. */
-  tray: 0xffffff,
+  tray: C.surface,
   /** Верный ответ — зелёная вспышка. */
-  correct: 0x2fb84c,
+  correct: C.accent,
   /** Подсказка «вот сюда» после промаха. */
-  hint: 0xf26522,
+  hint: C.primary,
 };
 
 /** Цвет фигурки по её признаку. */

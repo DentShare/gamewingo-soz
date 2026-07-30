@@ -1,20 +1,22 @@
-/** Бандл-шрифт с покрытием кириллица + латиница + ʻ (U+02BB). Фолбэк — системный sans-serif. */
-export const FONT = 'Rubik, sans-serif';
+import { C, S, FADE, FONT as UI_FONT } from '@gamewingo/game-ui';
+
+/** Шрифт каталога — системный шрифт платформы (см. docs/DESIGN.md). */
+export const FONT = UI_FONT;
 
 /** Централизованная палитра (светлая тема WinGo — общая для каталога). */
 export const COLORS = {
-  bg: 0xfbebe1,            // светлый персиковый фон WinGo
-  headText: '#241a12',     // заголовки/основной текст
-  headMuted: '#8a7a6d',    // приглушённый текст
-  panel: 0xffffff,         // белые карточки/кнопки
-  panelBorder: 0xe7d3c7,
-  primary: 0xf26522,       // WinGo оранжевый (дефолт CTA, если тема не задана)
-  iconDark: 0x3a2a1f,      // векторные иконки
-  tile: 0xf26522,          // лицевая часть плитки
-  tileText: '#ffffff',     // цифра на плитке
-  boardWell: 0xf3d9c9,     // «лунка» поля под плитками
-  toastBg: '#2a211a',
-  toastText: '#ffffff',
+  bg: C.bg,
+  headText: S.ink,
+  headMuted: S.muted,
+  panel: C.surface,
+  panelBorder: C.divider,
+  primary: C.primary,
+  iconDark: C.ink,
+  tile: C.primary,            // лицевая часть плитки
+  tileText: S.white,          // цифра на плитке
+  boardWell: C.slot,          // «лунка» поля под плитками
+  toastBg: S.ink,
+  toastText: S.white,
   /** Фон камеры для fade (RGB, совпадает с bg). */
-  fade: [251, 235, 225] as [number, number, number],
+  fade: FADE,
 };

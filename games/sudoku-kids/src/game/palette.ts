@@ -1,30 +1,32 @@
-/** Бандл-шрифт с покрытием кириллица + латиница + ʻ (U+02BB). Фолбэк — системный sans-serif. */
-export const FONT = 'Rubik, sans-serif';
+import { C, S, FADE, FONT as UI_FONT } from '@gamewingo/game-ui';
+
+/** Шрифт каталога — системный шрифт платформы (см. docs/DESIGN.md). */
+export const FONT = UI_FONT;
 
 /** Централизованная палитра (светлая тема WinGo — общая для каталога). */
 export const COLORS = {
-  bg: 0xfbebe1,            // светлый персиковый фон WinGo
-  headText: '#241a12',     // заголовки/основной текст
-  headMuted: '#8a7a6d',    // приглушённый текст
-  panel: 0xffffff,         // белые карточки/кнопки
-  panelBorder: 0xe7d3c7,
-  primary: 0xf26522,       // WinGo оранжевый (дефолт CTA, если тема не задана)
-  iconDark: 0x3a2a1f,      // векторные иконки
-  toastBg: '#2a211a',
-  toastText: '#ffffff',
+  bg: C.bg,
+  headText: S.ink,
+  headMuted: S.muted,
+  panel: C.surface,
+  panelBorder: C.divider,
+  primary: C.primary,
+  iconDark: C.ink,
+  toastBg: S.ink,
+  toastText: S.white,
   /** Фон камеры для fade (RGB, совпадает с bg). */
-  fade: [251, 235, 225] as [number, number, number],
+  fade: FADE,
 
   // ── Судоку-специфика ──────────────────────────────────────────────────────
-  givenText: '#241a12',    // данные (givens) — тёмный жирный текст
-  givenBg: 0xf5e8df,       // слегка тонированный фон клетки с given
-  inputText: '#f26522',    // ввод игрока — оранжевый
-  conflictText: '#d34f4f', // конфликт — мягкий красный (текст)
-  conflictBg: 0xf9d3cc,    // мягкая красная подсветка конфликтной клетки
-  selectedBg: 0xffd9c2,    // выделенная клетка
-  lineHintBg: 0xfbf1e9,    // мягкая подсветка строки/столбца выделенной клетки
-  gridLine: 0xe0cdc0,      // тонкие линии между клетками
-  blockLine: 0xb59a85,     // жирные линии границ блоков
-  keyDefault: 0xece0d6,    // клавиша цифровой панели (стиль soz)
-  keyText: '#3a2a1f',      // тёмный текст на клавише
+  givenText: S.ink,        // данные (givens)
+  givenBg: C.slot,         // фон клетки с given
+  inputText: S.primary,    // ввод игрока
+  conflictText: S.danger,  // конфликт (текст)
+  conflictBg: C.dangerBg,  // подсветка конфликтной клетки
+  selectedBg: C.tint,      // выделенная клетка
+  lineHintBg: C.slotSoft,  // подсветка строки/столбца
+  gridLine: C.divider,     // тонкие линии между клетками
+  blockLine: C.muted,      // границы блоков
+  keyDefault: C.surface,   // клавиша цифровой панели
+  keyText: S.ink,          // текст на клавише
 };

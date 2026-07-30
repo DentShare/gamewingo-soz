@@ -32,7 +32,7 @@ export interface OnboardingStep {
 
 const W = 400;
 const H = 720;
-const DIM = 0x241a12;
+const DIM = 0x1a1a1a;
 const DIM_ALPHA = 0.74;
 const DEPTH = 1000;
 const CARD_W = 320;
