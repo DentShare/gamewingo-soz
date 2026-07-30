@@ -5,7 +5,7 @@ import {
 } from '../../core/counting';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, darken, setupCamera, makeGlyph, type GlyphName, makeBackButton } from '../ui';
+import { applyTheme, setupCamera, makeGlyph, type GlyphName, makeBackButton, makeKeyCap } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -23,7 +23,6 @@ const FEEDBACK_Y = 500;
 const PAD_Y = 592;
 const PAD_SIZE = 82;
 const PAD_GAP = 14;
-const PAD_LIP = 7;
 
 /** Сколько предметов в ряду при заданном количестве (1..10) — аккуратные раскладки. */
 const LAYOUT: Array<[cols: number, rows: number]> = [
@@ -188,7 +187,7 @@ export class Game extends Scene {
     const half = PAD_SIZE / 2;
     const xs = this.pads.map((p) => p.x);
     const left = Math.min(...xs) - half;
-    return { x: left, y: PAD_Y - half, w: Math.max(...xs) + half - left, h: PAD_SIZE + PAD_LIP };
+    return { x: left, y: PAD_Y - half, w: Math.max(...xs) + half - left, h: PAD_SIZE };
   }
 
   // ── HUD ──────────────────────────────────────────────────────────────────────
@@ -290,31 +289,17 @@ export class Game extends Scene {
   }
 
   private makePad(x: number, y: number): DigitPad {
-    const s = PAD_SIZE, r = 20;
+    const s = PAD_SIZE;
     const root = this.add.container(x, y);
-    const base = this.add.graphics();
-    base.fillStyle(darken(COLORS.padFace, 0.16), 1).fillRoundedRect(-s / 2, -s / 2, s, s, r);
-
-    const faceC = this.add.container(0, -PAD_LIP);
-    const face = this.add.graphics();
-    face.fillStyle(COLORS.padFace, 1).fillRoundedRect(-s / 2, -s / 2, s, s, r);
-    face.lineStyle(2, COLORS.panelBorder, 1).strokeRoundedRect(-s / 2, -s / 2, s, s, r);
-    const label = this.add
-      .text(0, 0, '', {
-        fontFamily: FONT, fontSize: 44, color: COLORS.padText, fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-    faceC.add([face, label]);
-
-    const hit = this.add.rectangle(0, -PAD_LIP / 2, s, s + PAD_LIP, 0x000000, 0)
-      .setInteractive({ useHandCursor: true });
-    root.add([base, faceC, hit]);
+    const cap = makeKeyCap(this, 0, 0, s, s, '', () => this.onPick(pad), {
+      fontSize: 44, radius: 20,
+    });
+    root.add(cap.root);
 
     const pad: DigitPad = {
       value: 0,
       x, y, root,
-      setValue: (n: number) => { pad.value = n; label.setText(String(n)); },
+      setValue: (n: number) => { pad.value = n; cap.setLabel(String(n)); },
       wobble: () => {
         this.tweens.add({
           targets: root, angle: { from: -7, to: 7 }, duration: 80,
@@ -323,20 +308,9 @@ export class Game extends Scene {
         });
       },
     };
-
-    let pressed = false;
-    const press = (down: boolean) => { faceC.y = down ? -1 : -PAD_LIP; };
-    hit.on('pointerdown', () => { pressed = true; press(true); });
-    hit.on('pointerup', () => {
-      if (!pressed) return;
-      pressed = false;
-      press(false);
-      this.onPick(pad);
-    });
-    hit.on('pointerout', () => { if (pressed) { pressed = false; press(false); } });
-
     return pad;
   }
+
 
   // ── Ответ ────────────────────────────────────────────────────────────────────
 

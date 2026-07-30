@@ -8,7 +8,7 @@ import { pickDailyWord, dailyIndex } from '../../core/dailyWord';
 import { saveDaily, loadDaily, hasOnboarded, setOnboarded } from '../../core/persistence';
 import { keyboardFor, ENTER, BACKSPACE, UZ_DIGRAPH_KEYS, type Key } from '../keyboards';
 import { paletteFor, statusColor, COLORS, FONT, type Palette } from '../palette';
-import { toast, applyTheme, setupCamera, makeBackButton } from '../ui';
+import { toast, applyTheme, setupCamera, makeBackButton, makeKeyCap, type KeyCap } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -46,7 +46,7 @@ export class Game extends Scene {
   private palette!: Palette;
 
   private tiles: Tile[][] = [];
-  private keyObjects = new Map<Key, { rect: Phaser.GameObjects.Rectangle; text: Phaser.GameObjects.Text }>();
+  private keyObjects = new Map<Key, KeyCap>();
   private rowContainers: Phaser.GameObjects.Container[] = [];
   private current: string[] = [];
   private timer!: RoundTimer;
@@ -236,27 +236,19 @@ export class Game extends Scene {
         const cx = x + w / 2;
         kbMinX = Math.min(kbMinX, cx - w / 2);
         kbMaxX = Math.max(kbMaxX, cx + w / 2);
-        const isDigraph = UZ_DIGRAPH_KEYS.has(key);
-        this.add.rectangle(cx, y + kh / 2 + 3, w, kh, 0x000000, 0.12).setOrigin(0.5); // нижний бортик (тень)
-        const rect = this.add
-          .rectangle(cx, y + kh / 2, w, kh, isDigraph ? COLORS.digraphKey : COLORS.keyDefault)
-          .setInteractive({ useHandCursor: true });
-        rect.on('pointerdown', () => this.tweens.add({ targets: rect, scale: 0.9, duration: 60, yoyo: true, ease: 'Quad.easeOut' }));
-        rect.on('pointerup', () => this.onKey(key));
+        const isSpecial = key === ENTER || key === BACKSPACE;
+        const cap = makeKeyCap(this, cx, y + kh / 2, w, kh, isSpecial ? '' : key, () => this.onKey(key), {
+          fontSize: Math.round((key.length > 1 ? 15 : 16) * Math.min(1, fit + 0.05)),
+          radius: 10,
+        });
+        if (UZ_DIGRAPH_KEYS.has(key)) cap.setFill(COLORS.digraphKey);
 
-        if (key === ENTER || key === BACKSPACE) {
+        if (isSpecial) {
           // Символы ⏎/⌫ не входят в сабсет шрифта — рисуем векторные иконки (надёжно везде).
           this.drawSpecialKeyIcon(key, cx, y + kh / 2);
           if (key === ENTER) this.enterKeyBounds = { x: cx - w / 2, y, w, h: kh };
         } else {
-          const text = this.add
-            .text(cx, y + kh / 2, key, {
-              fontFamily: FONT, fontSize: Math.round((key.length > 1 ? 15 : 16) * Math.min(1, fit + 0.05)),
-              color: COLORS.keyText,
-            })
-            .setOrigin(0.5)
-            .setResolution(DPR);
-          this.keyObjects.set(key, { rect, text });
+          this.keyObjects.set(key, cap);
         }
         x += w + kgap;
       });
@@ -467,8 +459,7 @@ export class Game extends Scene {
     for (const [key, obj] of this.keyObjects) {
       const st = this.coreGame.letterStatus(key);
       if (st) {
-        obj.rect.setFillStyle(statusColor(st, this.palette));
-        obj.text.setColor('#ffffff');
+        obj.setFill(statusColor(st, this.palette), '#ffffff');
       }
     }
   }
