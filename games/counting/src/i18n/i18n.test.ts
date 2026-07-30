@@ -4,12 +4,12 @@ import uz from './uz.json';
 import { t } from './index';
 
 const REQUIRED = [
-  'app.title', 'menu.play', 'menu.howto', 'menu.catalog', 'menu.best',
+  'app.title', 'menu.ladder', 'menu.play', 'menu.howto', 'menu.catalog',
   'game.question', 'game.progress',
   'onboarding.count', 'onboarding.tap', 'onboarding.help',
   'onboarding.next', 'onboarding.done', 'onboarding.skip',
-  'result.title', 'result.score', 'result.mistakes', 'result.newBest',
-  'result.playAgain', 'result.menu', 'result.leaderboard', 'error.network',
+  'result.title', 'result.score', 'result.level', 'result.nextLevel', 'result.unlocked',
+  'result.mistakes', 'result.newBest', 'result.playAgain', 'result.menu', 'error.network',
 ];
 
 describe('i18n (counting)', () => {

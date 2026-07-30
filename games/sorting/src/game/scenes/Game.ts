@@ -1,9 +1,10 @@
 import { Scene, Math as PhaserMath } from 'phaser';
 import type { Locale } from '../../core/locale';
 import {
-  createSortingGame, type Color, type Mode, type SortingGame,
+  createSortingGame, type Color, type Shape, type Mode, type SortingGame,
 } from '../../core/sorting';
 import { mulberry32 } from '../../core/rng';
+import { levelAt } from '../../core/levels';
 import { COLORS, FIGURE_COLORS, FONT } from '../palette';
 import { applyTheme, setupCamera, makeGlyph, makeBackButton } from '../ui';
 import { drawBin, drawFigure } from '../shapes';
@@ -25,10 +26,20 @@ const TRAY_R = 68;
 const FIG_SIZE = 92;
 
 /** Корзины: широкие, у нижнего края — удобно тянуть большим пальцем. */
-const BIN_W = 108;
 const BIN_H = 140;
 const BIN_TOP = 500;
-const BIN_XS = [72, 200, 328];
+
+/**
+ * Корзины делят ширину поля поровну: три широких или четыре поуже.
+ * Ширина и центры считаются от числа корзин, чтобы четвёртая не вылезала за экран.
+ */
+function binLayout(count: number): { w: number; xs: number[] } {
+  const margin = 12;
+  const gap = 10;
+  const w = Math.floor((400 - margin * 2 - gap * (count - 1)) / count);
+  const xs = Array.from({ length: count }, (_, i) => margin + w / 2 + i * (w + gap));
+  return { w, xs };
+}
 /** Полоса, в которой бросок засчитывается за корзину (щедрая — игра для малышей). */
 const DROP_TOP = BIN_TOP - 56;
 const DROP_BOTTOM = BIN_TOP + BIN_H + 44;
@@ -41,6 +52,10 @@ export class Game extends Scene {
   private mode: Mode = 'color';
   private session?: Session;
   private core!: SortingGame;
+  private level = 1;
+  /** Раскладка корзин текущего уровня: их три или четыре. */
+  private binW = 0;
+  private binXs: number[] = [];
 
   private bins: Phaser.GameObjects.Container[] = [];
   private item?: Phaser.GameObjects.Container;
@@ -81,7 +96,7 @@ export class Game extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
-    this.mode = (this.registry.get('mode') as Mode) ?? 'color';
+    this.level = (this.registry.get('level') as number) ?? 1;
     this.session = this.registry.get('session') as Session | undefined;
 
     // «Как играть» из меню: обучение поверх настоящего поля, без сессии и таймера.
@@ -107,7 +122,12 @@ export class Game extends Scene {
   // ── Сборка партии ────────────────────────────────────────────────────────────
 
   private buildRound() {
-    this.core = createSortingGame(this.mode, mulberry32(Math.floor(Math.random() * 2 ** 31)));
+    const { total, mode, bins } = levelAt(this.level).params;
+    this.mode = mode;
+    const layout = binLayout(bins);
+    this.binW = layout.w;
+    this.binXs = layout.xs;
+    this.core = createSortingGame(mode, mulberry32(Math.floor(Math.random() * 2 ** 31)), { total, bins });
     this.buildHud();
     this.buildTray();
     this.buildDragHint();
@@ -170,18 +190,18 @@ export class Game extends Scene {
   }
 
   /**
-   * Три корзины внизу. В режиме «по цвету» они окрашены (форма нигде не подсказывает),
-   * в режиме «по форме» — одинаково нейтральные с крупным значком формы.
+   * Корзины внизу — три или четыре, по уровню. В режиме «по цвету» они окрашены
+   * (форма нигде не подсказывает), в режиме «по форме» — нейтральные со значком формы.
    */
   private buildBins() {
-    for (let i = 0; i < 3; i++) {
-      const c = this.add.container(BIN_XS[i], BIN_TOP + BIN_H).setDepth(5);
+    for (let i = 0; i < this.core.bins.length; i++) {
+      const c = this.add.container(this.binXs[i], BIN_TOP + BIN_H).setDepth(5);
       const g = this.add.graphics();
       if (this.mode === 'color') {
-        drawBin(g, BIN_W, BIN_H, FIGURE_COLORS[this.core.bins[i] as Color]);
+        drawBin(g, this.binW, BIN_H, FIGURE_COLORS[this.core.bins[i] as Color]);
       } else {
-        drawBin(g, BIN_W, BIN_H, COLORS.binNeutral, true);
-        drawFigure(g, this.core.bins[i] as 'circle' | 'square' | 'triangle', 56, COLORS.binGlyph, 0, -BIN_H / 2 - 4);
+        drawBin(g, this.binW, BIN_H, COLORS.binNeutral, true);
+        drawFigure(g, this.core.bins[i] as Shape, Math.round(this.binW * 0.52), COLORS.binGlyph, 0, -BIN_H / 2 - 4);
       }
       c.add(g);
       this.bins.push(c);
@@ -190,8 +210,9 @@ export class Game extends Scene {
 
   /** Габарит всех корзин — зона подсветки в обучении. */
   private binsRect(): Rect {
-    const x = BIN_XS[0] - BIN_W / 2 - 8;
-    return { x, y: BIN_TOP, w: BIN_XS[2] + BIN_W / 2 + 8 - x, h: BIN_H };
+    const x = this.binXs[0] - this.binW / 2 - 8;
+    const last = this.binXs[this.binXs.length - 1];
+    return { x, y: BIN_TOP, w: last + this.binW / 2 + 8 - x, h: BIN_H };
   }
 
   // ── Фигурка и перетаскивание ─────────────────────────────────────────────────
@@ -274,11 +295,11 @@ export class Game extends Scene {
     if (y < DROP_TOP || y > DROP_BOTTOM) return -1;
     let best = -1;
     let bestD = Infinity;
-    for (let i = 0; i < BIN_XS.length; i++) {
-      const d = Math.abs(x - BIN_XS[i]);
+    for (let i = 0; i < this.binXs.length; i++) {
+      const d = Math.abs(x - this.binXs[i]);
       if (d < bestD) { bestD = d; best = i; }
     }
-    return bestD <= BIN_W / 2 + 10 ? best : -1;
+    return bestD <= this.binW / 2 + 10 ? best : -1;
   }
 
   /** Верно: фигурка «всасывается» в корзину, та подпрыгивает, счёт +1. */
@@ -289,7 +310,7 @@ export class Game extends Scene {
     flying.setDepth(6);
     this.tweens.add({
       targets: flying,
-      x: BIN_XS[bin], y: BIN_TOP + 30, scale: 0.3, alpha: 0.1,
+      x: this.binXs[bin], y: BIN_TOP + 30, scale: 0.3, alpha: 0.1,
       duration: 260, ease: 'Quad.easeIn',
       onComplete: () => flying.destroy(),
     });
@@ -340,7 +361,7 @@ export class Game extends Scene {
 
   private flashBin(i: number) {
     const fx = this.add
-      .circle(BIN_XS[i], BIN_TOP + BIN_H / 2, 34, COLORS.correct, 0.45)
+      .circle(this.binXs[i], BIN_TOP + BIN_H / 2, 34, COLORS.correct, 0.45)
       .setDepth(7);
     this.tweens.add({
       targets: fx, alpha: 0, scale: 2.4, duration: 420, ease: 'Quad.easeOut',
@@ -362,7 +383,7 @@ export class Game extends Scene {
     this.clearHint();
     const g = this.add.graphics().setDepth(8);
     g.lineStyle(5, COLORS.hint, 1)
-      .strokeRoundedRect(BIN_XS[i] - BIN_W / 2 - 10, BIN_TOP - 8, BIN_W + 20, BIN_H + 16, 20);
+      .strokeRoundedRect(this.binXs[i] - this.binW / 2 - 10, BIN_TOP - 8, this.binW + 20, BIN_H + 16, 20);
     this.hintFx = g;
     this.tweens.add({
       targets: g, alpha: 0.2, duration: 280, yoyo: true, repeat: 2,
@@ -455,7 +476,7 @@ export class Game extends Scene {
 
     this.tweens.killTweensOf(c);
     c.setScale(1).setDepth(DEMO_DEPTH);
-    const tx = BIN_XS[bin];
+    const tx = this.binXs[bin];
     // Глубже в корзину: так демонстрация не наезжает на карточку-подсказку.
     const ty = BIN_TOP + 66;
 
@@ -490,11 +511,12 @@ export class Game extends Scene {
     const { placed, mistakes } = this.core;
 
     void this.session
-      ?.finish({ mode: this.mode, placed, mistakes, durationMs })
+      ?.finish({ level: this.level, mode: this.mode, placed, mistakes, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
-      mode: this.mode, locale: this.locale, placed, mistakes, durationMs,
+      level: this.level, mode: this.mode, locale: this.locale, placed, mistakes, durationMs,
+      total: this.core.total,
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));

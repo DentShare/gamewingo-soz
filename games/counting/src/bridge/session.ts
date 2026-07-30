@@ -4,7 +4,7 @@ import type {
 import { computeScore } from '../core/score';
 import type { Locale } from '../core/locale';
 
-export interface FinishInput { correct: number; mistakes: number; durationMs: number; }
+export interface FinishInput { level: number; correct: number; mistakes: number; durationMs: number; }
 
 export interface Session {
   locale: Locale; theme?: BrandTheme; sessionId: string; ready(): void;

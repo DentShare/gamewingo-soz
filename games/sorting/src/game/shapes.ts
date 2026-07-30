@@ -23,10 +23,26 @@ export function drawFigure(
     g.fillCircle(cx, cy, h);
   } else if (shape === 'square') {
     g.fillRoundedRect(cx - h, cy - h, size, size, Math.round(size * 0.18));
+  } else if (shape === 'star') {
+    fillStar(g, cx, cy, h, h * 0.44);
   } else {
     // Треугольник чуть приподнят, чтобы визуально совпадать по «весу» с кругом.
     g.fillTriangle(cx, cy - h, cx + h * 0.96, cy + h * 0.82, cx - h * 0.96, cy + h * 0.82);
   }
+}
+
+/** Пятиконечная звезда — четвёртая форма, появляется на поздних уровнях. */
+function fillStar(g: Phaser.GameObjects.Graphics, cx: number, cy: number, outer: number, inner: number): void {
+  g.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? outer : inner;
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+  }
+  g.closePath();
+  g.fillPath();
 }
 
 /**

@@ -5,7 +5,7 @@ import { computeScore } from '../core/score';
 import type { Mode } from '../core/sorting';
 import type { Locale } from '../core/locale';
 
-export interface FinishInput { mode: Mode; placed: number; mistakes: number; durationMs: number; }
+export interface FinishInput { level: number; mode: Mode; placed: number; mistakes: number; durationMs: number; }
 
 export interface Session {
   locale: Locale; theme?: BrandTheme; sessionId: string; ready(): void;
