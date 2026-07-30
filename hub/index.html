@@ -3,167 +3,229 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#f26522" />
 <title>Игры WinGo</title>
 <style>
-  @font-face {
-    font-family: 'Rubik'; font-style: normal; font-weight: 400; font-display: swap;
-    src: url('fonts/rubik-latin-400.woff2') format('woff2');
-    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+2000-206F, U+2122, U+2212;
-  }
-  @font-face {
-    font-family: 'Rubik'; font-style: normal; font-weight: 400; font-display: swap;
-    src: url('fonts/rubik-cyrillic-400.woff2') format('woff2');
-    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
-  }
+  /* Токены из макета Figma (WinGo · Games). */
   :root {
-    --peach: #fbebe1; --orange: #f26522; --orange-d: #d34e12; --green: #2fb84c;
-    --ink: #241a12; --muted: #8a7a6d; --card: #ffffff; --border: #e7d3c7; --amber: #eb9d2e; --grey: #8d7f72;
+    --orange: #F76624;        /* кнопка «Начать игру», активный язык */
+    --chip-bg: #FFDDBF;
+    --chip-ink: #FA7700;
+    --icon-bg: #FFEBE2;
+    --ink: #1A1A1A;
+    --muted: #8E97A7;
+    --card: #FFFFFF;
+    --bg: #F9F9F9;
+    --divider: rgba(217, 217, 217, .4);
+    /* Макет свёрстан на SF Pro — берём системный шрифт платформы. */
+    --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, sans-serif;
+    --font-rounded: ui-rounded, 'SF Pro Rounded', var(--font);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; }
   body {
-    font-family: 'Rubik', system-ui, sans-serif; color: var(--ink);
-    background: var(--peach); min-height: 100vh;
+    font-family: var(--font); color: var(--ink); background: var(--bg);
+    min-height: 100vh; -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 440px; margin: 0 auto; padding-bottom: 40px; }
-
-  header {
-    background: linear-gradient(135deg, #f5841f, #f15a24);
-    color: #fff; padding: calc(env(safe-area-inset-top) + 22px) 20px 24px;
-    border-radius: 0 0 22px 22px;
+  /* Растительный фон макета — мягкое приближение без растровых ассетов. */
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .4;
+    background:
+      radial-gradient(52vw 38vw at -14% 6%, #F2D4CC 0%, rgba(242, 212, 204, 0) 70%),
+      radial-gradient(52vw 38vw at 114% 92%, #F2D4CC 0%, rgba(242, 212, 204, 0) 70%);
   }
-  header .kicker { font-size: 13px; opacity: .9; letter-spacing: .12em; text-transform: uppercase; }
-  header h1 { margin: 4px 0 0; font-size: 30px; font-weight: 500; }
-  header p { margin: 6px 0 0; font-size: 14px; opacity: .92; }
 
-  .langs { display: flex; gap: 8px; margin: 16px 20px 4px; }
+  /* ── Шапка ─────────────────────────────────────────────────────────── */
+  .topbar {
+    position: sticky; top: 0; z-index: 10;
+    background: linear-gradient(270deg, #FF7700 0%, #FD7B03 49.52%, #FF5001 100%);
+    padding: max(env(safe-area-inset-top, 0px), 12px) 20px 0;
+  }
+  .navrow { position: relative; display: flex; align-items: center; height: 46px; }
+  .navrow h1 {
+    position: absolute; left: 40px; right: 40px; margin: 0; text-align: center;
+    font-size: 20px; line-height: 25px; letter-spacing: -.45px; font-weight: 590; color: #fff;
+  }
+  .back {
+    width: 32px; height: 32px; display: grid; place-items: center;
+    background: none; border: 0; padding: 0; color: #fff; cursor: pointer;
+  }
+  .back:active { opacity: .6; }
+
+  .wrap {
+    max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px;
+    padding: 20px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
+  }
+  #sections { display: flex; flex-direction: column; gap: 20px; }
+
+  /* ── Переключатель языка ───────────────────────────────────────────── */
+  .langs { display: flex; gap: 8px; }
   .lang {
-    flex: 1; text-align: center; padding: 9px 0; border-radius: 12px; font-size: 15px;
-    background: var(--card); color: var(--ink); border: 1px solid var(--border); cursor: pointer;
-    box-shadow: 0 2px 0 var(--border);
+    flex: 1; height: 40px; display: grid; place-items: center; border-radius: 12px;
+    background: var(--card); color: var(--ink);
+    font-size: 12px; line-height: 16px; font-weight: 590; cursor: pointer;
   }
-  .lang.active { background: var(--orange); color: #fff; border-color: var(--orange); box-shadow: 0 3px 0 var(--orange-d); }
+  .lang.active { background: var(--orange); color: #fff; }
 
-  .section-title { font-size: 14px; color: var(--muted); margin: 20px 20px 10px; }
-
-  .grid { display: flex; flex-direction: column; gap: 14px; padding: 0 16px; }
-
+  /* ── Секции ────────────────────────────────────────────────────────── */
+  section { display: flex; flex-direction: column; gap: 8px; }
+  .section-title {
+    margin: 0; font-size: 17px; line-height: 22px; letter-spacing: -.43px; font-weight: 590;
+  }
   .card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 18px;
-    padding: 14px; display: flex; gap: 14px; align-items: center;
-    box-shadow: 0 4px 0 var(--border); transition: transform .08s ease, box-shadow .08s ease;
+    display: flex; flex-direction: column; gap: 12px;
+    background: var(--card); border-radius: 12px; padding: 12px;
   }
-  .card.playable { cursor: pointer; }
-  .card.playable:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--border); }
 
+  /* ── Карточка игры ─────────────────────────────────────────────────── */
+  .item { display: flex; flex-direction: column; gap: 12px; cursor: pointer; }
+  .item + .item { padding-top: 12px; border-top: 1px solid var(--divider); }
+  .row { display: flex; gap: 12px; align-items: center; }
   .thumb {
-    width: 92px; height: 92px; border-radius: 14px; flex: none;
-    background: var(--peach); display: grid; place-items: center; border: 1px solid var(--border);
+    width: 82px; height: 82px; flex: none; border-radius: 12px;
+    background: var(--icon-bg); display: grid; place-items: center;
   }
-  .mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
-  .mini i {
-    width: 20px; height: 20px; border-radius: 4px; display: grid; place-items: center;
-    font-size: 12px; font-weight: 500; color: #fff; font-style: normal;
+  .thumb text { font-family: var(--font-rounded); }
+  .thumb-img { width: 82px; height: 82px; display: block; border-radius: 12px; }
+  .meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .meta h3 { margin: 0; font-size: 15px; line-height: 20px; letter-spacing: -.23px; font-weight: 590; }
+  .meta .desc { margin: 0; font-size: 12px; line-height: 16px; color: var(--muted); }
+  .chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .chip {
+    font-family: var(--font-rounded); font-weight: 700; font-size: 12px; line-height: 22px;
+    padding: 4px 8px; border-radius: 8px; background: var(--chip-bg); color: var(--chip-ink);
   }
 
-  .info { flex: 1; min-width: 0; }
-  .info h2 { margin: 0; font-size: 19px; font-weight: 500; }
-  .info .desc { margin: 3px 0 0; font-size: 13px; color: var(--muted); line-height: 1.4; }
-  .tags { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-  .tag { font-size: 11px; padding: 3px 9px; border-radius: 20px; background: #fbe9df; color: var(--orange-d); }
-  .tag.g { background: #e3f6e8; color: #1c7a32; }
-
-  .play {
-    margin-top: 10px; display: inline-block; background: var(--orange); color: #fff;
-    font-size: 15px; padding: 9px 20px; border-radius: 12px; box-shadow: 0 3px 0 var(--orange-d);
-    border: none; font-family: inherit; cursor: pointer;
+  .cta {
+    width: 100%; height: 40px; border: 0; border-radius: 12px; background: var(--orange);
+    color: #fff; font-family: inherit; font-size: 15px; line-height: 20px;
+    letter-spacing: -.23px; font-weight: 590; cursor: pointer;
   }
-  .play:active { transform: translateY(3px); box-shadow: 0 0 0 var(--orange-d); }
+  .cta:active { opacity: .85; }
 
-  .card.soon { opacity: .72; }
-  .card.soon .thumb { color: var(--muted); font-size: 30px; }
-  .soon-badge { font-size: 11px; padding: 3px 9px; border-radius: 20px; background: #efe4da; color: var(--muted); }
-
-  footer { text-align: center; color: var(--muted); font-size: 12px; margin: 26px 20px 0; }
+  /* ── «Скоро» ───────────────────────────────────────────────────────── */
+  .item.soon { opacity: .55; cursor: default; }
+  .chip.soon { background: #ECEEF1; color: var(--muted); }
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div class="kicker">WinGo</div>
+  <header class="topbar">
+    <div class="navrow">
+      <button class="back" id="back" aria-label="Назад">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <path d="M18.5 5.5 8.5 16l10 10.5" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
       <h1 id="hTitle">Игры</h1>
-      <p id="hSub">Играй, зарабатывай бонусы</p>
-    </header>
+    </div>
+  </header>
 
+  <main class="wrap">
     <div class="langs">
       <div class="lang active" data-lang="ru">Русский</div>
       <div class="lang" data-lang="uz">Oʻzbekcha</div>
     </div>
 
-    <div class="section-title" id="sKids">Малышам · без проигрыша</div>
-    <div class="grid" id="gridKids"></div>
-
-    <div class="section-title" id="sArcade">Аркады · играй сразу</div>
-    <div class="grid" id="gridArcade"></div>
-
-    <div class="section-title" id="sAvail">Головоломки</div>
-    <div class="grid" id="grid"></div>
-
-    <div class="section-title" id="sSoon">Скоро</div>
-    <div class="grid" id="gridSoon"></div>
-
-    <footer>WinGo Games · v1 · <span id="count"></span></footer>
-  </div>
+    <div id="sections"></div>
+  </main>
 
 <script>
+  // Растровые иконки из макета: hub/icons/<slug>.webp (82×82 CSS, файл 246×246 = @3x).
+  // Чтобы подключить иконку — положить файл и вписать сюда slug; пока slug'а нет,
+  // рисуется векторный запасной вариант из ICONS ниже.
+  const RASTER_ICONS = new Set([]);
+
+  // Векторный запасной набор — инлайн-SVG (ноль запросов, чёткие на любом DPR).
+  const ICONS = {
+    sorting: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
+      <rect x="2" y="8" width="44" height="32" rx="8" fill="#fff" stroke="#f2ded0" stroke-width="1.5"/>
+      <circle cx="13" cy="18" r="5" fill="#f26522"/>
+      <rect x="19" y="13" width="10" height="10" rx="2.8" fill="#2fb84c"/>
+      <path d="M35 12.6 40 22H30Z" fill="#eb9d2e"/>
+      <rect x="8" y="25" width="10" height="10" rx="2.8" fill="#eb9d2e"/>
+      <circle cx="24" cy="30" r="5" fill="#2fb84c"/>
+      <path d="M35 24.6 40 34H30Z" fill="#f26522"/></svg>`,
+    counting: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
+      <rect x="4" y="7" width="40" height="34" rx="9" fill="#fff" stroke="#f2ded0" stroke-width="1.5"/>
+      <text x="17" y="33" text-anchor="middle" font-size="26" font-weight="700" fill="#f26522">3</text>
+      <circle cx="33" cy="16.5" r="3.8" fill="#2fb84c"/>
+      <circle cx="33" cy="24.5" r="3.8" fill="#eb9d2e"/>
+      <circle cx="33" cy="32.5" r="3.8" fill="#2fb84c"/></svg>`,
+    stack: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
+      <rect x="6" y="33" width="36" height="10" rx="4" fill="#f26522"/>
+      <rect x="10" y="22" width="29" height="10" rx="4" fill="#eb9d2e"/>
+      <rect x="7" y="11" width="27" height="10" rx="4" fill="#2fb84c"/>
+      <rect x="12" y="3" width="20" height="8" rx="3.6" fill="#ffc79a"/></svg>`,
+    flyer: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
+      <rect x="2" y="0" width="12" height="19" rx="3" fill="#f5841f"/>
+      <rect x="2" y="31" width="12" height="17" rx="3" fill="#f5841f"/>
+      <rect x="34" y="0" width="12" height="14" rx="3" fill="#f9a664"/>
+      <rect x="34" y="26" width="12" height="22" rx="3" fill="#f9a664"/>
+      <circle cx="24" cy="24" r="8" fill="#eb9d2e"/>
+      <circle cx="27" cy="21.4" r="2.3" fill="#fff"/></svg>`,
+    targets: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
+      <circle cx="24" cy="24" r="17" fill="#f26522"/>
+      <circle cx="24" cy="24" r="11.5" fill="#fff"/>
+      <circle cx="24" cy="24" r="6.5" fill="#f26522"/>
+      <circle cx="24" cy="24" r="2.6" fill="#fff"/></svg>`,
+    snake: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
+      <rect x="4" y="26" width="13" height="13" rx="4" fill="#2fb84c"/>
+      <rect x="16" y="26" width="13" height="13" rx="4" fill="#3ac95a"/>
+      <rect x="16" y="15" width="13" height="13" rx="4" fill="#3ac95a"/>
+      <rect x="28" y="15" width="13" height="13" rx="4" fill="#2fb84c"/>
+      <circle cx="37" cy="20" r="1.7" fill="#fff"/>
+      <circle cx="12" cy="11" r="5.5" fill="#f26522"/></svg>`,
+    soz: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
+      <rect x="3" y="4" width="13.5" height="13" rx="3.6" fill="#c9bdb3"/>
+      <rect x="17.5" y="4" width="13.5" height="13" rx="3.6" fill="#eb9d2e"/>
+      <rect x="32" y="4" width="13.5" height="13" rx="3.6" fill="#c9bdb3"/>
+      <rect x="3" y="18" width="13.5" height="13" rx="3.6" fill="#2fb84c"/>
+      <rect x="17.5" y="18" width="13.5" height="13" rx="3.6" fill="#c9bdb3"/>
+      <rect x="32" y="18" width="13.5" height="13" rx="3.6" fill="#eb9d2e"/>
+      <rect x="3" y="32" width="13.5" height="13" rx="3.6" fill="#2fb84c"/>
+      <rect x="17.5" y="32" width="13.5" height="13" rx="3.6" fill="#2fb84c"/>
+      <rect x="32" y="32" width="13.5" height="13" rx="3.6" fill="#2fb84c"/></svg>`,
+    pairs: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
+      <g transform="rotate(-9 15 24)">
+        <rect x="5" y="10" width="19" height="28" rx="5" fill="#f26522"/>
+        <circle cx="14.5" cy="24" r="4" fill="#fff" opacity=".85"/>
+      </g>
+      <g transform="rotate(8 33 24)">
+        <rect x="24" y="10" width="19" height="28" rx="5" fill="#fff" stroke="#f2ded0" stroke-width="1.5"/>
+        <circle cx="33.5" cy="24" r="4.4" fill="#2fb84c"/>
+      </g></svg>`,
+    fifteen: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
+      <rect x="4" y="4" width="40" height="40" rx="9" fill="#fff" stroke="#f2ded0" stroke-width="1.5"/>
+      <rect x="8.5" y="8.5" width="14.5" height="14.5" rx="4.2" fill="#f26522"/>
+      <rect x="25" y="8.5" width="14.5" height="14.5" rx="4.2" fill="#f5841f"/>
+      <rect x="8.5" y="25" width="14.5" height="14.5" rx="4.2" fill="#eb9d2e"/>
+      <g font-size="11" font-weight="700" fill="#fff" text-anchor="middle">
+        <text x="15.7" y="20">1</text><text x="32.2" y="20">2</text><text x="15.7" y="36.5">3</text>
+      </g></svg>`,
+    '2048': `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
+      <rect x="4.5" y="16" width="13" height="16" rx="4.2" fill="#ffd7b8"/>
+      <rect x="17.5" y="16" width="13" height="16" rx="4.2" fill="#f5a05a"/>
+      <rect x="30.5" y="16" width="13" height="16" rx="4.2" fill="#f26522"/>
+      <g font-size="11" font-weight="700" text-anchor="middle">
+        <text x="11" y="28" fill="#d1590f">2</text>
+        <text x="24" y="28" fill="#fff">4</text>
+        <text x="37" y="28" fill="#fff">8</text>
+      </g></svg>`,
+    'sudoku-kids': `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
+      <rect x="4" y="4" width="40" height="40" rx="9" fill="#fff" stroke="#f2ded0" stroke-width="1.5"/>
+      <path d="M14.5 5v38M33.5 5v38M5 14.5h38M5 33.5h38" stroke="#f8ece4" stroke-width="1"/>
+      <path d="M24 5v38M5 24h38" stroke="#f0dccd" stroke-width="1.8"/>
+      <g font-size="10" font-weight="700" text-anchor="middle">
+        <text x="9.7" y="18" fill="#f26522">1</text>
+        <text x="19.2" y="37" fill="#2fb84c">2</text>
+        <text x="38.7" y="18" fill="#eb9d2e">3</text>
+      </g></svg>`,
+  };
+
   // Каталог игр. URL относительные — хаб и игры живут в одном Vercel-проекте
   // (см. scripts/build-catalog.mjs); абсолютные URL для приложения — в manifest.json.
-  const GAMES = [
-    {
-      id: 'soz',
-      title: { ru: '5 букв', uz: '5 harf' },
-      desc: { ru: 'Угадай слово из 5 букв за 6 попыток', uz: '5 harfli soʻzni 6 urinishda top' },
-      url: 'soz/',
-      tags: ['RU', 'UZ', { ru: 'Слова', uz: 'Soʻzlar', accent: true }],
-      thumb: [
-        { l: 'С', c: 'green' }, { l: 'Л', c: 'grey' }, { l: 'О', c: 'amber' },
-        { l: 'В', c: 'green' }, { l: 'О', c: 'grey' }, { l: 'О', c: 'green' },
-        { l: 'К', c: 'amber' }, { l: 'Н', c: 'grey' }, { l: 'О', c: 'green' },
-      ],
-    },
-    {
-      id: 'pairs',
-      title: { ru: 'Найди пару', uz: 'Juftini top' },
-      desc: { ru: 'Открывай карточки и находи пары', uz: 'Kartochkalarni ochib juftlarni top' },
-      url: 'pairs/',
-      icon: '🐾',
-      tags: ['RU', 'UZ', { ru: 'Детям', uz: 'Bolalarga', accent: true }],
-    },
-    {
-      id: 'fifteen',
-      title: { ru: 'Пятнашки', uz: 'Boshqotirma 15' },
-      desc: { ru: 'Собери числа по порядку', uz: 'Raqamlarni tartib bilan yigʻ' },
-      url: 'fifteen/',
-      icon: '🔢',
-      tags: ['RU', 'UZ', { ru: 'Логика', uz: 'Mantiq', accent: true }],
-    },
-    {
-      id: '2048',
-      title: { ru: '2048', uz: '2048' },
-      desc: { ru: 'Сливай плитки и дойди до 2048', uz: 'Plitkalarni qoʻshib 2048 ga yet' },
-      url: '2048/',
-      icon: '🧮',
-      tags: ['RU', 'UZ', { ru: 'Логика', uz: 'Mantiq', accent: true }],
-    },
-    {
-      id: 'sudoku-kids',
-      title: { ru: 'Мини-судоку', uz: 'Mini sudoku' },
-      desc: { ru: 'Судоку 4×4 и 6×6 для детей', uz: 'Bolalar uchun 4×4 va 6×6 sudoku' },
-      url: 'sudoku-kids/',
-      icon: '🧩',
-      tags: ['RU', 'UZ', { ru: 'Детям', uz: 'Bolalarga', accent: true }],
-    },
-  ];
+
   // Малышам: нет таймера и проигрыша, ошибка — мягкая подсказка.
   const KIDS = [
     {
@@ -171,7 +233,6 @@
       title: { ru: 'Сортировка', uz: 'Saralash' },
       desc: { ru: 'Разложи фигурки по цвету и форме', uz: 'Shakllarni rang va shaklga ajrat' },
       url: 'sorting/',
-      icon: '🎨',
       tags: ['RU', 'UZ', { ru: '3–6 лет', uz: '3–6 yosh', accent: true }],
     },
     {
@@ -179,7 +240,6 @@
       title: { ru: 'Счёт', uz: 'Sanoq' },
       desc: { ru: 'Посчитай предметы и найди цифру', uz: 'Buyumlarni sanab, raqamni top' },
       url: 'counting/',
-      icon: '🔢',
       tags: ['RU', 'UZ', { ru: '4–7 лет', uz: '4–7 yosh', accent: true }],
     },
   ];
@@ -190,7 +250,6 @@
       title: { ru: 'Башня', uz: 'Minora' },
       desc: { ru: 'Тап — блок падает. Строй башню выше', uz: 'Bosing — blok tushadi. Minorani balandroq quring' },
       url: 'stack/',
-      icon: '🧱',
       tags: ['RU', 'UZ', { ru: 'Один тап', uz: 'Bir bosish', accent: true }],
     },
     {
@@ -198,7 +257,6 @@
       title: { ru: 'Полёт', uz: 'Parvoz' },
       desc: { ru: 'Тапай и пролетай сквозь проёмы', uz: 'Bosing va teshiklardan uching' },
       url: 'flyer/',
-      icon: '🚀',
       tags: ['RU', 'UZ', { ru: 'Один тап', uz: 'Bir bosish', accent: true }],
     },
     {
@@ -206,7 +264,6 @@
       title: { ru: 'Меткий глаз', uz: 'Nishonga ur' },
       desc: { ru: 'Бей по целям 60 секунд — держи серию', uz: '60 soniya nishonga ur — ketma-ketlikni ushla' },
       url: 'targets/',
-      icon: '🎯',
       tags: ['RU', 'UZ', { ru: 'Реакция', uz: 'Reaksiya', accent: true }],
     },
     {
@@ -214,86 +271,151 @@
       title: { ru: 'Змейка', uz: 'Ilon' },
       desc: { ru: 'Свайпай, ешь и расти', uz: 'Suring, yeng va oʻsing' },
       url: 'snake/',
-      icon: '🐍',
       tags: ['RU', 'UZ', { ru: 'Классика', uz: 'Klassika', accent: true }],
     },
   ];
+  const PUZZLES = [
+    {
+      id: 'soz',
+      title: { ru: '5 букв', uz: '5 harf' },
+      desc: { ru: 'Угадай слово из 5 букв за 6 попыток', uz: '5 harfli soʻzni 6 urinishda top' },
+      url: 'soz/',
+      tags: ['RU', 'UZ', { ru: 'Слова', uz: 'Soʻzlar', accent: true }],
+    },
+    {
+      id: 'pairs',
+      title: { ru: 'Найди пару', uz: 'Juftini top' },
+      desc: { ru: 'Открывай карточки и находи пары', uz: 'Kartochkalarni ochib juftlarni top' },
+      url: 'pairs/',
+      tags: ['RU', 'UZ', { ru: 'Детям', uz: 'Bolalarga', accent: true }],
+    },
+    {
+      id: 'fifteen',
+      title: { ru: 'Пятнашки', uz: 'Boshqotirma 15' },
+      desc: { ru: 'Собери числа по порядку', uz: 'Raqamlarni tartib bilan yigʻ' },
+      url: 'fifteen/',
+      tags: ['RU', 'UZ', { ru: 'Логика', uz: 'Mantiq', accent: true }],
+    },
+    {
+      id: '2048',
+      title: { ru: '2048', uz: '2048' },
+      desc: { ru: 'Сливай плитки и дойди до 2048', uz: 'Plitkalarni qoʻshib 2048 ga yet' },
+      url: '2048/',
+      tags: ['RU', 'UZ', { ru: 'Логика', uz: 'Mantiq', accent: true }],
+    },
+    {
+      id: 'sudoku-kids',
+      title: { ru: 'Мини-судоку', uz: 'Mini sudoku' },
+      desc: { ru: 'Судоку 4×4 и 6×6 для детей', uz: 'Bolalar uchun 4×4 va 6×6 sudoku' },
+      url: 'sudoku-kids/',
+      tags: ['RU', 'UZ', { ru: 'Детям', uz: 'Bolalarga', accent: true }],
+    },
+  ];
   const SOON = [];
+
+  const SECTIONS = [
+    { key: 'kids', games: KIDS },
+    { key: 'arcade', games: ARCADE },
+    { key: 'puzzles', games: PUZZLES },
+    { key: 'soon', games: SOON, soon: true },
+  ];
+
   const STR = {
-    ru: { title: 'Игры', sub: 'Играй, зарабатывай бонусы', kids: 'Малышам · без проигрыша', arcade: 'Аркады · играй сразу', avail: 'Головоломки', soon: 'Скоро', play: 'Играть', soonBadge: 'Скоро' },
-    uz: { title: 'Oʻyinlar', sub: 'Oʻyna, bonus yigʻ', kids: 'Kichkintoylarga · yutqazish yoʻq', arcade: 'Arkada · darrov oʻyna', avail: 'Boshqotirmalar', soon: 'Tez orada', play: 'Oʻynash', soonBadge: 'Tez orada' },
+    ru: {
+      title: 'Игры', back: 'Назад', play: 'Начать игру',
+      kids: 'Малышам • без проигрыша', arcade: 'Аркады • играй сразу',
+      puzzles: 'Головоломки', soon: 'Скоро', soonBadge: 'Скоро',
+    },
+    uz: {
+      title: 'Oʻyinlar', back: 'Orqaga', play: 'Oʻynashni boshlash',
+      kids: 'Kichkintoylarga • yutqazish yoʻq', arcade: 'Arkada • darrov oʻyna',
+      puzzles: 'Boshqotirmalar', soon: 'Tez orada', soonBadge: 'Tez orada',
+    },
   };
-  const C = { green: '#2fb84c', amber: '#eb9d2e', grey: '#8d7f72' };
+
   let lang = localStorage.getItem('wingoHubLang') || 'ru';
 
-  /** Карточки играбельной секции (аркады / головоломки). */
-  function renderPlayable(gridId, games, s) {
-    const grid = document.getElementById(gridId);
-    grid.innerHTML = '';
-    games.forEach(g => {
-      const card = document.createElement('div');
-      card.className = 'card playable';
-      const tags = g.tags.map(tg => typeof tg === 'string'
-        ? `<span class="tag">${tg}</span>`
-        : `<span class="tag ${tg.accent ? 'g' : ''}">${tg[lang]}</span>`).join('');
-      const thumb = g.thumb
-        ? `<div class="mini">${g.thumb.map(t => `<i style="background:${C[t.c]}">${t.l}</i>`).join('')}</div>`
-        : `<span style="font-size:34px">${g.icon}</span>`;
-      card.innerHTML = `
-        <div class="thumb">${thumb}</div>
-        <div class="info">
-          <h2>${g.title[lang]}</h2>
-          <p class="desc">${g.desc[lang]}</p>
-          <div class="tags">${tags}</div>
-          <button class="play">${s.play} ↗</button>
-        </div>`;
-      card.addEventListener('click', () => { window.location.href = g.url; });
-      grid.appendChild(card);
-    });
+  /**
+   * Событие приложению — тот же транспорт, что и в @gamewingo/game-bridge
+   * (iOS WKWebView → Android WebView → postMessage родителю).
+   */
+  function postToApp(event) {
+    const w = window;
+    if (w.webkit && w.webkit.messageHandlers && w.webkit.messageHandlers.gameBridge) {
+      w.webkit.messageHandlers.gameBridge.postMessage(event);
+      return true;
+    }
+    if (w.AndroidBridge) { w.AndroidBridge.onGameEvent(JSON.stringify(event)); return true; }
+    if (w.parent !== w) { w.parent.postMessage(event, '*'); return true; }
+    return false;
+  }
+
+  function chipsHtml(tags) {
+    return tags.map((t) => (typeof t === 'string'
+      ? `<span class="chip">${t}</span>`
+      : `<span class="chip${t.accent ? ' accent' : ''}">${t[lang]}</span>`)).join('');
+  }
+
+  /** Иконка игры: файл из макета, если он есть, иначе векторный запасной вариант. */
+  function iconHtml(id) {
+    return RASTER_ICONS.has(id)
+      ? `<img class="thumb-img" src="icons/${id}.webp" width="82" height="82" alt="" />`
+      : (ICONS[id] || '');
+  }
+
+  function itemHtml(g, s, soon) {
+    const chips = soon ? `<span class="chip soon">${s.soonBadge}</span>` : chipsHtml(g.tags);
+    const cta = soon ? '' : `<button class="cta" type="button">${s.play}</button>`;
+    return `
+      <article class="item${soon ? ' soon' : ''}"${soon ? '' : ` data-url="${g.url}"`}>
+        <div class="row">
+          <div class="thumb">${iconHtml(g.id)}</div>
+          <div class="meta">
+            <h3>${g.title[lang]}</h3>
+            <p class="desc">${g.desc[lang]}</p>
+            <div class="chips">${chips}</div>
+          </div>
+        </div>
+        ${cta}
+      </article>`;
   }
 
   function render() {
     const s = STR[lang];
-    const total = KIDS.length + ARCADE.length + GAMES.length;
+    document.documentElement.lang = lang;
     document.getElementById('hTitle').textContent = s.title;
-    document.getElementById('hSub').textContent = s.sub;
-    document.getElementById('sKids').textContent = s.kids;
-    document.getElementById('sArcade').textContent = s.arcade;
-    document.getElementById('sAvail').textContent = s.avail;
-    document.getElementById('sSoon').textContent = s.soon;
-    document.getElementById('count').textContent = total + ' / ' + (total + SOON.length);
-    document.querySelectorAll('.lang').forEach(el =>
+    document.getElementById('back').setAttribute('aria-label', s.back);
+    document.querySelectorAll('.lang').forEach((el) =>
       el.classList.toggle('active', el.dataset.lang === lang));
 
-    renderPlayable('gridKids', KIDS, s);
-    renderPlayable('gridArcade', ARCADE, s);
-    renderPlayable('grid', GAMES, s);
-
-    // Секция «Скоро» показывается, только если в ней что-то есть.
-    const soonEmpty = SOON.length === 0;
-    document.getElementById('sSoon').style.display = soonEmpty ? 'none' : '';
-    const soon = document.getElementById('gridSoon');
-    soon.style.display = soonEmpty ? 'none' : '';
-    soon.innerHTML = '';
-    SOON.forEach(g => {
-      const card = document.createElement('div');
-      card.className = 'card soon';
-      card.innerHTML = `
-        <div class="thumb">${g.icon}</div>
-        <div class="info">
-          <h2>${g.title[lang]}</h2>
-          <div class="tags"><span class="soon-badge">${s.soonBadge}</span></div>
-        </div>`;
-      soon.appendChild(card);
-    });
+    // Пустые секции (например «Скоро») не рисуются вовсе.
+    document.getElementById('sections').innerHTML = SECTIONS
+      .filter((sec) => sec.games.length > 0)
+      .map((sec) => `
+        <section>
+          <h2 class="section-title">${s[sec.key]}</h2>
+          <div class="card">${sec.games.map((g) => itemHtml(g, s, sec.soon)).join('')}</div>
+        </section>`)
+      .join('');
   }
 
-  document.querySelectorAll('.lang').forEach(el =>
+  document.getElementById('sections').addEventListener('click', (e) => {
+    const item = e.target.closest('.item[data-url]');
+    if (item) window.location.href = item.dataset.url;
+  });
+
+  // Назад: просим приложение закрыть раздел игр; вне WebView — обычная история браузера.
+  document.getElementById('back').addEventListener('click', () => {
+    if (!postToApp({ type: 'GAME_EXIT', sessionId: '' }) && history.length > 1) history.back();
+  });
+
+  document.querySelectorAll('.lang').forEach((el) =>
     el.addEventListener('click', () => {
       lang = el.dataset.lang;
-      try { localStorage.setItem('wingoHubLang', lang); } catch (e) {}
+      try { localStorage.setItem('wingoHubLang', lang); } catch (err) { /* приватный режим */ }
       render();
     }));
+
   render();
 </script>
 </body>
