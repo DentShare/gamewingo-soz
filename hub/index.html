@@ -86,6 +86,7 @@
     background: var(--icon-bg); display: grid; place-items: center;
   }
   .thumb text { font-family: var(--font-rounded); }
+  .thumb-img { width: 82px; height: 82px; display: block; border-radius: 12px; }
   .meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
   .meta h3 { margin: 0; font-size: 15px; line-height: 20px; letter-spacing: -.23px; font-weight: 590; }
   .meta .desc { margin: 0; font-size: 12px; line-height: 16px; color: var(--muted); }
@@ -130,7 +131,12 @@
   </main>
 
 <script>
-  // Иконки игр — инлайн-SVG (ноль запросов, чёткие на любом DPR).
+  // Растровые иконки из макета: hub/icons/<slug>.webp (82×82 CSS, файл 246×246 = @3x).
+  // Чтобы подключить иконку — положить файл и вписать сюда slug; пока slug'а нет,
+  // рисуется векторный запасной вариант из ICONS ниже.
+  const RASTER_ICONS = new Set([]);
+
+  // Векторный запасной набор — инлайн-SVG (ноль запросов, чёткие на любом DPR).
   const ICONS = {
     sorting: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
       <rect x="2" y="8" width="44" height="32" rx="8" fill="#fff" stroke="#f2ded0" stroke-width="1.5"/>
@@ -350,13 +356,20 @@
       : `<span class="chip${t.accent ? ' accent' : ''}">${t[lang]}</span>`)).join('');
   }
 
+  /** Иконка игры: файл из макета, если он есть, иначе векторный запасной вариант. */
+  function iconHtml(id) {
+    return RASTER_ICONS.has(id)
+      ? `<img class="thumb-img" src="icons/${id}.webp" width="82" height="82" alt="" />`
+      : (ICONS[id] || '');
+  }
+
   function itemHtml(g, s, soon) {
     const chips = soon ? `<span class="chip soon">${s.soonBadge}</span>` : chipsHtml(g.tags);
     const cta = soon ? '' : `<button class="cta" type="button">${s.play}</button>`;
     return `
       <article class="item${soon ? ' soon' : ''}"${soon ? '' : ` data-url="${g.url}"`}>
         <div class="row">
-          <div class="thumb">${ICONS[g.id] || ''}</div>
+          <div class="thumb">${iconHtml(g.id)}</div>
           <div class="meta">
             <h3>${g.title[lang]}</h3>
             <p class="desc">${g.desc[lang]}</p>
