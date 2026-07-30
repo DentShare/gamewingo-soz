@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <g transform="translate(24.8 51.9) scale(0.9030)">
+<ellipse cx="256.0" cy="246.0"
+            rx="180" ry="60" fill="#B9C3C7" opacity="0.3" filter="url(#soft)"/>
+
+    <polygon points="17.8,138.5 130.4,203.5 130.4,233.5 17.8,168.5" fill="#eaedef"/>
+    <polygon points="243.0,138.5 130.4,203.5 130.4,233.5 243.0,168.5" fill="#dee2e5"/>
+    <polygon points="130.4,73.5 243.0,138.5 130.4,203.5 17.8,138.5" fill="#fdfdfe"/>
+    <polygon points="130.4,73.5 243.0,138.5 130.4,203.5 17.8,138.5" fill="#FFFFFF" opacity=".16"/>
+<g transform="matrix(0.866 .5 -0.866 .5 130.4 138.5)"><polygon points="0.0,-46.0 11.4,-15.6 43.7,-14.2 18.4,6.0 27.0,37.2 0.0,19.3 -27.0,37.2 -18.4,6.0 -43.7,-14.2 -11.4,-15.6" fill="#FF8A1A"/></g>
+
+    <polygon points="143.4,211.0 256.0,276.0 256.0,306.0 143.4,241.0" fill="#eaedef"/>
+    <polygon points="368.6,211.0 256.0,276.0 256.0,306.0 368.6,241.0" fill="#dee2e5"/>
+    <polygon points="256.0,146.0 368.6,211.0 256.0,276.0 143.4,211.0" fill="#fdfdfe"/>
+    <polygon points="256.0,146.0 368.6,211.0 256.0,276.0 143.4,211.0" fill="#FFFFFF" opacity=".16"/>
+<g transform="matrix(0.866 .5 -0.866 .5 256.0 211.0)"><polygon points="0.0,-46.0 11.4,-15.6 43.7,-14.2 18.4,6.0 27.0,37.2 0.0,19.3 -27.0,37.2 -18.4,6.0 -43.7,-14.2 -11.4,-15.6" fill="#FF8A1A"/></g>
+
+    <polygon points="269.0,283.5 381.6,348.5 381.6,378.5 269.0,313.5" fill="#ff8f23"/>
+    <polygon points="494.1,283.5 381.6,348.5 381.6,378.5 494.1,313.5" fill="#ff8009"/>
+    <polygon points="381.6,218.5 494.1,283.5 381.6,348.5 269.0,283.5" fill="#ffa749"/>
+    <polygon points="381.6,218.5 494.1,283.5 381.6,348.5 269.0,283.5" fill="#FFFFFF" opacity=".16"/>
+<g transform="matrix(0.866 .5 -0.866 .5 381.6 283.5)"><text x="0" y="0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="74" font-weight="700"
+      fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">?</text></g>
+  </g>
+</svg>

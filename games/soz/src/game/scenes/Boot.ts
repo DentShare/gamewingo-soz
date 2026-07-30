@@ -5,6 +5,7 @@ import { createSession } from '../../bridge/session';
 import { createDemoApi, installDemoApp, DEMO_API_BASE } from '../../bridge/demo';
 import { computeDayId } from '../../core/dailyWord';
 import { getHighContrast } from '../../core/persistence';
+import { loadGameIcon } from '../ui';
 
 /**
  * Boot: поднимает мост, ждёт INIT от приложения. Если INIT не пришёл (веб/дев вне
@@ -13,6 +14,11 @@ import { getHighContrast } from '../../core/persistence';
 export class Boot extends Scene {
   constructor() {
     super('Boot');
+  }
+
+  /** Иконка игры — та же, что в каталоге; показывается в меню. */
+  preload() {
+    loadGameIcon(this);
   }
 
   create() {

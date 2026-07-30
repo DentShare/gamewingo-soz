@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <g transform="translate(44.1 99.8) scale(0.8277)">
+<ellipse cx="208.4" cy="273.5"
+            rx="165" ry="54" fill="#B9C3C7" opacity="0.3" filter="url(#soft)"/>
+
+    <polygon points="-3.8,190.0 256.0,340.0 256.0,386.0 -3.8,236.0" fill="#ff8f23"/>
+    <polygon points="515.8,190.0 256.0,340.0 256.0,386.0 515.8,236.0" fill="#ff8009"/>
+    <polygon points="256.0,40.0 515.8,190.0 256.0,340.0 -3.8,190.0" fill="#ffa749"/>
+    <polygon points="256.0,40.0 515.8,190.0 256.0,340.0 -3.8,190.0" fill="#FFFFFF" opacity=".16"/>
+
+    <polygon points="26.5,151.5 251.7,281.5 251.7,327.5 26.5,197.5" fill="#4cb9b2"/>
+    <polygon points="476.8,151.5 251.7,281.5 251.7,327.5 476.8,197.5" fill="#37aca5"/>
+    <polygon points="251.7,21.5 476.8,151.5 251.7,281.5 26.5,151.5" fill="#6ccdc5"/>
+    <polygon points="251.7,21.5 476.8,151.5 251.7,281.5 26.5,151.5" fill="#FFFFFF" opacity=".16"/>
+
+    <polygon points="61.2,110.5 251.7,220.5 251.7,266.5 61.2,156.5" fill="#ff8f23"/>
+    <polygon points="442.2,110.5 251.7,220.5 251.7,266.5 442.2,156.5" fill="#ff8009"/>
+    <polygon points="251.7,0.5 442.2,110.5 251.7,220.5 61.2,110.5" fill="#ffa749"/>
+    <polygon points="251.7,0.5 442.2,110.5 251.7,220.5 61.2,110.5" fill="#FFFFFF" opacity=".16"/>
+
+    <polygon points="95.8,81.5 251.7,171.5 251.7,215.5 95.8,125.5" fill="#4cb9b2"/>
+    <polygon points="407.6,81.5 251.7,171.5 251.7,215.5 407.6,125.5" fill="#37aca5"/>
+    <polygon points="251.7,-8.5 407.6,81.5 251.7,171.5 95.8,81.5" fill="#6ccdc5"/>
+    <polygon points="251.7,-8.5 407.6,81.5 251.7,171.5 95.8,81.5" fill="#FFFFFF" opacity=".16"/>
+<g transform="matrix(0.866 .5 -0.866 .5 251.7 47.5)"><polygon points="0,-44 39.6,6.6 15.84,6.6 15.84,44 -15.84,44 -15.84,6.6 -39.6,6.6" fill="#FF8A1A"/></g>
+  </g>
+</svg>

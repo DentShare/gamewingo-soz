@@ -131,10 +131,12 @@
   </main>
 
 <script>
-  // Растровые иконки из макета: hub/icons/<slug>.webp (82×82 CSS, файл 246×246 = @3x).
-  // Чтобы подключить иконку — положить файл и вписать сюда slug; пока slug'а нет,
-  // рисуется векторный запасной вариант из ICONS ниже.
-  const RASTER_ICONS = new Set([]);
+  // Иконки каталога: hub/icons/<slug>.svg, генерируются `node scripts/gen-icons.mjs`.
+  // Для slug'а без файла рисуется векторный запасной вариант из ICONS ниже.
+  const FILE_ICONS = new Set([
+    'soz', 'pairs', 'fifteen', '2048', 'sudoku-kids',
+    'stack', 'flyer', 'targets', 'snake', 'sorting', 'counting',
+  ]);
 
   // Векторный запасной набор — инлайн-SVG (ноль запросов, чёткие на любом DPR).
   const ICONS = {
@@ -358,8 +360,8 @@
 
   /** Иконка игры: файл из макета, если он есть, иначе векторный запасной вариант. */
   function iconHtml(id) {
-    return RASTER_ICONS.has(id)
-      ? `<img class="thumb-img" src="icons/${id}.webp" width="82" height="82" alt="" />`
+    return FILE_ICONS.has(id)
+      ? `<img class="thumb-img" src="icons/${id}.svg" width="82" height="82" alt="" loading="lazy" />`
       : (ICONS[id] || '');
   }
 

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <g transform="translate(88.7 111.6) scale(0.6535)">
+<ellipse cx="256.0" cy="246.0"
+            rx="190" ry="62" fill="#B9C3C7" opacity="0.3" filter="url(#soft)"/>
+
+    <polygon points="-73.1,226.0 256.0,416.0 256.0,436.0 -73.1,246.0" fill="#eaedef"/>
+    <polygon points="585.1,226.0 256.0,416.0 256.0,436.0 585.1,246.0" fill="#dee2e5"/>
+    <polygon points="256.0,36.0 585.1,226.0 256.0,416.0 -73.1,226.0" fill="#fdfdfe"/>
+    <polygon points="256.0,36.0 585.1,226.0 256.0,416.0 -73.1,226.0" fill="#FFFFFF" opacity=".16"/>
+<polygon points="256.0,236.0 394.6,316.0 256.0,396.0 117.4,316.0" fill="#E3E8EA"/>
+<g transform="matrix(0.866 .5 -0.866 .5 256.0 315.0)"><polygon points="-46,0 6.8999999999999995,41.4 6.8999999999999995,16.56 46,16.56 46,-16.56 6.8999999999999995,-16.56 6.8999999999999995,-41.4" fill="#C9D2D6"/></g>
+
+    <polygon points="117.4,86.0 256.0,166.0 256.0,216.0 117.4,136.0" fill="#4cb9b2"/>
+    <polygon points="394.6,86.0 256.0,166.0 256.0,216.0 394.6,136.0" fill="#37aca5"/>
+    <polygon points="256.0,6.0 394.6,86.0 256.0,166.0 117.4,86.0" fill="#6ccdc5"/>
+    <polygon points="256.0,6.0 394.6,86.0 256.0,166.0 117.4,86.0" fill="#FFFFFF" opacity=".16"/>
+<g transform="matrix(0.866 .5 -0.866 .5 256.0 86.0)"><text x="0" y="0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="84" font-weight="700"
+      fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">1</text></g>
+
+    <polygon points="273.3,176.0 411.9,256.0 411.9,306.0 273.3,226.0" fill="#ff8f23"/>
+    <polygon points="550.4,176.0 411.9,256.0 411.9,306.0 550.4,226.0" fill="#ff8009"/>
+    <polygon points="411.9,96.0 550.4,176.0 411.9,256.0 273.3,176.0" fill="#ffa749"/>
+    <polygon points="411.9,96.0 550.4,176.0 411.9,256.0 273.3,176.0" fill="#FFFFFF" opacity=".16"/>
+<g transform="matrix(0.866 .5 -0.866 .5 411.9 176.0)"><text x="0" y="0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="84" font-weight="700"
+      fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">2</text></g>
+
+    <polygon points="-38.4,176.0 100.1,256.0 100.1,306.0 -38.4,226.0" fill="#ff8f23"/>
+    <polygon points="238.7,176.0 100.1,256.0 100.1,306.0 238.7,226.0" fill="#ff8009"/>
+    <polygon points="100.1,96.0 238.7,176.0 100.1,256.0 -38.4,176.0" fill="#ffa749"/>
+    <polygon points="100.1,96.0 238.7,176.0 100.1,256.0 -38.4,176.0" fill="#FFFFFF" opacity=".16"/>
+<g transform="matrix(0.866 .5 -0.866 .5 100.1 176.0)"><text x="0" y="0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="84" font-weight="700"
+      fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">3</text></g>
+  </g>
+</svg>

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <g transform="translate(31.3 51.4) scale(0.8779)">
+<ellipse cx="256.0" cy="246.0"
+            rx="175" ry="58" fill="#B9C3C7" opacity="0.3" filter="url(#soft)"/>
+
+    <ellipse cx="256.0" cy="246.0" rx="244.9" ry="141.4" fill="#dee2e5"/>
+    <rect x="11.1" y="220.0" width="489.9" height="26.0" fill="#eaedef"/>
+    <ellipse cx="256.0" cy="220.0" rx="244.9" ry="141.4" fill="#fdfdfe"/>
+    <ellipse cx="256.0" cy="220.0" rx="244.9" ry="141.4" fill="#FFFFFF" opacity=".14"/>
+
+    <ellipse cx="256.0" cy="220.0" rx="202.1" ry="116.7" fill="#ff8009"/>
+    <rect x="53.9" y="206.0" width="404.2" height="14.0" fill="#ff8f23"/>
+    <ellipse cx="256.0" cy="206.0" rx="202.1" ry="116.7" fill="#ffa749"/>
+    <ellipse cx="256.0" cy="206.0" rx="202.1" ry="116.7" fill="#FFFFFF" opacity=".14"/>
+
+    <ellipse cx="256.0" cy="206.0" rx="137.2" ry="79.2" fill="#dee2e5"/>
+    <rect x="118.8" y="192.0" width="274.3" height="14.0" fill="#eaedef"/>
+    <ellipse cx="256.0" cy="192.0" rx="137.2" ry="79.2" fill="#fdfdfe"/>
+    <ellipse cx="256.0" cy="192.0" rx="137.2" ry="79.2" fill="#FFFFFF" opacity=".14"/>
+
+    <ellipse cx="256.0" cy="192.0" rx="75.9" ry="43.8" fill="#ff8009"/>
+    <rect x="180.1" y="178.0" width="151.9" height="14.0" fill="#ff8f23"/>
+    <ellipse cx="256.0" cy="178.0" rx="75.9" ry="43.8" fill="#ffa749"/>
+    <ellipse cx="256.0" cy="178.0" rx="75.9" ry="43.8" fill="#FFFFFF" opacity=".14"/>
+<g transform="matrix(0.866 .5 -0.866 .5 256.0 178.0)">
+      <circle cx="0" cy="0" r="52" fill="none" stroke="#FFFFFF" stroke-width="9" opacity=".9"/>
+      <rect x="-4.5" y="-84" width="9" height="42" fill="#FFFFFF"/>
+      <rect x="-4.5" y="42" width="9" height="42" fill="#FFFFFF"/>
+      <rect x="-84" y="-4.5" width="42" height="9" fill="#FFFFFF"/>
+      <rect x="42" y="-4.5" width="42" height="9" fill="#FFFFFF"/></g>
+
+    <defs><radialGradient id="sp0" cx="35%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#6FCFC7"/><stop offset="1" stop-color="#2FA7A0"/>
+    </radialGradient></defs>
+    <circle cx="256.0" cy="118.0" r="30.0" fill="url(#sp0)"/>
+    <ellipse cx="247.0" cy="107.8"
+             rx="9.0" ry="5.7" fill="#FFFFFF" opacity=".45"/>
+  </g>
+</svg>

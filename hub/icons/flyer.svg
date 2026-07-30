@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <g transform="translate(95.8 174.2) scale(0.6367)">
+<ellipse cx="256.0" cy="246.0"
+            rx="165" ry="56" fill="#B9C3C7" opacity="0.3" filter="url(#soft)"/>
+
+    <polygon points="13.5,-74.0 108.8,-19.0 108.8,216.0 13.5,161.0" fill="#ff8f23"/>
+    <polygon points="204.0,-74.0 108.8,-19.0 108.8,216.0 204.0,161.0" fill="#ff8009"/>
+    <polygon points="108.8,-129.0 204.0,-74.0 108.8,-19.0 13.5,-74.0" fill="#ffa749"/>
+    <polygon points="108.8,-129.0 204.0,-74.0 108.8,-19.0 13.5,-74.0" fill="#FFFFFF" opacity=".16"/>
+<g transform="matrix(0.866 .5 -0.866 .5 251.7 93.5)">
+      <polygon points="-92,-62 86,0 -92,62 -52,0" fill="#4CBAB3"/>
+      <polygon points="-92,-62 86,0 -52,0" fill="#6FCFC7"/>
+      <circle cx="-116" cy="0" r="13" fill="#6FCFC7" opacity=".75"/>
+      <circle cx="-152" cy="0" r="10" fill="#6FCFC7" opacity=".5"/>
+      <circle cx="-184" cy="0" r="7" fill="#6FCFC7" opacity=".3"/></g>
+
+    <polygon points="308.0,96.0 403.2,151.0 403.2,386.0 308.0,331.0" fill="#ff8f23"/>
+    <polygon points="498.5,96.0 403.2,151.0 403.2,386.0 498.5,331.0" fill="#ff8009"/>
+    <polygon points="403.2,41.0 498.5,96.0 403.2,151.0 308.0,96.0" fill="#ffa749"/>
+    <polygon points="403.2,41.0 498.5,96.0 403.2,151.0 308.0,96.0" fill="#FFFFFF" opacity=".16"/>
+  </g>
+</svg>

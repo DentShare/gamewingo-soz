@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, darken, setupCamera, makeTopBar } from '../ui';
+import { makeButton, applyTheme, darken, setupCamera, makeTopBar, makeGameIcon } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { loadBest } from '../../core/persistence';
@@ -31,6 +31,7 @@ export class MainMenu extends Scene {
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
     this.buildLogo();
 
+    makeGameIcon(this, CX, 148, 104);
     this.add
       .text(CX, 232, t(this.locale, 'app.title'), {
         fontFamily: FONT, fontSize: 44, color: COLORS.headText, fontStyle: 'bold',

@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeTopBar, makeGlyph } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeTopBar, makeGameIcon } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import type { LevelId } from '../../core/sudoku';
@@ -27,7 +27,7 @@ export class MainMenu extends Scene {
 
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
 
-    makeGlyph(this, CX, 96, 'square', 44);
+    makeGameIcon(this, CX, 96, 84);
     this.add
       .text(CX, 148, t(this.locale, 'app.title'), {
         fontFamily: FONT, fontSize: 42, color: COLORS.headText, fontStyle: 'bold',

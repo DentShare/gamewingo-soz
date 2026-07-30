@@ -194,6 +194,33 @@ export function makeChip(scene: Scene, x: number, y: number, text: string, minWi
   };
 }
 
+/** Ключ текстуры иконки игры (файл `icon.svg` рядом с index.html). */
+export const GAME_ICON_KEY = 'gameIcon';
+
+/**
+ * Загрузить иконку игры — ту же, что показывает каталог (`hub/icons/<slug>.svg`).
+ * Растеризуем с запасом (300 px), в меню уменьшается до нужного размера.
+ * Вызывать в `preload()` первой сцены.
+ */
+export function loadGameIcon(scene: Scene): void {
+  scene.load.svg(GAME_ICON_KEY, 'icon.svg', { width: 300, height: 300 });
+}
+
+/**
+ * Иконка игры в меню. Возвращает контейнер (можно анимировать масштаб),
+ * либо null, если файл не загрузился — сцена тогда рисует свой запасной значок.
+ */
+export function makeGameIcon(
+  scene: Scene,
+  x: number,
+  y: number,
+  size = 88,
+): Phaser.GameObjects.Container | null {
+  if (!scene.textures.exists(GAME_ICON_KEY)) return null;
+  const img = scene.add.image(0, 0, GAME_ICON_KEY).setDisplaySize(size, size);
+  return scene.add.container(x, y, [img]);
+}
+
 /** Всплывающая подсказка: тёмная плашка, сама исчезает. */
 export function toast(scene: Scene, x: number, y: number, message: string): void {
   const root = scene.add.container(x, y).setDepth(100);

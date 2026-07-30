@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, makeTopBar, applyTheme, setupCamera, TYPE, WEIGHT, type Button } from '../ui';
+import { makeButton, makeTopBar, applyTheme, setupCamera, type Button, makeGameIcon } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { loadDaily, setHighContrast } from '../../core/persistence';
@@ -83,22 +83,14 @@ export class MainMenu extends Scene {
     this.scene.start('Game');
   }
 
-  /** Оранжевая «шапка» с градиентом (в стиле хаба): заголовок + подзаголовок. */
-  /**
-   * Шапка каталога (та же, что в хабе) плюс крупный заголовок под ней —
-   * как большие заголовки в нативных экранах.
-   */
+  /** Шапка каталога, иконка игры и короткая подпись. */
   private buildHeader() {
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
 
+    // Заголовок уже в шапке — здесь иконка каталога и подпись под ней.
+    makeGameIcon(this, CX, 110, 92);
     this.add
-      .text(CX, 124, t(this.locale, 'app.title'), {
-        fontFamily: FONT, fontSize: TYPE.display, color: COLORS.headText, fontStyle: WEIGHT.bold,
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-    this.add
-      .text(CX, 158, t(this.locale, 'app.subtitle'), {
+      .text(CX, 172, t(this.locale, 'app.subtitle'), {
         fontFamily: FONT, fontSize: 14, color: COLORS.headMuted,
       })
       .setOrigin(0.5)

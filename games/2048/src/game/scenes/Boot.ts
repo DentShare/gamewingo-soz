@@ -3,7 +3,7 @@ import { createBridge, createApiClient } from '@gamewingo/game-bridge';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createSession } from '../../bridge/session';
 import { createDemoApi, DEMO_API_BASE } from '../../bridge/demo';
-import { setupCamera } from '../ui';
+import { setupCamera, loadGameIcon } from '../ui';
 
 /**
  * Boot: поднимает мост, ждёт INIT от приложения. Если INIT не пришёл (веб/дев вне
@@ -12,6 +12,11 @@ import { setupCamera } from '../ui';
 export class Boot extends Scene {
   constructor() {
     super('Boot');
+  }
+
+  /** Иконка игры — та же, что в каталоге; показывается в меню. */
+  preload() {
+    loadGameIcon(this);
   }
 
   create() {

@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeTopBar, makeGlyph } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeTopBar, makeGameIcon } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import type { LevelId } from '../../core/deck';
@@ -31,9 +31,7 @@ export class MainMenu extends Scene {
 
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
 
-    // Пара одинаковых значков — механика игры одним взглядом.
-    makeGlyph(this, CX - 24, 92, 'ball', 38);
-    makeGlyph(this, CX + 24, 92, 'ball', 38);
+    makeGameIcon(this, CX, 94, 84);
     this.add
       .text(CX, 148, t(this.locale, 'app.title'), {
         fontFamily: FONT, fontSize: 42, color: COLORS.headText, fontStyle: 'bold',

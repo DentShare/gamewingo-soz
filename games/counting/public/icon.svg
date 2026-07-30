@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <g transform="translate(71.7 88.5) scale(0.7198)">
+<ellipse cx="256.0" cy="246.0"
+            rx="185" ry="60" fill="#B9C3C7" opacity="0.3" filter="url(#soft)"/>
+
+    <polygon points="-42.8,203.5 295.0,398.5 295.0,418.5 -42.8,223.5" fill="#eaedef"/>
+    <polygon points="554.8,248.5 295.0,398.5 295.0,418.5 554.8,268.5" fill="#dee2e5"/>
+    <polygon points="217.0,53.5 554.8,248.5 295.0,398.5 -42.8,203.5" fill="#fdfdfe"/>
+    <polygon points="217.0,53.5 554.8,248.5 295.0,398.5 -42.8,203.5" fill="#FFFFFF" opacity=".16"/>
+
+    <defs><radialGradient id="sp2" cx="35%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#FFA94D"/><stop offset="1" stop-color="#FF7A00"/>
+    </radialGradient></defs>
+    <circle cx="212.7" cy="89.0" r="42.0" fill="url(#sp2)"/>
+    <ellipse cx="200.1" cy="74.7"
+             rx="12.6" ry="8.0" fill="#FFFFFF" opacity=".45"/>
+
+    <defs><radialGradient id="sp3" cx="35%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#FFA94D"/><stop offset="1" stop-color="#FF7A00"/>
+    </radialGradient></defs>
+    <circle cx="126.1" cy="139.0" r="42.0" fill="url(#sp3)"/>
+    <ellipse cx="113.5" cy="124.7"
+             rx="12.6" ry="8.0" fill="#FFFFFF" opacity=".45"/>
+
+    <defs><radialGradient id="sp4" cx="35%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#FFA94D"/><stop offset="1" stop-color="#FF7A00"/>
+    </radialGradient></defs>
+    <circle cx="256.0" cy="164.0" r="42.0" fill="url(#sp4)"/>
+    <ellipse cx="243.4" cy="149.7"
+             rx="12.6" ry="8.0" fill="#FFFFFF" opacity=".45"/>
+
+    <polygon points="256.0,230.0 368.6,295.0 368.6,351.0 256.0,286.0" fill="#4cb9b2"/>
+    <polygon points="481.2,230.0 368.6,295.0 368.6,351.0 481.2,286.0" fill="#37aca5"/>
+    <polygon points="368.6,165.0 481.2,230.0 368.6,295.0 256.0,230.0" fill="#6ccdc5"/>
+    <polygon points="368.6,165.0 481.2,230.0 368.6,295.0 256.0,230.0" fill="#FFFFFF" opacity=".16"/>
+<g transform="matrix(0.866 .5 -0.866 .5 368.6 230.0)"><text x="0" y="0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="86" font-weight="700"
+      fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">3</text></g>
+  </g>
+</svg>
