@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeTopBar, makeGlyph } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeTopBar, makeGameIcon } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { loadBest } from '../../core/persistence';
@@ -75,7 +75,7 @@ export class MainMenu extends Scene {
     g.fillCircle(322, 170, 11);
     g.fillStyle(COLORS.ground, 1).fillRoundedRect(x, y + h - 26, w, 26, { tl: 0, tr: 0, bl: r, br: r });
 
-    const hero = makeGlyph(this, CX, 148, 'craft', 64);
+    const hero = makeGameIcon(this, CX, 148, 96);
     this.tweens.add({
       targets: hero, y: 132, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });

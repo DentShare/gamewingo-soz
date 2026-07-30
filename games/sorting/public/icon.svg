@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <g transform="translate(66.2 84.0) scale(0.7412)">
+<ellipse cx="256.0" cy="246.0"
+            rx="190" ry="62" fill="#B9C3C7" opacity="0.3" filter="url(#soft)"/>
+
+    <polygon points="-34.1,194.5 303.6,389.5 303.6,413.5 -34.1,218.5" fill="#eaedef"/>
+    <polygon points="546.1,249.5 303.6,389.5 303.6,413.5 546.1,273.5" fill="#dee2e5"/>
+    <polygon points="208.4,54.5 546.1,249.5 303.6,389.5 -34.1,194.5" fill="#fdfdfe"/>
+    <polygon points="208.4,54.5 546.1,249.5 303.6,389.5 -34.1,194.5" fill="#FFFFFF" opacity=".16"/>
+<polygon points="208.4,74.5 346.9,154.5 139.1,274.5 0.5,194.5" fill="#E3E8EA"/>
+<polygon points="372.9,169.5 511.5,249.5 303.6,369.5 165.1,289.5" fill="#E3E8EA"/>
+<polygon points="230.9,107.5 191.1,192.5 191.1,226.5 230.9,141.5" fill="#ff8f23"/><polygon points="191.1,192.5 83.7,130.5 83.7,164.5 191.1,226.5" fill="#ff8f23"/><polygon points="83.7,130.5 230.9,107.5 230.9,141.5 83.7,164.5" fill="#ff8f23"/>
+    <polygon points="230.9,107.5 191.1,192.5 83.7,130.5" fill="#ffa749"/>
+    <polygon points="230.9,107.5 191.1,192.5 83.7,130.5" fill="#FFFFFF" opacity=".16"/>
+
+    <ellipse cx="338.3" cy="269.5" rx="75.9" ry="43.8" fill="#37aca5"/>
+    <rect x="262.3" y="235.5" width="151.9" height="34.0" fill="#4cb9b2"/>
+    <ellipse cx="338.3" cy="235.5" rx="75.9" ry="43.8" fill="#6ccdc5"/>
+    <ellipse cx="338.3" cy="235.5" rx="75.9" ry="43.8" fill="#FFFFFF" opacity=".14"/>
+<g transform="matrix(0.866 .5 -0.866 .5 173.7 80.5)"><polygon points="0,30 27,-4.5 10.799999999999999,-4.5 10.799999999999999,-30 -10.799999999999999,-30 -10.799999999999999,-4.5 -27,-4.5" fill="#FF8A1A"/></g>
+<g transform="matrix(0.866 .5 -0.866 .5 338.3 175.5)"><polygon points="0,30 27,-4.5 10.799999999999999,-4.5 10.799999999999999,-30 -10.799999999999999,-30 -10.799999999999999,-4.5 -27,-4.5" fill="#3FB2AB"/></g>
+  </g>
+</svg>

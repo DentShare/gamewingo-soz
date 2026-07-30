@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeTopBar, makeGlyph } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeTopBar, makeGlyph, makeGameIcon } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { loadBest } from '../../core/persistence';
@@ -29,7 +29,7 @@ export class MainMenu extends Scene {
 
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
 
-    makeGlyph(this, CX, 118, 'apple', 48);
+    makeGameIcon(this, CX, 118, 92);
     this.add
       .text(CX, 180, t(this.locale, 'app.title'), {
         fontFamily: FONT, fontSize: 42, color: COLORS.headText, fontStyle: 'bold',

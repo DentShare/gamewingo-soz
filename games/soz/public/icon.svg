@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <g transform="translate(8.6 53.2) scale(0.9197)">
+<ellipse cx="256.0" cy="246.0"
+            rx="180" ry="60" fill="#B9C3C7" opacity="0.3" filter="url(#soft)"/>
+
+    <polygon points="35.2,127.5 147.8,192.5 147.8,238.5 35.2,173.5" fill="#eaedef"/>
+    <polygon points="260.3,127.5 147.8,192.5 147.8,238.5 260.3,173.5" fill="#dee2e5"/>
+    <polygon points="147.8,62.5 260.3,127.5 147.8,192.5 35.2,127.5" fill="#fdfdfe"/>
+    <polygon points="147.8,62.5 260.3,127.5 147.8,192.5 35.2,127.5" fill="#FFFFFF" opacity=".16"/>
+<g transform="matrix(0.866 .5 -0.866 .5 147.8 127.5)"><text x="0" y="0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="78" font-weight="700"
+      fill="#9AA4A8" text-anchor="middle" dominant-baseline="central">С</text></g>
+
+    <polygon points="156.4,165.5 269.0,230.5 269.0,308.5 156.4,243.5" fill="#4cb9b2"/>
+    <polygon points="381.6,165.5 269.0,230.5 269.0,308.5 381.6,243.5" fill="#37aca5"/>
+    <polygon points="269.0,100.5 381.6,165.5 269.0,230.5 156.4,165.5" fill="#6ccdc5"/>
+    <polygon points="269.0,100.5 381.6,165.5 269.0,230.5 156.4,165.5" fill="#FFFFFF" opacity=".16"/>
+<g transform="matrix(0.866 .5 -0.866 .5 269.0 165.5)"><text x="0" y="0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="78" font-weight="700"
+      fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">Л</text></g>
+
+    <polygon points="277.6,251.5 390.2,316.5 390.2,378.5 277.6,313.5" fill="#ff8f23"/>
+    <polygon points="502.8,251.5 390.2,316.5 390.2,378.5 502.8,313.5" fill="#ff8009"/>
+    <polygon points="390.2,186.5 502.8,251.5 390.2,316.5 277.6,251.5" fill="#ffa749"/>
+    <polygon points="390.2,186.5 502.8,251.5 390.2,316.5 277.6,251.5" fill="#FFFFFF" opacity=".16"/>
+<g transform="matrix(0.866 .5 -0.866 .5 390.2 251.5)"><text x="0" y="0" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="78" font-weight="700"
+      fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">О</text></g>
+  </g>
+</svg>
