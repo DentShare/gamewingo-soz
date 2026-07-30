@@ -76,7 +76,7 @@ export class MainMenu extends Scene {
     const widths = [168, 152, 152, 134, 118, 96];
     const offsets = [0, 10, -8, 6, -4, 12];
     widths.forEach((w, i) => {
-      const color = blockColor(i * 2);
+      const color = blockColor(i);
       const y = bottomY - (widths.length - i) * (h + 3);
       const x = CX - w / 2 + offsets[i];
       g.fillStyle(darken(color, 0.22), 1).fillRoundedRect(x, y + 3, w, h, 5);
