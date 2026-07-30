@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@gamewingo/game-bridge": "*",
+    "@gamewingo/game-ui": "*",
     "canvas-confetti": "^1.9.4",
     "phaser": "4.0.0"
   },

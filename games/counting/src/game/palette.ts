@@ -1,28 +1,30 @@
-/** Бандл-шрифт с покрытием кириллица + латиница + ʻ (U+02BB). Фолбэк — системный sans-serif. */
-export const FONT = 'Rubik, sans-serif';
+import { C, S, FADE, FONT as UI_FONT } from '@gamewingo/game-ui';
+
+/** Шрифт каталога — системный шрифт платформы (см. docs/DESIGN.md). */
+export const FONT = UI_FONT;
 
 /** Централизованная палитра (светлая тема WinGo — общая для каталога). */
 export const COLORS = {
-  bg: 0xfbebe1,            // светлый персиковый фон WinGo
-  headText: '#241a12',     // заголовки/основной текст
-  headMuted: '#8a7a6d',    // приглушённый текст
-  panel: 0xffffff,         // белые карточки/кнопки
-  panelBorder: 0xe7d3c7,
-  primary: 0xf26522,       // WinGo оранжевый (дефолт CTA, если тема не задана)
-  iconDark: 0x3a2a1f,      // векторные иконки
-  toastBg: '#2a211a',
-  toastText: '#ffffff',
+  bg: C.bg,
+  headText: S.ink,
+  headMuted: S.muted,
+  panel: C.surface,
+  panelBorder: C.divider,
+  primary: C.primary,
+  iconDark: C.ink,
+  toastBg: S.ink,
+  toastText: S.white,
   /** Фон камеры для fade (RGB, совпадает с bg). */
-  fade: [251, 235, 225] as [number, number, number],
+  fade: FADE,
 
   // ── Специфика «Счёта» ────────────────────────────────────────────────────
-  board: 0xffffff,         // белое поле с предметами
-  boardBorder: 0xf0dccf,
-  padFace: 0xffffff,       // кнопка-цифра
-  padText: '#241a12',      // крупная цифра на кнопке
-  praise: '#2fb84c',       // «Молодец!» — зелёный WinGo
-  helpText: '#f26522',     // «Посчитаем вместе!» — оранжевый
-  countGlow: 0xffd9c2,     // круг подсветки предмета при пересчёте
-  countNumber: '#f26522',  // всплывающая цифра 1, 2, 3… при пересчёте
-  sparkle: 0xffc247,       // искорки при верном ответе
+  board: C.surface,        // белое поле с предметами
+  boardBorder: C.divider,
+  padFace: C.surface,      // кнопка-цифра
+  padText: S.ink,          // крупная цифра на кнопке
+  praise: S.accent,        // «Молодец!»
+  helpText: S.primary,     // «Посчитаем вместе!»
+  countGlow: C.tint,       // подсветка предмета при пересчёте
+  countNumber: S.primary,  // всплывающая цифра
+  sparkle: C.gold,         // искорки при верном ответе
 };

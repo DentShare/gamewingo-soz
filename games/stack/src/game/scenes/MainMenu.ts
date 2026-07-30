@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, darken, setupCamera } from '../ui';
+import { makeButton, applyTheme, darken, setupCamera, makeTopBar } from '../ui';
 import { COLORS, FONT, blockColor } from '../palette';
 import { DPR } from '../dpr';
 import { loadBest } from '../../core/persistence';
@@ -28,7 +28,7 @@ export class MainMenu extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
-    this.buildCatalogLink();
+    makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
 
     this.add
       .text(CX, 96, t(this.locale, 'app.title'), {
@@ -101,16 +101,6 @@ export class MainMenu extends Scene {
   }
 
   /** Ссылка «‹ К играм» слева вверху — выход в каталог игр WinGo. */
-  private buildCatalogLink() {
-    const link = this.add
-      .text(16, 30, `‹ ${t(this.locale, 'menu.catalog')}`, {
-        fontFamily: FONT, fontSize: 15, color: COLORS.headText, fontStyle: 'bold',
-      })
-      .setOrigin(0, 0.5)
-      .setResolution(DPR)
-      .setInteractive({ useHandCursor: true });
-    link.on('pointerup', () => this.exitToCatalog());
-  }
 
   /** Выход в каталог: событие мосту (реальный WebView вернётся к списку), а в вебе — переход на хаб. */
   private exitToCatalog() {

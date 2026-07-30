@@ -1,21 +1,23 @@
-/** Бандл-шрифт с покрытием кириллица + латиница + ʻ (U+02BB). Фолбэк — системный sans-serif. */
-export const FONT = 'Rubik, sans-serif';
+import { C, S, FADE, FONT as UI_FONT } from '@gamewingo/game-ui';
+
+/** Шрифт каталога — системный шрифт платформы (см. docs/DESIGN.md). */
+export const FONT = UI_FONT;
 
 /** Централизованная палитра (светлая тема WinGo — общая для каталога). */
 export const COLORS = {
-  bg: 0xfbebe1,            // светлый персиковый фон WinGo
-  headText: '#241a12',     // заголовки/основной текст
-  headMuted: '#8a7a6d',    // приглушённый текст
-  panel: 0xffffff,         // белые карточки/кнопки
-  panelBorder: 0xe7d3c7,
-  primary: 0xf26522,       // WinGo оранжевый (дефолт CTA, если тема не задана)
-  iconDark: 0x3a2a1f,      // векторные иконки
-  board: 0xe9d2c0,         // подложка игрового поля
-  boardCell: 0xf4e4d5,     // пустой слот поля
-  toastBg: '#2a211a',
-  toastText: '#ffffff',
+  bg: C.bg,
+  headText: S.ink,
+  headMuted: S.muted,
+  panel: C.surface,
+  panelBorder: C.divider,
+  primary: C.primary,
+  iconDark: C.ink,
+  board: C.surface,           // подложка игрового поля
+  boardCell: C.slot,          // пустой слот поля
+  toastBg: S.ink,
+  toastText: S.white,
   /** Фон камеры для fade (RGB, совпадает с bg). */
-  fade: [251, 235, 225] as [number, number, number],
+  fade: FADE,
 };
 
 /**
@@ -23,23 +25,23 @@ export const COLORS = {
  * к оранжевому WinGo (2048) и тёмно-коричневому (4096+).
  */
 export const TILE_COLORS: Record<number, number> = {
-  2: 0xfdf3e7,
-  4: 0xfae3c4,
-  8: 0xf8cd97,
-  16: 0xf7b871,
-  32: 0xf6a355,
-  64: 0xf68e43,
-  128: 0xf47f35,
-  256: 0xf3752d,
-  512: 0xf26d27,
-  1024: 0xf26924,
-  2048: 0xf26522,
-  4096: 0x6b4a35,
-  8192: 0x54382a,
+  2: C.tint,
+  4: 0xffd9c0,
+  8: 0xffc39c,
+  16: 0xffad78,
+  32: C.primarySoft,
+  64: 0xfa8a43,
+  128: 0xf87c33,
+  256: 0xf7712b,
+  512: 0xf76c26,
+  1024: 0xf76824,
+  2048: C.primary,
+  4096: C.accent,
+  8192: C.accentDark,
 };
 
 /** Цвет для номиналов выше карты (16384+). */
-const TILE_FALLBACK = 0x40291e;
+const TILE_FALLBACK = C.ink;
 
 /** Светлые плитки (2/4) — тёмный текст, остальные — белый. */
 const DARK_TEXT_VALUES = new Set([2, 4]);
