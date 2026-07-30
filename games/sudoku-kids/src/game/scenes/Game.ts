@@ -5,7 +5,7 @@ import {
 } from '../../core/sudoku';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, setupCamera, type Button, makeButton, makeBackButton } from '../ui';
+import { applyTheme, setupCamera, type Button, makeButton, makeBackButton, makeKeyCap } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -316,20 +316,9 @@ export class Game extends Scene {
     for (let v = 1; v <= count; v++) {
       const digit = v <= n ? v : 0; // последняя клавиша — ластик
       const cx = x + kw / 2;
-      this.add.rectangle(cx, cy + 3, kw, KEY_H, 0x000000, 0.12).setOrigin(0.5); // нижний бортик (тень)
-      const rect = this.add
-        .rectangle(cx, cy, kw, KEY_H, COLORS.keyDefault)
-        .setInteractive({ useHandCursor: true });
-      rect.on('pointerdown', () => this.tweens.add({ targets: rect, scale: 0.9, duration: 60, yoyo: true, ease: 'Quad.easeOut' }));
-      rect.on('pointerup', () => (digit === 0 ? this.onErase() : this.onDigit(digit)));
-      if (digit === 0) {
-        this.drawEraserIcon(cx, cy);
-      } else {
-        this.add
-          .text(cx, cy, String(digit), { fontFamily: FONT, fontSize: 22, color: COLORS.keyText, fontStyle: 'bold' })
-          .setOrigin(0.5)
-          .setResolution(DPR);
-      }
+      makeKeyCap(this, cx, cy, kw, KEY_H, digit === 0 ? '' : String(digit),
+        () => (digit === 0 ? this.onErase() : this.onDigit(digit)), { fontSize: 22, radius: 10 });
+      if (digit === 0) this.drawEraserIcon(cx, cy);
       this.keyCenters.push({ v: digit, x: cx, y: cy });
       x += kw + KEY_GAP;
     }

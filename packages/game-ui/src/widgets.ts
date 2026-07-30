@@ -196,6 +196,67 @@ export function makeChip(scene: Scene, x: number, y: number, text: string, minWi
   };
 }
 
+export interface KeyCap {
+  root: Phaser.GameObjects.Container;
+  /** Перекрасить клавишу (в «5 букв» — по статусу буквы). */
+  setFill(fill: number, textColor?: string): void;
+  setLabel(text: string): void;
+  destroy(): void;
+}
+
+/**
+ * Клавиша игрового поля — клавиатура, цифровая панель, пад с ответом.
+ * Тот же язык, что у кнопок дизайн-системы: плоская белая карточка,
+ * тонкая обводка, скругление 12; при нажатии заливка темнеет.
+ */
+export function makeKeyCap(
+  scene: Scene,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  label: string,
+  onClick: () => void,
+  opts: { fontSize?: number; radius?: number; textColor?: string } = {},
+): KeyCap {
+  const r = opts.radius ?? RADIUS.button;
+  const root = scene.add.container(x, y);
+  const g = scene.add.graphics();
+  let fill = C.surface;
+
+  const paint = (color: number) => {
+    g.clear();
+    g.fillStyle(color, 1).fillRoundedRect(-w / 2, -h / 2, w, h, r);
+    if (color === C.surface) g.lineStyle(1, C.divider, 1).strokeRoundedRect(-w / 2, -h / 2, w, h, r);
+  };
+  paint(fill);
+
+  const txt = scene.add
+    .text(0, 0, label, {
+      fontFamily: FONT,
+      fontSize: opts.fontSize ?? TYPE.body,
+      fontStyle: WEIGHT.semibold,
+      color: opts.textColor ?? S.ink,
+    })
+    .setOrigin(0.5)
+    .setResolution(DPR);
+
+  const hit = scene.add.rectangle(0, 0, w, h, 0x000000, 0).setInteractive({ useHandCursor: true });
+  root.add([g, txt, hit]);
+
+  let pressed = false;
+  hit.on('pointerdown', () => { pressed = true; paint(fill === C.surface ? C.tint : darken(fill, 0.12)); });
+  hit.on('pointerup', () => { if (pressed) { pressed = false; paint(fill); onClick(); } });
+  hit.on('pointerout', () => { if (pressed) { pressed = false; paint(fill); } });
+
+  return {
+    root,
+    setFill: (color, textColor) => { fill = color; paint(color); if (textColor) txt.setColor(textColor); },
+    setLabel: (t) => txt.setText(t),
+    destroy: () => root.destroy(),
+  };
+}
+
 /**
  * Кнопка «Назад» в игровом экране: плоская белая пилюля с шевроном —
  * тот же язык, что у шапки каталога и кнопок дизайн-системы.
