@@ -1,17 +1,3 @@
-export type LevelId = '3x3' | '4x4';
-
-export interface LevelSpec {
-  /** Сторона поля (3 → плитки 1..8, 4 → 1..15). */
-  size: number;
-  /** Длина случайного блуждания при генерации расклада. */
-  walk: number;
-}
-
-export const LEVELS: Record<LevelId, LevelSpec> = {
-  '3x3': { size: 3, walk: 80 },
-  '4x4': { size: 4, walk: 160 },
-};
-
 /** Собранное поле: 1..N−1 по порядку, пустая (0) в последней клетке. */
 export function solvedTiles(size: number): number[] {
   const n = size * size;
@@ -100,9 +86,10 @@ export function createBoardFromTiles(tiles: readonly number[], size: number): Bo
 /**
  * Новая партия: блуждание из собранного состояния (см. `randomWalk`).
  * Если после блуждания поле случайно собрано — повторяем.
+ * `walk` задаёт глубину перемешивания — это главный рычаг сложности лестницы.
  */
-export function createBoard(size: number, rng: () => number): Board {
-  const k = size === 3 ? LEVELS['3x3'].walk : size === 4 ? LEVELS['4x4'].walk : size * size * 10;
+export function createBoard(size: number, rng: () => number, walk?: number): Board {
+  const k = walk ?? size * size * 10;
   let tiles: number[];
   do {
     tiles = solvedTiles(size);

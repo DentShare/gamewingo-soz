@@ -1,10 +1,13 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
-import { LEVELS, buildDeck, type LevelId } from '../../core/deck';
+import { buildDeck } from '../../core/deck';
+import { levelAt, type PairsParams } from '../../core/levels';
 import { createPairsGame, type PairsGame } from '../../core/game';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, darken, setupCamera, makeGlyph, type GlyphName, makeBackButton } from '../ui';
+import {
+  applyTheme, darken, setupCamera, makeGlyph, type GlyphName, makeBackButton, toast, shakeCamera,
+} from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -26,7 +29,8 @@ interface CardView {
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
-  private level: LevelId = 'easy';
+  private level = 1;
+  private params!: PairsParams;
   private session!: Session;
   private core!: PairsGame;
   private cards: CardView[] = [];
@@ -60,7 +64,8 @@ export class Game extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
-    this.level = (this.registry.get('level') as LevelId) ?? 'easy';
+    this.level = (this.registry.get('level') as number) ?? 1;
+    this.params = levelAt(this.level).params;
     this.session = this.registry.get('session') as Session;
 
     // «Как играть» из меню: обучение поверх настоящего поля, без сессии и таймера.
@@ -84,17 +89,23 @@ export class Game extends Scene {
   }
 
   update() {
-    if (this.timeText && this.timer && !this.finished) {
-      const sec = Math.floor(this.timer.elapsedMs() / 1000);
-      const mm = String(Math.floor(sec / 60)).padStart(2, '0');
-      const ss = String(sec % 60).padStart(2, '0');
-      this.timeText.setText(`${mm}:${ss}`);
+    if (!this.timeText || !this.timer || this.finished) return;
+    const elapsed = Math.floor(this.timer.elapsedMs() / 1000);
+    const limit = this.params.timeLimitSec;
+    // С лимитом идёт обратный отсчёт: последние десять секунд подсвечены красным.
+    const sec = limit ? Math.max(0, limit - elapsed) : elapsed;
+    const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+    const ss = String(sec % 60).padStart(2, '0');
+    this.timeText.setText(`${mm}:${ss}`);
+    if (limit) {
+      this.timeText.setColor(sec <= 10 ? COLORS.danger : COLORS.headMuted);
+      if (sec <= 0) this.failRound('time');
     }
   }
 
   /** Колода уровня + HUD + сетка карточек. */
   private buildRound() {
-    const spec = LEVELS[this.level];
+    const spec = this.params;
     const deck = buildDeck(spec.pairs, mulberry32(Math.floor(Math.random() * 2 ** 31)));
     this.core = createPairsGame(deck);
     this.buildHud();
@@ -227,8 +238,14 @@ export class Game extends Scene {
 
   private buildHud() {
     this.buildBackButton();
+    this.add
+      .text(W / 2 + 26, 20, t(this.locale, 'game.level', { n: this.level }), {
+        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
+      })
+      .setOrigin(0.5)
+      .setResolution(DPR);
     this.movesText = this.add
-      .text(W / 2 + 40, 34, t(this.locale, 'game.moves', { n: 0 }), {
+      .text(W / 2 + 26, 42, this.movesLabel(), {
         fontFamily: FONT, fontSize: 16, color: COLORS.headText,
       })
       .setOrigin(0.5)
@@ -237,6 +254,14 @@ export class Game extends Scene {
       .text(W - 20, 34, '00:00', { fontFamily: FONT, fontSize: 16, color: COLORS.headMuted })
       .setOrigin(1, 0.5)
       .setResolution(DPR);
+  }
+
+  /** Ходы: с лимитом показываем «сделано / всего», без лимита — просто счётчик. */
+  private movesLabel(): string {
+    const n = this.core?.moves ?? 0;
+    return this.params.moveLimit
+      ? t(this.locale, 'game.movesLimit', { n, limit: this.params.moveLimit })
+      : t(this.locale, 'game.moves', { n });
   }
 
   /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
@@ -313,7 +338,7 @@ export class Game extends Scene {
     if (result === 'ignored') return;
 
     this.flipOpen(index);
-    this.movesText.setText(t(this.locale, 'game.moves', { n: this.core.moves }));
+    this.movesText.setText(this.movesLabel());
 
     if (result === 'match' || result === 'won') {
       const pairIdx = before[0];
@@ -323,7 +348,7 @@ export class Game extends Scene {
       });
       if (result === 'won') {
         this.finished = true;
-        this.time.delayedCall(650, () => this.endGame());
+        this.time.delayedCall(650, () => this.endGame(true));
       }
     } else if (result === 'miss') {
       this.locked = true;
@@ -333,6 +358,8 @@ export class Game extends Scene {
         this.flipClosed(index);
         this.flipClosed(other);
         this.locked = false;
+        // Лимит проверяем после закрытия пары: игрок должен увидеть, чем закончился ход.
+        if (this.params.moveLimit && this.core.moves >= this.params.moveLimit) this.failRound('moves');
       });
     }
   }
@@ -374,16 +401,26 @@ export class Game extends Scene {
     this.tweens.add({ targets: glow, alpha: 0, scale: 9, duration: 380, onComplete: () => glow.destroy() });
   }
 
-  private endGame() {
+  /** Уровень не пройден: кончились ходы или время. Показываем причину и уходим на итог. */
+  private failRound(cause: 'moves' | 'time') {
+    if (this.finished) return;
+    this.finished = true;
+    this.timer?.pause();
+    toast(this, 200, 620, t(this.locale, `game.fail.${cause}`));
+    shakeCamera(this, 260, 0.012);
+    this.time.delayedCall(1100, () => this.endGame(false));
+  }
+
+  private endGame(cleared: boolean) {
     const durationMs = Math.round(this.timer?.elapsedMs() ?? 0);
-    const { moves, totalPairs } = this.core;
+    const { moves, totalPairs, pairsFound } = this.core;
 
     void this.session
-      .finish({ level: this.level, pairs: totalPairs, moves, durationMs })
+      .finish({ level: this.level, pairs: pairsFound, moves, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
-      level: this.level, locale: this.locale, pairs: totalPairs, moves, durationMs,
+      level: this.level, locale: this.locale, pairs: totalPairs, pairsFound, moves, durationMs, cleared,
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));

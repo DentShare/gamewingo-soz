@@ -15,6 +15,8 @@ export const COLORS = {
   tile: C.primary,            // лицевая часть плитки
   tileText: S.white,          // цифра на плитке
   boardWell: C.slot,          // «лунка» поля под плитками
+  /** Обратный отсчёт на исходе и сообщение о проваленном уровне. */
+  danger: S.danger,
   toastBg: S.ink,
   toastText: S.white,
   /** Фон камеры для fade (RGB, совпадает с bg). */

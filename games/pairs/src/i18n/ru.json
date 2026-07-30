@@ -1,12 +1,8 @@
 {
   "app.title": "Найди пару",
-  "menu.easy": "Лёгкий · 6 пар",
-  "menu.medium": "Средний · 10 пар",
-  "menu.hard": "Сложный · 15 пар",
   "menu.howto": "Как играть",
   "menu.back": "Назад",
   "menu.catalog": "К играм",
-  "menu.best": "Рекорд: {score}",
   "onboarding.board": "Открывайте карточки по две и запоминайте, что где спрятано.",
   "onboarding.match": "Две одинаковые — пара найдена и остаётся открытой.",
   "onboarding.miss": "Не совпали — закроются. Запоминайте, где что лежит.",
@@ -22,5 +18,16 @@
   "result.playAgain": "Ещё раз",
   "result.menu": "В меню",
   "result.leaderboard": "Таблица лидеров",
-  "error.network": "Нет соединения"
+  "error.network": "Нет соединения",
+  "menu.ladder": "Уровень {n} из {total}",
+  "menu.play": "Играть · уровень {n}",
+  "game.level": "Уровень {n}",
+  "game.movesLimit": "Ходы: {n} / {limit}",
+  "game.fail.moves": "Ходы кончились",
+  "game.fail.time": "Время вышло",
+  "result.failed": "Уровень не пройден",
+  "result.level": "Уровень {n} из {total}",
+  "result.nextLevel": "Уровень {n}",
+  "result.unlocked": "Открыт уровень {n}!",
+  "result.tryAgain": "Попробуйте ещё раз"
 }

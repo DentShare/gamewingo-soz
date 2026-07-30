@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   generateSolved, countSolutions, makePuzzle, conflicts, isComplete, solve,
-  blockDims, LEVELS, type Grid,
+  blockDims, type Grid,
 } from './sudoku';
 import { mulberry32 } from './rng';
+import { LADDER } from './levels';
 
 /** Валидность полной сетки: каждая строка/столбец/блок содержит все цифры 1..size. */
 function assertSolved(grid: Grid, size: number) {
@@ -48,8 +49,8 @@ describe('generateSolved', () => {
 });
 
 describe('makePuzzle', () => {
-  for (const [level, spec] of Object.entries(LEVELS)) {
-    it(`${level}: единственное решение, совпадающее с исходным, подсказок ≥ ${spec.clues}`, () => {
+  for (const { n, params: spec } of LADDER) {
+    it(`уровень ${n}: единственное решение, совпадающее с исходным, подсказок ≥ ${spec.clues}`, () => {
       const { puzzle, solution } = makePuzzle(spec.size, spec.clues, mulberry32(99));
       assertSolved(solution, spec.size);
       // Единственное решение (счётчик с отсечкой на 2).

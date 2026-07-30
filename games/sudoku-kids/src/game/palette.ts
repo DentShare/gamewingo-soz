@@ -12,6 +12,8 @@ export const COLORS = {
   panelBorder: C.divider,
   primary: C.primary,
   iconDark: C.ink,
+  /** Обратный отсчёт на исходе и сообщение о проваленном уровне. */
+  danger: S.danger,
   toastBg: S.ink,
   toastText: S.white,
   /** Фон камеры для fade (RGB, совпадает с bg). */

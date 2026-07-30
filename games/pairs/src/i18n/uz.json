@@ -1,12 +1,8 @@
 {
   "app.title": "Juftini top",
-  "menu.easy": "Oson · 6 juft",
-  "menu.medium": "Oʻrta · 10 juft",
-  "menu.hard": "Qiyin · 15 juft",
   "menu.howto": "Qanday oʻynash",
   "menu.back": "Orqaga",
   "menu.catalog": "Oʻyinlarga",
-  "menu.best": "Rekord: {score}",
   "onboarding.board": "Kartochkalarni ikkitadan oching va qayerda nima yashiringanini eslab qoling.",
   "onboarding.match": "Ikkitasi bir xil boʻlsa — juft topildi va ochiq qoladi.",
   "onboarding.miss": "Mos kelmasa — yopiladi. Qayerda nima yotganini eslab qoling.",
@@ -22,5 +18,16 @@
   "result.playAgain": "Yana",
   "result.menu": "Menyuga",
   "result.leaderboard": "Reyting",
-  "error.network": "Aloqa yoʻq"
+  "error.network": "Aloqa yoʻq",
+  "menu.ladder": "{total} dan {n}-daraja",
+  "menu.play": "Oʻynash · {n}-daraja",
+  "game.level": "{n}-daraja",
+  "game.movesLimit": "Yurishlar: {n} / {limit}",
+  "game.fail.moves": "Yurishlar tugadi",
+  "game.fail.time": "Vaqt tugadi",
+  "result.failed": "Daraja oʻtilmadi",
+  "result.level": "{total} dan {n}-daraja",
+  "result.nextLevel": "{n}-daraja",
+  "result.unlocked": "{n}-daraja ochildi!",
+  "result.tryAgain": "Yana urinib koʻring"
 }
