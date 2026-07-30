@@ -5,7 +5,7 @@ import {
 } from '../../core/sorting';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FIGURE_COLORS, FONT } from '../palette';
-import { applyTheme, darken, setupCamera } from '../ui';
+import { applyTheme, darken, setupCamera, makeGlyph } from '../ui';
 import { drawBin, drawFigure } from '../shapes';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
@@ -59,7 +59,7 @@ export class Game extends Scene {
   private worldBuf = new PhaserMath.Vector2();
 
   private demoTweens: Phaser.Tweens.Tween[] = [];
-  private demoFinger?: Phaser.GameObjects.Text;
+  private demoFinger?: Phaser.GameObjects.Container;
 
   constructor() {
     super('Game');
@@ -483,10 +483,7 @@ export class Game extends Scene {
     // Глубже в корзину: так демонстрация не наезжает на карточку-подсказку.
     const ty = BIN_TOP + 66;
 
-    this.demoFinger = this.add
-      .text(SPAWN_X + 30, SPAWN_Y + 40, '👆', { fontFamily: FONT, fontSize: 30 })
-      .setOrigin(0.5)
-      .setResolution(DPR)
+    this.demoFinger = makeGlyph(this, SPAWN_X + 30, SPAWN_Y + 40, 'tap', 30)
       .setDepth(DEMO_DEPTH + 1);
 
     const cfg = {

@@ -2,7 +2,7 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import type { Mode } from '../../core/sorting';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeTopBar } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeTopBar, makeGlyph } from '../ui';
 import { COLORS, FIGURE_COLORS, FONT } from '../palette';
 import { drawBin, drawFigure } from '../shapes';
 import { DPR } from '../dpr';
@@ -31,10 +31,10 @@ export class MainMenu extends Scene {
 
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
 
-    this.add
-      .text(CX, 92, '🎨', { fontFamily: FONT, fontSize: 40 })
-      .setOrigin(0.5)
-      .setResolution(DPR);
+    // Три фигуры разной формы — намёк на сортировку.
+    makeGlyph(this, CX - 40, 92, 'triangle', 34);
+    makeGlyph(this, CX, 92, 'square', 34);
+    makeGlyph(this, CX + 40, 92, 'ball', 34);
     this.add
       .text(CX, 146, t(this.locale, 'app.title'), {
         fontFamily: FONT, fontSize: 38, color: COLORS.headText, fontStyle: 'bold',

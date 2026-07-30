@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeGlyph } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { saveBest } from '../../core/persistence';
@@ -46,12 +46,7 @@ export class GameOver extends Scene {
       .setAlpha(0);
     this.tweens.add({ targets: title, scale: 1, alpha: 1, duration: 360, delay: 100, ease: 'Back.easeOut' });
 
-    const hero = this.add
-      .text(CX, 176, '🚀', { fontSize: 46 })
-      .setOrigin(0.5)
-      .setResolution(DPR)
-      .setRotation(Math.PI / 4)
-      .setScale(0);
+    const hero = makeGlyph(this, CX, 176, 'craft', 52).setScale(0);
     this.tweens.add({ targets: hero, scale: 1, duration: 340, delay: 240, ease: 'Back.easeOut' });
 
     const sec = Math.floor(last.durationMs / 1000);
@@ -78,7 +73,7 @@ export class GameOver extends Scene {
     if (isNewBest) {
       this.appear(
         this.add
-          .text(CX, 320, `🏆 ${t(loc, 'result.newBest')}`, {
+          .text(CX, 320, t(loc, 'result.newBest'), {
             fontFamily: FONT, fontSize: 17, color: COLORS.headText, fontStyle: 'bold',
           })
           .setOrigin(0.5)

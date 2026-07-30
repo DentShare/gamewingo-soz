@@ -380,7 +380,7 @@ export class Game extends Scene {
   }
 
   private hintLabel(): string {
-    return `💡 ${t(this.locale, 'game.hints', { n: this.hintsLeft })}`;
+    return t(this.locale, 'game.hints', { n: this.hintsLeft });
   }
 
   // ── Взаимодействие ───────────────────────────────────────────────────────────

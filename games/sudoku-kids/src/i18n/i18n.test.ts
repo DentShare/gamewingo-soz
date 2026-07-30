@@ -8,7 +8,7 @@ const REQUIRED = [
   'menu.catalog', 'menu.best', 'game.hints',
   'onboarding.grid', 'onboarding.row', 'onboarding.block', 'onboarding.input', 'onboarding.hint',
   'onboarding.next', 'onboarding.done', 'onboarding.skip',
-  'result.title', 'result.score', 'result.time',
+  'result.title', 'result.score', 'result.time', 'result.hintsUsed',
   'result.newBest', 'result.playAgain', 'result.menu', 'result.leaderboard', 'error.network',
 ];
 

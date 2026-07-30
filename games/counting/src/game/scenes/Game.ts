@@ -5,7 +5,7 @@ import {
 } from '../../core/counting';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, darken, setupCamera } from '../ui';
+import { applyTheme, darken, setupCamera, makeGlyph, type GlyphName } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -34,7 +34,7 @@ const LAYOUT: Array<[cols: number, rows: number]> = [
 const COUNT_STEP_MS = 420;
 
 interface ItemView {
-  txt: Phaser.GameObjects.Text;
+  txt: Phaser.GameObjects.Container;
   x: number;
   y: number;
 }
@@ -265,7 +265,7 @@ export class Game extends Scene {
   }
 
   /** Раскладывает предметы текущего вопроса аккуратной сеткой, не наезжая друг на друга. */
-  private renderItems(count: number, symbol: string) {
+  private renderItems(count: number, symbol: GlyphName) {
     this.itemLayer.removeAll(true);
     this.items = [];
 
@@ -281,10 +281,7 @@ export class Game extends Scene {
       const left = BOARD.x + (BOARD.w - inRow * cell) / 2 + cell / 2;
       const x = left + col * cell;
       const y = top + row * cell;
-      const txt = this.add
-        .text(x, y, symbol, { fontSize: Math.round(cell * 0.62) })
-        .setOrigin(0.5)
-        .setResolution(DPR)
+      const txt = makeGlyph(this, x, y, symbol, Math.round(cell * 0.62))
         .setScale(0.4)
         .setAlpha(0);
       this.itemLayer.add(txt);

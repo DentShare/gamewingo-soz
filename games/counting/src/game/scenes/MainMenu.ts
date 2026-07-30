@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeTopBar } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeTopBar, makeGlyph } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { loadBest } from '../../core/persistence';
@@ -29,10 +29,7 @@ export class MainMenu extends Scene {
 
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
 
-    this.add
-      .text(CX, 118, '🔢', { fontFamily: FONT, fontSize: 44 })
-      .setOrigin(0.5)
-      .setResolution(DPR);
+    makeGlyph(this, CX, 118, 'apple', 48);
     this.add
       .text(CX, 180, t(this.locale, 'app.title'), {
         fontFamily: FONT, fontSize: 42, color: COLORS.headText, fontStyle: 'bold',
@@ -40,10 +37,9 @@ export class MainMenu extends Scene {
       .setOrigin(0.5)
       .setResolution(DPR);
     // Наглядный намёк на механику: предметы и цифра.
+    [-2, -1, 0].forEach((k) => makeGlyph(this, CX + k * 30, 232, 'apple', 26));
     this.add
-      .text(CX, 232, '🍎 🍎 🍎  =  3', {
-        fontFamily: FONT, fontSize: 22, color: COLORS.headMuted,
-      })
+      .text(CX + 42, 232, '= 3', { fontFamily: FONT, fontSize: 22, color: COLORS.headMuted })
       .setOrigin(0.5)
       .setResolution(DPR);
 
