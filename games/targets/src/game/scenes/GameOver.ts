@@ -1,12 +1,13 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeStarRow } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { levelAt, LADDER_SIZE } from '../../core/levels';
 import {
-  recordLevelResult, recordEndlessResult, starsFor, loadProgress, isUnlocked, type RecordResult,
+  recordLevelResult, recordEndlessResult, starsFor, loadProgress, isUnlocked,
+  dailyMissions, grantRoundBonuses, type RecordResult,
 } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 import confetti from 'canvas-confetti';
@@ -40,6 +41,7 @@ export class GameOver extends Scene {
     const target = level.params.target;
     const cleared = !last.endless && last.score >= target;
 
+    const missionsBefore = dailyMissions();
     let starCount = 0;
     let record: RecordResult | null = null;
     if (cleared) {
@@ -51,6 +53,16 @@ export class GameOver extends Scene {
       // Недобранная цель и бесконечный забег в лестницу не идут, но день считают.
       recordEndlessResult(SLUG, last.score);
     }
+    // Бонусы за партию: первый проход уровня + закрывшиеся задания дня.
+    const bonus = grantRoundBonuses({ slug: SLUG, n: last.level, record, missionsBefore });
+    const bonusChip = makeBonusChip(this, 386, 30);
+    if (bonus.total > 0) {
+      // Чип создан после начисления — откатываем показ на баланс «до»,
+      // чтобы прилёт «+N» докрутил его до нового, а не удвоил прибавку.
+      bonusChip.setValue(bonus.balance - bonus.total);
+      this.time.delayedCall(900, () => bonusChip.award(bonus.total, CX, 196));
+    }
+
 
     const titleKey = last.endless ? 'result.endless' : cleared ? 'result.title' : 'result.failed';
     const title = this.add

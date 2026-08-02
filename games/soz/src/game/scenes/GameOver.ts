@@ -2,7 +2,9 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import type { Row } from '../../core/gameState';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, type Button, makeGlyph, makeStarRow } from '../ui';
+import {
+  makeButton, applyTheme, setupCamera, type Button, makeGlyph, makeStarRow, makeBonusChip,
+} from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { buildShareText } from '../share';
@@ -11,7 +13,8 @@ import { currentStreak } from '../../bridge/demo';
 import type { Session } from '../../bridge/session';
 import { levelAt, LADDER_SIZE } from '../../core/levels';
 import {
-  recordLevelResult, recordEndlessResult, starsFor, loadProgress, isUnlocked, type RecordResult,
+  recordLevelResult, recordEndlessResult, starsFor, loadProgress, isUnlocked,
+  dailyMissions, grantRoundBonuses, awardOnce, bonusBalance, TARIFF, type RecordResult,
 } from '@gamewingo/game-progress';
 import { computeScore } from '../../core/score';
 
@@ -48,7 +51,22 @@ export class GameOver extends Scene {
     this.last = this.registry.get('lastGame') as LastGame;
     const loc = this.last.locale;
     const won = this.last.solved;
+    const missionsBefore = dailyMissions();
     const record = this.recordLadder(won);
+
+    // Бонусы: уровень тренировки, задания дня и отдельный тариф слова дня.
+    const bonus = grantRoundBonuses({ slug: SLUG, n: this.last.level, record, missionsBefore });
+    let bonusTotal = bonus.total;
+    if (this.last.mode === 'daily' && won && awardOnce(`soz-daily-${this.last.dayId}`, TARIFF.daily)) {
+      bonusTotal += TARIFF.daily;
+    }
+    const bonusChip = makeBonusChip(this, 386, 30);
+    if (bonusTotal > 0) {
+      // Чип создан после начисления — откатываем показ на баланс «до»,
+      // чтобы прилёт «+N» докрутил его до нового, а не удвоил прибавку.
+      bonusChip.setValue(Math.max(0, bonusBalance() - bonusTotal));
+      this.time.delayedCall(900, () => bonusChip.award(bonusTotal, CX, 210));
+    }
 
     // Заголовок с pop-in (overshoot).
     const emoji = makeGlyph(this, CX, 70, won ? 'star' : 'drop', 44).setScale(0);

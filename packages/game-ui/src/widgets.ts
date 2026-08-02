@@ -1,6 +1,7 @@
 import type { Scene } from 'phaser';
 import { C, S, FONT, RADIUS, TYPE, WEIGHT, TOP_BAR_H, BUTTON_H } from './tokens.js';
 import { DPR, LOGICAL_W, VIEW_TOP } from './viewport.js';
+import { makeBonusChip } from './bonus.js';
 
 /** Тема бренда из INIT. Совпадает по форме с `BrandTheme` моста, но без зависимости на него. */
 export interface Theme {
@@ -141,6 +142,9 @@ export function makeTopBar(
   hit.on('pointerup', onBack);
 
   root.add([bar, chevron, heading, hit]);
+
+  // Баланс бонусов справа — строка с бонусами живёт в шапке каждого экрана.
+  makeBonusChip(scene, LOGICAL_W - 14, cy, { onBar: true });
   return root;
 }
 

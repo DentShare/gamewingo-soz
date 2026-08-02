@@ -7,9 +7,10 @@ import { DPR } from '../dpr';
 import { saveBest } from '../../core/persistence';
 import { levelAt, LADDER_SIZE } from '../../core/levels';
 import {
-  recordLevelResult, recordEndlessResult, starsFor, loadProgress, isUnlocked, type RecordResult,
+  recordLevelResult, recordEndlessResult, starsFor, loadProgress, isUnlocked,
+  dailyMissions, grantRoundBonuses, type RecordResult,
 } from '@gamewingo/game-progress';
-import { makeStarRow } from '../ui';
+import { makeStarRow, makeBonusChip } from '../ui';
 import type { Session } from '../../bridge/session';
 import confetti from 'canvas-confetti';
 
@@ -40,6 +41,7 @@ export class GameOver extends Scene {
     const last = this.registry.get('lastGame') as LastGame;
     const loc = last.locale;
 
+    const missionsBefore = dailyMissions();
     const isNewBest = saveBest(last.score);
     const level = levelAt(last.level);
 
@@ -52,6 +54,16 @@ export class GameOver extends Scene {
     } else {
       // Плитка-цель не собрана: уровень не пройден, но день считает партию.
       recordEndlessResult(SLUG, last.score);
+    }
+
+    // Бонусы за партию: первый проход уровня + закрывшиеся задания дня.
+    const bonus = grantRoundBonuses({ slug: SLUG, n: last.level, record, missionsBefore });
+    const bonusChip = makeBonusChip(this, 386, 30);
+    if (bonus.total > 0) {
+      // Чип создан после начисления — откатываем показ на баланс «до»,
+      // чтобы прилёт «+N» докрутил его до нового, а не удвоил прибавку.
+      bonusChip.setValue(bonus.balance - bonus.total);
+      this.time.delayedCall(900, () => bonusChip.award(bonus.total, CX, 200));
     }
 
     // Конфетти — только при собранной плитке 2048.
