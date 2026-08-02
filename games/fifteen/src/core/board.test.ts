@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  createBoard, createBoardFromTiles, solvedTiles, randomWalk, LEVELS,
+  createBoard, createBoardFromTiles, solvedTiles, randomWalk,
 } from './board';
 import { mulberry32 } from './rng';
-import { computeScore, BASE } from './score';
+import { computeScore, baseFor } from './score';
 
 describe('createBoard (генерация блужданием)', () => {
   it.each([[3], [4]])('%dx%d: валидная перестановка 0..N−1, не собрано, moves=0, детерминированно по seed', (size) => {
@@ -59,10 +59,9 @@ describe('move', () => {
 });
 
 describe('решаемость', () => {
-  it.each([['3x3', 3], ['4x4', 4]] as const)(
-    '%s: отмена блуждания в обратном порядке приводит к isSolved()',
-    (level, size) => {
-      const k = LEVELS[level].walk;
+  it.each([[3, 80], [4, 160], [5, 240]] as const)(
+    'поле %i×%i: отмена блуждания в обратном порядке приводит к isSolved()',
+    (size, k) => {
       const tiles = solvedTiles(size);
       const walked = randomWalk(tiles, size, k, mulberry32(2026));
       expect(walked.length).toBe(k);
@@ -80,21 +79,24 @@ describe('решаемость', () => {
 
 describe('score', () => {
   it('больше ходов — меньше очков', () => {
-    const a = computeScore({ level: '4x4', moves: 60, durationMs: 30_000 });
-    const b = computeScore({ level: '4x4', moves: 120, durationMs: 30_000 });
+    const a = computeScore({ level: 8, moves: 60, durationMs: 30_000 });
+    const b = computeScore({ level: 8, moves: 120, durationMs: 30_000 });
     expect(a).toBeGreaterThan(b);
   });
   it('больше времени — меньше очков', () => {
-    const fast = computeScore({ level: '3x3', moves: 40, durationMs: 20_000 });
-    const slow = computeScore({ level: '3x3', moves: 40, durationMs: 200_000 });
+    const fast = computeScore({ level: 2, moves: 40, durationMs: 20_000 });
+    const slow = computeScore({ level: 2, moves: 40, durationMs: 200_000 });
     expect(fast).toBeGreaterThan(slow);
   });
   it('минимум 100', () => {
-    expect(computeScore({ level: '3x3', moves: 100_000, durationMs: 10_000_000 })).toBe(100);
+    expect(computeScore({ level: 1, moves: 100_000, durationMs: 10_000_000 })).toBe(100);
   });
-  it('максимум = base уровня', () => {
-    expect(computeScore({ level: '3x3', moves: 0, durationMs: 0 })).toBe(BASE['3x3']);
-    expect(computeScore({ level: '4x4', moves: 0, durationMs: 0 })).toBe(BASE['4x4']);
-    expect(computeScore({ level: '4x4', moves: 1, durationMs: 0 })).toBeLessThan(BASE['4x4']);
+  it('максимум = база уровня', () => {
+    expect(computeScore({ level: 1, moves: 0, durationMs: 0 })).toBe(baseFor(1));
+    expect(computeScore({ level: 8, moves: 0, durationMs: 0 })).toBe(baseFor(8));
+    expect(computeScore({ level: 8, moves: 1, durationMs: 0 })).toBeLessThan(baseFor(8));
+  });
+  it('поздний уровень ценится выше раннего', () => {
+    expect(baseFor(15)).toBeGreaterThan(baseFor(1));
   });
 });

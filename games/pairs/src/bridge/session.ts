@@ -2,10 +2,9 @@ import type {
   GameBridge, ApiClient, AppToGameEvent, BrandTheme, LeaderboardEntry,
 } from '@gamewingo/game-bridge';
 import { computeScore } from '../core/score';
-import type { LevelId } from '../core/deck';
 import type { Locale } from '../core/locale';
 
-export interface FinishInput { level: LevelId; pairs: number; moves: number; durationMs: number; }
+export interface FinishInput { level: number; pairs: number; moves: number; durationMs: number; }
 
 export interface Session {
   locale: Locale; theme?: BrandTheme; sessionId: string; ready(): void;

@@ -110,7 +110,20 @@ export interface Grid2048State {
  *   • `Grid2048State` — полное восстановление сохранённой партии (клетки + счёт + ходы + флаг победы).
  * Без `initial` спавнятся две стартовые плитки.
  */
-export function createGrid2048(rng: () => number, initial?: number[][] | Grid2048State): Grid2048 {
+export interface Grid2048Options {
+  /**
+   * Сколько лишних плиток положить на поле при старте новой партии.
+   * Убирает скучное вступление поздних уровней, где первые ходы не требуют решений.
+   * При восстановлении сохранённой партии игнорируется.
+   */
+  startClutter?: number;
+}
+
+export function createGrid2048(
+  rng: () => number,
+  initial?: number[][] | Grid2048State,
+  opts: Grid2048Options = {},
+): Grid2048 {
   const state: Grid2048State | undefined = Array.isArray(initial) ? { cells: initial } : initial;
   let cells: number[][] = state
     ? state.cells.map((row) => row.slice())
@@ -127,7 +140,12 @@ export function createGrid2048(rng: () => number, initial?: number[][] | Grid204
     cells[r][c] = rng() < 0.9 ? 2 : 4;
   }
 
-  if (!state) { spawn(); spawn(); }
+  if (!state) {
+    spawn();
+    spawn();
+    // Мусор мелкий (те же 2 и 4) — он усложняет вход, но не ломает честность партии.
+    for (let i = 0; i < Math.max(0, Math.round(opts.startClutter ?? 0)); i++) spawn();
+  }
 
   return {
     get cells() { return cells; },

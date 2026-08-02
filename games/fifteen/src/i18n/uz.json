@@ -1,11 +1,8 @@
 {
   "app.title": "Boshqotirma 15",
-  "menu.kids": "Bolalar · 3×3",
-  "menu.classic": "Klassika · 4×4",
   "menu.howto": "Qanday oʻynash",
   "menu.back": "Orqaga",
   "menu.catalog": "Oʻyinlarga",
-  "menu.best": "Rekord: {score}",
   "game.moves": "Yurishlar: {n}",
   "onboarding.board": "Raqamlar aralashtirilgan, bitta katak boʻsh.",
   "onboarding.tile": "Boʻsh katak yonidagi plitkani bosing — u oʻsha katakka suriladi.",
@@ -21,5 +18,16 @@
   "result.playAgain": "Yana",
   "result.menu": "Menyuga",
   "result.leaderboard": "Reyting",
-  "error.network": "Aloqa yoʻq"
+  "error.network": "Aloqa yoʻq",
+  "menu.ladder": "{total} dan {n}-daraja",
+  "menu.play": "Oʻynash · {n}-daraja",
+  "game.level": "{n}-daraja",
+  "game.movesLimit": "Yurishlar: {n} / {limit}",
+  "game.fail.moves": "Yurishlar tugadi",
+  "game.fail.time": "Vaqt tugadi",
+  "result.failed": "Daraja oʻtilmadi",
+  "result.level": "{total} dan {n}-daraja",
+  "result.nextLevel": "{n}-daraja",
+  "result.unlocked": "{n}-daraja ochildi!",
+  "result.tryAgain": "Yana urinib koʻring"
 }

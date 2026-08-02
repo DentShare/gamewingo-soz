@@ -3,7 +3,9 @@ import {
   createSortingGame, COLORS, SHAPES, TOTAL, type Item, type SortingGame,
 } from './sorting';
 import { mulberry32 } from './rng';
-import { computeScore, stars, MAX_SCORE } from './score';
+import { computeScore, MAX_SCORE } from './score';
+import { LADDER } from './levels';
+import { starsFor } from '@gamewingo/game-progress';
 
 /** Индекс корзины, в которую фигурка кладётся верно в текущем режиме. */
 function rightBin(g: SortingGame, item: Item): number {
@@ -27,7 +29,7 @@ function playPerfect(g: SortingGame): SortingGame {
 describe('createSortingGame — режим «по цвету»', () => {
   it('корзины — три цвета, старт с фигуркой в руке', () => {
     const g = createSortingGame('color', mulberry32(1));
-    expect(g.bins).toEqual(COLORS);
+    expect(g.bins).toEqual(COLORS.slice(0, 3));
     expect(g.current).not.toBeNull();
     expect(g.total).toBe(TOTAL);
     expect(g.placed).toBe(0);
@@ -51,13 +53,52 @@ describe('createSortingGame — режим «по цвету»', () => {
 describe('createSortingGame — режим «по форме»', () => {
   it('корзины — три формы, засчитывает по форме независимо от цвета', () => {
     const g = createSortingGame('shape', mulberry32(11));
-    expect(g.bins).toEqual(SHAPES);
+    expect(g.bins).toEqual(SHAPES.slice(0, 3));
     for (let n = 0; n < 12; n++) {
       const item = g.current!;
       expect(g.featureOf(item)).toBe(item.shape);
-      expect(g.drop(SHAPES.indexOf(item.shape)).correct).toBe(true);
+      expect(g.drop(g.bins.indexOf(item.shape)).correct).toBe(true);
     }
     expect(g.placed).toBe(TOTAL);
+  });
+});
+
+describe('параметры уровня', () => {
+  it('четвёртая корзина добавляет четвёртый признак', () => {
+    const byColor = createSortingGame('color', mulberry32(5), { bins: 4 });
+    expect(byColor.bins).toEqual(COLORS);
+    const byShape = createSortingGame('shape', mulberry32(5), { bins: 4 });
+    expect(byShape.bins).toEqual(SHAPES);
+  });
+
+  it('признак сортировки всегда есть среди корзин', () => {
+    for (const bins of [3, 4] as const) {
+      const g = createSortingGame('color', mulberry32(bins * 13), { bins, total: 30 });
+      for (let n = 0; n < 30 && g.current; n++) {
+        expect(g.bins).toContain(g.featureOf(g.current));
+        g.drop(g.bins.indexOf(g.featureOf(g.current)));
+      }
+    }
+  });
+
+  it('длина партии берётся из уровня', () => {
+    const g = createSortingGame('color', mulberry32(3), { total: 8 });
+    expect(g.total).toBe(8);
+    for (let n = 0; n < 8; n++) g.drop(g.bins.indexOf(g.featureOf(g.current!)));
+    expect(g.isDone).toBe(true);
+    expect(g.current).toBeNull();
+  });
+
+  it('каждый уровень лестницы порождает проходимую партию', () => {
+    for (const { n, params } of LADDER) {
+      const g = createSortingGame(params.mode, mulberry32(n * 17), { total: params.total, bins: params.bins });
+      expect(g.bins).toHaveLength(params.bins);
+      for (let k = 0; k < params.total; k++) {
+        expect(g.drop(g.bins.indexOf(g.featureOf(g.current!))).correct).toBe(true);
+      }
+      expect(g.isDone).toBe(true);
+      expect(g.mistakes).toBe(0);
+    }
   });
 });
 
@@ -151,9 +192,9 @@ describe('генерация фигурок', () => {
 });
 
 describe('score', () => {
-  it('чистая партия даёт максимум', () => {
-    expect(computeScore({ placed: 12, mistakes: 0 })).toBe(MAX_SCORE);
-    expect(MAX_SCORE).toBe(1500);
+  it('чистая партия на самом длинном уровне даёт максимум', () => {
+    const longest = Math.max(...LADDER.map((lv) => lv.params.total));
+    expect(computeScore({ placed: longest, mistakes: 0 })).toBe(MAX_SCORE);
   });
 
   it('ошибки уменьшают только бонус, счёт не уходит в минус', () => {
@@ -163,8 +204,9 @@ describe('score', () => {
   });
 
   it('звёзды: 3 без ошибок, 2 до трёх, иначе 1', () => {
-    expect(stars(0)).toBe(3);
-    expect(stars(3)).toBe(2);
-    expect(stars(4)).toBe(1);
+    const goals = LADDER[0].goals;
+    expect(starsFor(goals, 0)).toBe(3);
+    expect(starsFor(goals, goals.silver)).toBe(2);
+    expect(starsFor(goals, goals.silver + 1)).toBe(1);
   });
 });

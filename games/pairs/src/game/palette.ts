@@ -15,6 +15,9 @@ export const COLORS = {
   cardBack: C.primary,        // рубашка карточки
   cardBackMark: '#ffebe2', // знак «?» на рубашке
   matchGlow: C.accent,        // подсветка найденной пары
+  /** Обратный отсчёт на исходе и сообщение о проваленном уровне. */
+  danger: S.danger,
+  star: C.gold,
   toastBg: S.ink,
   toastText: S.white,
   /** Фон камеры для fade (RGB, совпадает с bg). */

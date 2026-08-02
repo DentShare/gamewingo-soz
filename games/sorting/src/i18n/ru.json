@@ -1,11 +1,8 @@
 {
   "app.title": "Сортировка",
-  "menu.byColor": "По цвету",
-  "menu.byShape": "По форме",
   "menu.howto": "Как играть",
   "menu.back": "Назад",
   "menu.catalog": "К играм",
-  "menu.best": "Рекорд: {score}",
   "mode.color": "Раскладываем по цвету",
   "mode.shape": "Раскладываем по форме",
   "game.progress": "{n} из {total}",
@@ -23,5 +20,10 @@
   "result.playAgain": "Ещё раз",
   "result.menu": "В меню",
   "result.leaderboard": "Таблица лидеров",
-  "error.network": "Нет соединения"
+  "error.network": "Нет соединения",
+  "menu.ladder": "Уровень {n} из {total}",
+  "menu.play": "Играть · уровень {n}",
+  "result.level": "Уровень {n} из {total}",
+  "result.nextLevel": "Уровень {n}",
+  "result.unlocked": "Открыт уровень {n}!"
 }

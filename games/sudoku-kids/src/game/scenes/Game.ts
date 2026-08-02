@@ -1,11 +1,14 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import {
-  LEVELS, blockDims, makePuzzle, conflicts, isComplete, type Grid, type LevelId,
+  blockDims, makePuzzle, conflicts, isComplete, type Grid,
 } from '../../core/sudoku';
 import { mulberry32 } from '../../core/rng';
+import { levelAt, type SudokuParams } from '../../core/levels';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, setupCamera, type Button, makeButton, makeBackButton, makeKeyCap } from '../ui';
+import {
+  applyTheme, setupCamera, type Button, makeButton, makeBackButton, makeKeyCap, toast, shakeCamera,
+} from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -24,7 +27,11 @@ const MAX_HINTS = 3;
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
-  private level: LevelId = 'easy4';
+  private level = 1;
+  private params!: SudokuParams;
+  /** Ошибочных вводов за партию: считается лимитом уровня, а не подсказками. */
+  private mistakes = 0;
+  private mistakesText?: Phaser.GameObjects.Text;
   private session!: Session;
 
   // Состояние партии (плоские сетки size×size).
@@ -72,7 +79,9 @@ export class Game extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
-    this.level = (this.registry.get('level') as LevelId) ?? 'easy4';
+    this.level = (this.registry.get('level') as number) ?? 1;
+    this.params = levelAt(this.level).params;
+    this.mistakes = 0;
     this.session = this.registry.get('session') as Session;
 
     // «Как играть» из меню: обучение на настоящей сетке, без сессии, таймера и ввода.
@@ -97,19 +106,35 @@ export class Game extends Scene {
   }
 
   update() {
-    if (this.timeText && this.timer && !this.finished) {
-      const sec = Math.floor(this.timer.elapsedMs() / 1000);
-      const mm = String(Math.floor(sec / 60)).padStart(2, '0');
-      const ss = String(sec % 60).padStart(2, '0');
-      this.timeText.setText(`${mm}:${ss}`);
+    if (!this.timeText || !this.timer || this.finished) return;
+    const elapsed = Math.floor(this.timer.elapsedMs() / 1000);
+    const limit = this.params.timeLimitSec;
+    // С лимитом идёт обратный отсчёт: последние десять секунд подсвечены красным.
+    const sec = limit ? Math.max(0, limit - elapsed) : elapsed;
+    const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+    const ss = String(sec % 60).padStart(2, '0');
+    this.timeText.setText(`${mm}:${ss}`);
+    if (limit) {
+      this.timeText.setColor(sec <= 10 ? COLORS.danger : COLORS.headMuted);
+      if (sec <= 0) this.failRound('time');
     }
+  }
+
+  /** Уровень не пройден: набрали лимит ошибок или кончилось время. */
+  private failRound(cause: 'mistakes' | 'time') {
+    if (this.finished || this.tutorialActive) return;
+    this.finished = true;
+    this.timer?.pause();
+    toast(this, 200, 640, t(this.locale, `game.fail.${cause}`));
+    shakeCamera(this, 260, 0.012);
+    this.time.delayedCall(1100, () => this.endGame(false));
   }
 
   // ── Сборка партии ────────────────────────────────────────────────────────────
 
   /** Генерирует паззл текущего уровня. */
   private buildPuzzle() {
-    const spec = LEVELS[this.level];
+    const spec = this.params;
     this.size = spec.size;
     const { puzzle, solution } = makePuzzle(spec.size, spec.clues, mulberry32(Math.floor(Math.random() * 2 ** 31)));
     this.grid = puzzle.slice();
@@ -132,7 +157,9 @@ export class Game extends Scene {
   private runHowto() {
     this.registry.set('howto', false); // одноразовый вход
     this.tutorialActive = true;
-    this.level = 'easy4'; // на 4×4 правила нагляднее
+    // На 4×4 правила нагляднее — обучение всегда идёт на первом уровне лестницы.
+    this.level = 1;
+    this.params = levelAt(1).params;
     this.buildPuzzle();
     this.buildScreen();
     this.timer = createRoundTimer(() => performance.now()); // не стартует: на экране 00:00
@@ -232,10 +259,28 @@ export class Game extends Scene {
 
   private buildHud() {
     this.buildBackButton();
+    this.add
+      .text(W / 2 + 26, 20, t(this.locale, 'game.level', { n: this.level }), {
+        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
+      })
+      .setOrigin(0.5)
+      .setResolution(DPR);
+    if (this.params.mistakeLimit) {
+      this.mistakesText = this.add
+        .text(W / 2 + 26, 42, this.mistakesLabel(), {
+          fontFamily: FONT, fontSize: 16, color: COLORS.headText,
+        })
+        .setOrigin(0.5)
+        .setResolution(DPR);
+    }
     this.timeText = this.add
       .text(W - 20, 34, '00:00', { fontFamily: FONT, fontSize: 16, color: COLORS.headMuted })
       .setOrigin(1, 0.5)
       .setResolution(DPR);
+  }
+
+  private mistakesLabel(): string {
+    return t(this.locale, 'game.mistakes', { n: this.mistakes, limit: this.params.mistakeLimit });
   }
 
   /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
@@ -358,8 +403,19 @@ export class Game extends Scene {
 
   private onDigit(v: number) {
     if (this.finished || this.tutorialActive || this.selected === null || this.given[this.selected]) return;
-    this.grid[this.selected] = v;
+    const cell = this.selected;
+    const wrong = v !== this.solution[cell];
+    this.grid[cell] = v;
     this.refresh();
+
+    if (wrong && this.params.mistakeLimit) {
+      this.mistakes++;
+      this.mistakesText?.setText(this.mistakesLabel());
+      if (this.mistakes >= this.params.mistakeLimit) {
+        this.failRound('mistakes');
+        return;
+      }
+    }
     this.checkWin();
   }
 
@@ -448,10 +504,10 @@ export class Game extends Scene {
         delay: (Math.floor(i / this.size) + (i % this.size)) * 28, ease: 'Quad.easeOut',
       });
     }
-    this.time.delayedCall(650, () => this.endGame());
+    this.time.delayedCall(650, () => this.endGame(true));
   }
 
-  private endGame() {
+  private endGame(cleared: boolean) {
     const durationMs = Math.round(this.timer.elapsedMs());
     const hints = MAX_HINTS - this.hintsLeft;
 
@@ -460,7 +516,7 @@ export class Game extends Scene {
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
-      level: this.level, locale: this.locale, hints, durationMs,
+      level: this.level, locale: this.locale, hints, durationMs, mistakes: this.mistakes, cleared,
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));

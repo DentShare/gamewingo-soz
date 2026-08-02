@@ -57,6 +57,11 @@ export interface TapResult {
 }
 
 export interface TargetsOptions {
+  /**
+   * Фаза старта в очках: цели с самого начала мельче и живут меньше, как будто
+   * партия уже идёт. Поздний уровень не начинается с крупных лёгких мишеней.
+   */
+  startPhase: number;
   /** Длительность партии, мс. */
   durationMs: number;
   /** Сколько целей может гореть одновременно. */
@@ -66,6 +71,7 @@ export interface TargetsOptions {
 }
 
 export const DEFAULT_OPTIONS: TargetsOptions = {
+  startPhase: 0,
   durationMs: ROUND_MS,
   maxAlive: 5,
   field: FIELD,
@@ -164,7 +170,13 @@ export function createTargetsGame(
   let elapsedMs = 0;
   let over = false;
 
-  const progress = () => clamp01(elapsedMs / cfg.durationMs);
+  /**
+   * Насколько «продвинута» партия для кривой сложности: реальное время плюс фаза
+   * уровня. Часы при этом идут честно — минута остаётся минутой.
+   */
+  const PHASE_FULL_SCORE = 6000;
+  const phaseShift = clamp01(cfg.startPhase / PHASE_FULL_SCORE);
+  const progress = () => clamp01(phaseShift + (1 - phaseShift) * (elapsedMs / cfg.durationMs));
 
   /** Свободна ли точка: не налезает на уже горящие цели. */
   function isFree(x: number, y: number, r: number): boolean {

@@ -4,6 +4,7 @@ import {
   createCountingGame, ITEMS, type CountingGame,
 } from '../../core/counting';
 import { mulberry32 } from '../../core/rng';
+import { levelAt } from '../../core/levels';
 import { COLORS, FONT } from '../palette';
 import { applyTheme, setupCamera, makeGlyph, type GlyphName, makeBackButton, makeKeyCap } from '../ui';
 import { DPR } from '../dpr';
@@ -24,9 +25,10 @@ const PAD_Y = 592;
 const PAD_SIZE = 82;
 const PAD_GAP = 14;
 
-/** Сколько предметов в ряду при заданном количестве (1..10) — аккуратные раскладки. */
+/** Сколько предметов в ряду при заданном количестве (1..20) — аккуратные раскладки. */
 const LAYOUT: Array<[cols: number, rows: number]> = [
   [1, 1], [2, 1], [3, 1], [2, 2], [3, 2], [3, 2], [4, 2], [4, 2], [3, 3], [5, 2],
+  [4, 3], [4, 3], [5, 3], [5, 3], [5, 3], [4, 4], [5, 4], [5, 4], [5, 4], [5, 4],
 ];
 
 /** Пауза между подсветками предметов при пересчёте-подсказке. */
@@ -55,6 +57,9 @@ export class Game extends Scene {
   private locale: Locale = 'ru';
   private session?: Session;
   private core!: CountingGame;
+  private level = 1;
+  /** Сторона кнопки-цифры: зависит от того, сколько вариантов у уровня. */
+  private padSize = PAD_SIZE;
   private timer?: RoundTimer;
 
   private items: ItemView[] = [];
@@ -94,6 +99,7 @@ export class Game extends Scene {
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.session = this.registry.get('session') as Session | undefined;
+    this.level = (this.registry.get('level') as number) ?? 1;
 
     this.buildHud();
     this.buildBoard();
@@ -122,12 +128,14 @@ export class Game extends Scene {
 
   /** Новая партия. `minCount` — минимум предметов в первом вопросе (для наглядного обучения). */
   private newCore(minCount = 0): CountingGame {
+    const { questions, maxCount, options } = levelAt(this.level).params;
+    const opts = { questions, maxCount, options };
     const seed = () => Math.floor(Math.random() * 2 ** 31);
     for (let i = 0; i < 30; i++) {
-      const g = createCountingGame(mulberry32(seed()));
+      const g = createCountingGame(mulberry32(seed()), opts);
       if (g.question.count >= minCount) return g;
     }
-    return createCountingGame(mulberry32(seed()));
+    return createCountingGame(mulberry32(seed()), opts);
   }
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
@@ -184,10 +192,10 @@ export class Game extends Scene {
   }
 
   private padsRect(): Rect {
-    const half = PAD_SIZE / 2;
+    const half = this.padSize / 2;
     const xs = this.pads.map((p) => p.x);
     const left = Math.min(...xs) - half;
-    return { x: left, y: PAD_Y - half, w: Math.max(...xs) + half - left, h: PAD_SIZE };
+    return { x: left, y: PAD_Y - half, w: Math.max(...xs) + half - left, h: this.padSize };
   }
 
   // ── HUD ──────────────────────────────────────────────────────────────────────
@@ -281,15 +289,18 @@ export class Game extends Scene {
   // ── Кнопки-цифры ─────────────────────────────────────────────────────────────
 
   private buildPads() {
-    const total = 4 * PAD_SIZE + 3 * PAD_GAP;
-    const left = (W - total) / 2 + PAD_SIZE / 2;
-    for (let i = 0; i < 4; i++) {
-      this.pads.push(this.makePad(left + i * (PAD_SIZE + PAD_GAP), PAD_Y));
+    const count = levelAt(this.level).params.options;
+    // Кнопки ужимаются под их число, но не мельче 56 px — иначе тяжело попасть пальцем.
+    const size = Math.max(56, Math.min(PAD_SIZE, Math.floor((W - 32 - (count - 1) * PAD_GAP) / count)));
+    this.padSize = size;
+    const total = count * size + (count - 1) * PAD_GAP;
+    const left = (W - total) / 2 + size / 2;
+    for (let i = 0; i < count; i++) {
+      this.pads.push(this.makePad(left + i * (size + PAD_GAP), PAD_Y, size));
     }
   }
 
-  private makePad(x: number, y: number): DigitPad {
-    const s = PAD_SIZE;
+  private makePad(x: number, y: number, s: number): DigitPad {
     const root = this.add.container(x, y);
     const cap = makeKeyCap(this, 0, 0, s, s, '', () => this.onPick(pad), {
       fontSize: 44, radius: 20,
@@ -447,10 +458,10 @@ export class Game extends Scene {
     const { correct, mistakes } = this.core;
 
     void this.session
-      ?.finish({ correct, mistakes, durationMs })
+      ?.finish({ level: this.level, correct, mistakes, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
-    this.registry.set('lastGame', { locale: this.locale, correct, mistakes, durationMs });
+    this.registry.set('lastGame', { level: this.level, locale: this.locale, correct, mistakes, durationMs });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }

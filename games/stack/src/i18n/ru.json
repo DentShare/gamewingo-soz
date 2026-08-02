@@ -1,7 +1,7 @@
 {
   "app.title": "Башня",
   "app.tagline": "Ставьте блоки точно друг на друга",
-  "menu.play": "Играть",
+  "menu.play": "Играть · уровень {n}",
   "menu.howto": "Как играть",
   "menu.catalog": "К играм",
   "menu.back": "Назад",
@@ -22,5 +22,15 @@
   "result.playAgain": "Ещё раз",
   "result.menu": "В меню",
   "result.leaderboard": "Таблица лидеров",
-  "error.network": "Нет соединения"
+  "error.network": "Нет соединения",
+  "menu.ladder": "Уровень {n} из {total}",
+  "menu.goal": "Цель: {n} очков",
+  "menu.endless": "Бесконечный режим",
+  "result.level": "Уровень {n} из {total}",
+  "result.nextLevel": "Уровень {n}",
+  "result.unlocked": "Открыт уровень {n}!",
+  "result.goalMissed": "Цель не достигнута: нужно {n}",
+  "result.endless": "Бесконечный режим",
+  "game.goal": "Цель: {n}",
+  "result.failed": "Цель не взята"
 }

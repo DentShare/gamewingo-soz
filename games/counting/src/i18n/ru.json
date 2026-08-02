@@ -1,10 +1,9 @@
 {
   "app.title": "Счёт",
-  "menu.play": "Играть",
+  "menu.play": "Играть · уровень {n}",
   "menu.howto": "Как играть",
   "menu.back": "Назад",
   "menu.catalog": "К играм",
-  "menu.best": "Рекорд: {score}",
   "game.question": "Сколько?",
   "game.progress": "{n} из {total}",
   "game.praise": "Молодец!",
@@ -22,5 +21,9 @@
   "result.playAgain": "Ещё раз",
   "result.menu": "В меню",
   "result.leaderboard": "Таблица лидеров",
-  "error.network": "Нет соединения"
+  "error.network": "Нет соединения",
+  "menu.ladder": "Уровень {n} из {total}",
+  "result.level": "Уровень {n} из {total}",
+  "result.nextLevel": "Уровень {n}",
+  "result.unlocked": "Открыт уровень {n}!"
 }

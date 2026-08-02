@@ -1,9 +1,10 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
-import { LEVELS, createBoard, type Board, type LevelId } from '../../core/board';
+import { createBoard, type Board } from '../../core/board';
+import { levelAt, type FifteenParams } from '../../core/levels';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, darken, setupCamera, makeBackButton } from '../ui';
+import { applyTheme, darken, setupCamera, makeBackButton, toast, shakeCamera } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -27,7 +28,8 @@ interface TileView {
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
-  private level: LevelId = '3x3';
+  private level = 1;
+  private params!: FifteenParams;
   private session!: Session;
   private board!: Board;
   /** Вью плитки по индексу клетки (null — пустая клетка). */
@@ -61,7 +63,8 @@ export class Game extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
-    this.level = (this.registry.get('level') as LevelId) ?? '3x3';
+    this.level = (this.registry.get('level') as number) ?? 1;
+    this.params = levelAt(this.level).params;
     this.session = this.registry.get('session') as Session;
 
     // Режим «Как играть» из меню: обучение на настоящем поле, партия не начинается.
@@ -90,7 +93,8 @@ export class Game extends Scene {
 
   /** Свежий решаемый расклад текущего уровня. */
   private newBoard(): Board {
-    return createBoard(LEVELS[this.level].size, mulberry32(Math.floor(Math.random() * 2 ** 31)));
+    const { size, walk } = this.params;
+    return createBoard(size, mulberry32(Math.floor(Math.random() * 2 ** 31)), walk);
   }
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
@@ -180,24 +184,54 @@ export class Game extends Scene {
     this.performMove(this.demoUndoCell);
     this.demoUndoCell = -1;
     this.board.resetMoves();
-    this.movesText.setText(t(this.locale, 'game.moves', { n: 0 }));
+    this.movesText.setText(this.movesLabel());
+  }
+
+  /** Ходы: с лимитом показываем «сделано / всего», без лимита — просто счётчик. */
+  private movesLabel(): string {
+    const n = this.board?.moves ?? 0;
+    return this.params.moveLimit
+      ? t(this.locale, 'game.movesLimit', { n, limit: this.params.moveLimit })
+      : t(this.locale, 'game.moves', { n });
   }
 
   update() {
-    if (this.timeText && !this.finished) {
-      const sec = Math.floor(this.timer.elapsedMs() / 1000);
-      const mm = String(Math.floor(sec / 60)).padStart(2, '0');
-      const ss = String(sec % 60).padStart(2, '0');
-      this.timeText.setText(`${mm}:${ss}`);
+    if (!this.timeText || this.finished) return;
+    const elapsed = Math.floor(this.timer.elapsedMs() / 1000);
+    const limit = this.params.timeLimitSec;
+    // С лимитом идёт обратный отсчёт: последние десять секунд подсвечены красным.
+    const sec = limit ? Math.max(0, limit - elapsed) : elapsed;
+    const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+    const ss = String(sec % 60).padStart(2, '0');
+    this.timeText.setText(`${mm}:${ss}`);
+    if (limit) {
+      this.timeText.setColor(sec <= 10 ? COLORS.danger : COLORS.headMuted);
+      if (sec <= 0) this.failRound('time');
     }
+  }
+
+  /** Уровень не пройден: кончились ходы или время. */
+  private failRound(cause: 'moves' | 'time') {
+    if (this.finished || this.tutorialActive) return;
+    this.finished = true;
+    this.timer.pause();
+    toast(this, 200, 620, t(this.locale, `game.fail.${cause}`));
+    shakeCamera(this, 260, 0.012);
+    this.time.delayedCall(1100, () => this.endGame(false));
   }
 
   // ── HUD: кнопка назад + ходы + таймер ────────────────────────────────────────
 
   private buildHud() {
     this.buildBackButton();
+    this.add
+      .text(W / 2 + 26, 20, t(this.locale, 'game.level', { n: this.level }), {
+        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
+      })
+      .setOrigin(0.5)
+      .setResolution(DPR);
     this.movesText = this.add
-      .text(W / 2 + 40, 34, t(this.locale, 'game.moves', { n: 0 }), {
+      .text(W / 2 + 26, 42, this.movesLabel(), {
         fontFamily: FONT, fontSize: 16, color: COLORS.headText,
       })
       .setOrigin(0.5)
@@ -346,11 +380,14 @@ export class Game extends Scene {
       onComplete: () => { view.animating = false; },
     });
 
-    this.movesText.setText(t(this.locale, 'game.moves', { n: this.board.moves }));
+    this.movesText.setText(this.movesLabel());
 
     if (this.board.isSolved()) {
       this.finished = true;
       this.time.delayedCall(SLIDE_MS + 40, () => this.winWave());
+    } else if (this.params.moveLimit && this.board.moves >= this.params.moveLimit) {
+      // Ходы кончились — даём плитке доехать, чтобы игрок увидел последний ход.
+      this.time.delayedCall(SLIDE_MS + 40, () => this.failRound('moves'));
     }
   }
 
@@ -368,10 +405,10 @@ export class Game extends Scene {
       });
     }
     const total = (tiles.length - 1) * 40 + 300 + 250;
-    this.time.delayedCall(total, () => this.endGame());
+    this.time.delayedCall(total, () => this.endGame(true));
   }
 
-  private endGame() {
+  private endGame(cleared: boolean) {
     const durationMs = Math.round(this.timer.elapsedMs());
     const moves = this.board.moves;
 
@@ -380,7 +417,7 @@ export class Game extends Scene {
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
-      level: this.level, locale: this.locale, moves, durationMs,
+      level: this.level, locale: this.locale, moves, durationMs, cleared,
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));

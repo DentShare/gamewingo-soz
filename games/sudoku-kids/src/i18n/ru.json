@@ -1,12 +1,8 @@
 {
   "app.title": "Мини-судоку",
-  "menu.easy4": "Детский · 4×4",
-  "menu.easy6": "Лёгкий · 6×6",
-  "menu.hard6": "Сложнее · 6×6",
   "menu.howto": "Как играть",
   "menu.back": "Назад",
   "menu.catalog": "К играм",
-  "menu.best": "Рекорд: {score}",
   "game.hints": "Подсказки: {n}",
   "onboarding.grid": "Заполните пустые клетки цифрами от 1 до 4. Тёмные цифры уже стоят — их менять нельзя.",
   "onboarding.row": "В строке каждая цифра встречается только один раз.",
@@ -24,5 +20,16 @@
   "result.playAgain": "Ещё раз",
   "result.menu": "В меню",
   "result.leaderboard": "Таблица лидеров",
-  "error.network": "Нет соединения"
+  "error.network": "Нет соединения",
+  "menu.ladder": "Уровень {n} из {total}",
+  "menu.play": "Играть · уровень {n}",
+  "game.level": "Уровень {n}",
+  "game.mistakes": "Ошибки: {n} / {limit}",
+  "game.fail.mistakes": "Ошибок слишком много",
+  "game.fail.time": "Время вышло",
+  "result.failed": "Уровень не пройден",
+  "result.level": "Уровень {n} из {total}",
+  "result.nextLevel": "Уровень {n}",
+  "result.unlocked": "Открыт уровень {n}!",
+  "result.tryAgain": "Попробуйте ещё раз"
 }

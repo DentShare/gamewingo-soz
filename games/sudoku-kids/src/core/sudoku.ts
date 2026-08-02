@@ -8,20 +8,6 @@ import { shuffle } from './rng';
 /** Плоская сетка size×size, построчно; 0 — пустая клетка. */
 export type Grid = number[];
 
-export type LevelId = 'easy4' | 'easy6' | 'hard6';
-
-export interface LevelSpec {
-  size: 4 | 6;
-  /** Целевое число подсказок-данных (givens) в паззле. */
-  clues: number;
-}
-
-export const LEVELS: Record<LevelId, LevelSpec> = {
-  easy4: { size: 4, clues: 8 },   // из 16
-  easy6: { size: 6, clues: 20 },  // из 36
-  hard6: { size: 6, clues: 15 },  // из 36 (14–16 по спеке)
-};
-
 /** Размер стороны по длине плоской сетки (16 → 4, 36 → 6). */
 export function sizeOf(grid: Grid): number {
   const size = Math.round(Math.sqrt(grid.length));

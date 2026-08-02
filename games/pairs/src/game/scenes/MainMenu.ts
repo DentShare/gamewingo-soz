@@ -1,14 +1,17 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeTopBar, makeGameIcon } from '../ui';
-import { COLORS, FONT } from '../palette';
-import { DPR } from '../dpr';
-import type { LevelId } from '../../core/deck';
-import { loadBest } from '../../core/persistence';
+import {
+  makeButton, applyTheme, setupCamera, makeTopBar, makeGameIcon, makeLevelGrid, makeLadderSummary,
+  type LevelTileState,
+} from '../ui';
+import { COLORS } from '../palette';
+import { LADDER, LADDER_SIZE } from '../../core/levels';
+import { isUnlocked, loadProgress, nextLevel, totalStars } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 
 const CX = 200;
+const SLUG = 'pairs';
 /**
  * Каталог игр WinGo (для автономного/веб-режима). В приложении выход обрабатывает мост.
  * Путь относительный: игра лежит на /<slug>/, хаб — на корне того же домена,
@@ -31,36 +34,38 @@ export class MainMenu extends Scene {
 
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
 
-    makeGameIcon(this, CX, 94, 84);
-    this.add
-      .text(CX, 148, t(this.locale, 'app.title'), {
-        fontFamily: FONT, fontSize: 42, color: COLORS.headText, fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
+    makeGameIcon(this, CX, 92, 64);
 
-    // Выбор языка — две пилюли.
-    this.langPill(CX - 92, 214, 'ru', 'Русский');
-    this.langPill(CX + 92, 214, 'uz', 'Oʻzbekcha');
+    const progress = loadProgress(SLUG);
+    const next = nextLevel(progress, LADDER_SIZE);
 
-    // Кнопки уровней + рекорд под каждой.
-    const levels: LevelId[] = ['easy', 'medium', 'hard'];
-    let y = 312;
-    levels.forEach((level, i) => {
-      makeButton(this, CX, y, t(this.locale, `menu.${level}`), () => this.startLevel(level), { primary: i === 0 });
-      const best = loadBest(level);
-      if (best) {
-        this.add
-          .text(CX, y + 33, t(this.locale, 'menu.best', { score: best.score }), {
-            fontFamily: FONT, fontSize: 12, color: COLORS.headMuted,
-          })
-          .setOrigin(0.5)
-          .setResolution(DPR);
-      }
-      y += 82;
+    makeLadderSummary(
+      this,
+      CX,
+      142,
+      t(this.locale, 'menu.ladder', { n: next, total: LADDER_SIZE }),
+      totalStars(progress),
+      LADDER_SIZE * 3,
+    );
+
+    // Лестница уровней: пройденные со звёздами, следующий выделен, дальше — замки.
+    const tiles: LevelTileState[] = LADDER.map((lv) => ({
+      n: lv.n,
+      unlocked: isUnlocked(progress, lv.n),
+      stars: progress.stars[lv.n - 1] ?? 0,
+      current: lv.n === next,
+    }));
+    const grid = makeLevelGrid(this, CX, 186, tiles, (n) => this.startLevel(n));
+
+    const belowGrid = 186 + grid.height + 24;
+    makeButton(this, CX, belowGrid, t(this.locale, 'menu.play', { n: next }), () => this.startLevel(next), {
+      primary: true,
     });
+    makeButton(this, CX, belowGrid + 52, t(this.locale, 'menu.howto'), () => this.showHowto());
 
-    makeButton(this, CX, y + 8, t(this.locale, 'menu.howto'), () => this.showHowto());
+    // Выбор языка — две пилюли под кнопками.
+    this.langPill(CX - 92, belowGrid + 108, 'ru', 'Русский');
+    this.langPill(CX + 92, belowGrid + 108, 'uz', 'Oʻzbekcha');
   }
 
   /** Пилюля выбора языка. Выбранная подсвечена; по тапу переключает и перерисовывает меню. */
@@ -72,13 +77,11 @@ export class MainMenu extends Scene {
     }, { width: 176, height: 40, primary: this.locale === loc });
   }
 
-  private startLevel(level: LevelId) {
-    this.registry.set('level', level);
+  private startLevel(n: number) {
+    this.registry.set('level', n);
     this.registry.set('locale', this.locale);
     this.scene.start('Game');
   }
-
-  /** Ссылка «‹ К играм» слева вверху — выход в каталог игр WinGo. */
 
   /** Выход в каталог: событие мосту (реальный WebView вернётся к списку), а в вебе — переход на хаб. */
   private exitToCatalog() {
@@ -94,7 +97,7 @@ export class MainMenu extends Scene {
   private showHowto() {
     this.registry.set('howto', true);
     this.registry.set('locale', this.locale);
-    this.registry.set('level', 'easy');
+    this.registry.set('level', 1);
     this.scene.start('Game');
   }
 }

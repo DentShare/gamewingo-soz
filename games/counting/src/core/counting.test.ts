@@ -4,7 +4,9 @@ import {
   MAX_COUNT, MAX_OPTION_DELTA, OPTIONS_COUNT, TOTAL_QUESTIONS,
 } from './counting';
 import { mulberry32 } from './rng';
-import { computeScore, stars } from './score';
+import { computeScore } from './score';
+import { LADDER } from './levels';
+import { starsFor } from '@gamewingo/game-progress';
 
 /** Проходит партию до конца, всегда отвечая верно. Возвращает список количеств. */
 function playPerfect(seed: number): number[] {
@@ -86,7 +88,7 @@ describe('createCountingGame', () => {
     const counts = playPerfect(2024);
     expect(counts.length).toBe(TOTAL_QUESTIONS);
     counts.forEach((c, i) => {
-      const [min, max] = countRange(i);
+      const [min, max] = countRange(i, TOTAL_QUESTIONS, MAX_COUNT);
       expect(c).toBeGreaterThanOrEqual(min);
       expect(c).toBeLessThanOrEqual(max);
       expect(c).toBeLessThanOrEqual(MAX_COUNT);
@@ -100,8 +102,8 @@ describe('createCountingGame', () => {
 
   it('countRange растёт монотонно', () => {
     for (let i = 1; i < TOTAL_QUESTIONS; i++) {
-      const [minPrev, maxPrev] = countRange(i - 1);
-      const [min, max] = countRange(i);
+      const [minPrev, maxPrev] = countRange(i - 1, TOTAL_QUESTIONS, MAX_COUNT);
+      const [min, max] = countRange(i, TOTAL_QUESTIONS, MAX_COUNT);
       expect(min).toBeGreaterThanOrEqual(minPrev);
       expect(max).toBeGreaterThanOrEqual(maxPrev);
     }
@@ -170,8 +172,9 @@ describe('score', () => {
   });
 
   it('звёзды по ошибкам', () => {
-    expect(stars(0)).toBe(3);
-    expect(stars(2)).toBe(2);
-    expect(stars(3)).toBe(1);
+    const goals = LADDER[4].goals;
+    expect(starsFor(goals, 0)).toBe(3);
+    expect(starsFor(goals, goals.silver)).toBe(2);
+    expect(starsFor(goals, goals.silver + 1)).toBe(1);
   });
 });

@@ -6,6 +6,7 @@ import { COLORS, FONT, blockColor } from '../palette';
 import { applyTheme, darken, setupCamera, shakeCamera, makeBackButton } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
+import { levelAt } from '../../core/levels';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
@@ -31,6 +32,10 @@ const TUTORIAL_MISS = 26;
  */
 export class Game extends Scene {
   private locale: Locale = 'ru';
+  private level = 1;
+  private endless = false;
+  private startPhase = 0;
+  private target = 0;
   private session!: Session;
   private core!: StackGame;
 
@@ -67,6 +72,11 @@ export class Game extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
+    this.level = (this.registry.get('level') as number) ?? 1;
+    this.endless = !!this.registry.get('endless');
+    const params = levelAt(this.level).params;
+    this.startPhase = params.startPhase;
+    this.target = params.target;
     this.session = this.registry.get('session') as Session;
 
     this.buildHud();
@@ -114,7 +124,10 @@ export class Game extends Scene {
     // Подложка-«земля» под фундаментом.
     this.tower.add(this.add.rectangle(W / 2, BASE_Y + 10, W - 40, 8, COLORS.shade).setOrigin(0.5));
 
-    this.core = createStackGame({ seed: Math.floor(Math.random() * 2 ** 31) });
+    this.core = createStackGame({
+      seed: Math.floor(Math.random() * 2 ** 31),
+      startPhase: this.startPhase,
+    });
     this.placeView(0);
     this.currentView = this.obtain();
     this.syncCurrent();
@@ -186,6 +199,17 @@ export class Game extends Scene {
       .setOrigin(0.5)
       .setResolution(DPR)
       .setDepth(20);
+    // Цель уровня — под счётом; в бесконечном режиме цели нет.
+    if (!this.endless) {
+      this.add
+        .text(W / 2, 126, this.goalLabel(), {
+          fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
+        })
+        .setOrigin(0.5)
+        .setResolution(DPR)
+        .setDepth(20);
+    }
+
     this.hintText = this.add
       .text(W / 2, 706, t(this.locale, 'game.hint'), {
         fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
@@ -431,10 +455,16 @@ export class Game extends Scene {
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
-      locale: this.locale, score: this.core.score, blocks, perfects, durationMs,
+      locale: this.locale, level: this.level, endless: this.endless,
+      score: this.core.score, blocks, perfects, durationMs,
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
+  }
+
+  /** «Цель: 1200» — сколько очков нужно набрать на этом уровне. */
+  private goalLabel(): string {
+    return t(this.locale, 'game.goal', { n: this.target });
   }
 }
 
@@ -442,4 +472,5 @@ export class Game extends Scene {
 function rectOf(obj: Phaser.GameObjects.Text): Rect {
   const b = obj.getBounds();
   return { x: b.x, y: b.y, w: b.width, h: b.height };
+
 }

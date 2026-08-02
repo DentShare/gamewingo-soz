@@ -2,16 +2,28 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import type { Row } from '../../core/gameState';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, type Button, makeGlyph } from '../ui';
+import {
+  makeButton, applyTheme, setupCamera, type Button, makeGlyph, makeStarRow, makeBonusChip,
+} from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { buildShareText } from '../share';
 import { loadDaily, saveDaily } from '../../core/persistence';
 import { currentStreak } from '../../bridge/demo';
 import type { Session } from '../../bridge/session';
+import { levelAt, LADDER_SIZE } from '../../core/levels';
+import {
+  recordLevelResult, recordEndlessResult, starsFor, loadProgress, isUnlocked,
+  dailyMissions, grantRoundBonuses, awardOnce, bonusBalance, TARIFF, type RecordResult,
+} from '@gamewingo/game-progress';
+import { computeScore } from '../../core/score';
+
+const SLUG = 'soz';
 
 interface LastGame {
   mode: 'daily' | 'practice';
+  /** Номер уровня лестницы; для слова дня не используется. */
+  level: number;
   locale: Locale;
   dayId: number;
   solved: boolean;
@@ -39,6 +51,22 @@ export class GameOver extends Scene {
     this.last = this.registry.get('lastGame') as LastGame;
     const loc = this.last.locale;
     const won = this.last.solved;
+    const missionsBefore = dailyMissions();
+    const record = this.recordLadder(won);
+
+    // Бонусы: уровень тренировки, задания дня и отдельный тариф слова дня.
+    const bonus = grantRoundBonuses({ slug: SLUG, n: this.last.level, record, missionsBefore });
+    let bonusTotal = bonus.total;
+    if (this.last.mode === 'daily' && won && awardOnce(`soz-daily-${this.last.dayId}`, TARIFF.daily)) {
+      bonusTotal += TARIFF.daily;
+    }
+    const bonusChip = makeBonusChip(this, 386, 30);
+    if (bonusTotal > 0) {
+      // Чип создан после начисления — откатываем показ на баланс «до»,
+      // чтобы прилёт «+N» докрутил его до нового, а не удвоил прибавку.
+      bonusChip.setValue(Math.max(0, bonusBalance() - bonusTotal));
+      this.time.delayedCall(900, () => bonusChip.award(bonusTotal, CX, 210));
+    }
 
     // Заголовок с pop-in (overshoot).
     const emoji = makeGlyph(this, CX, 70, won ? 'star' : 'drop', 44).setScale(0);
@@ -54,10 +82,23 @@ export class GameOver extends Scene {
       .setAlpha(0);
     this.tweens.add({ targets: title, scale: 1, alpha: 1, duration: 380, delay: 200, ease: 'Back.easeOut' });
 
+    // В тренировке под заголовком — уровень и заработанные звёзды.
+    if (this.last.mode === 'practice') {
+      this.add
+        .text(CX, 162, t(loc, 'result.level', { n: this.last.level, total: LADDER_SIZE }), {
+          fontFamily: FONT, fontSize: 15, color: COLORS.headMuted,
+        })
+        .setOrigin(0.5)
+        .setResolution(DPR);
+      const stars = won ? starsFor(levelAt(this.last.level).goals, this.last.guessesUsed) : 0;
+      const row = makeStarRow(this, CX, 196, stars, 18).setScale(0);
+      this.tweens.add({ targets: row, scale: 1, duration: 380, delay: 320, ease: 'Back.easeOut' });
+    }
+
     if (!won) {
       this.appear(
         this.add
-          .text(CX, 168, t(loc, 'result.answerWas', { word: this.last.answer }), {
+          .text(CX, this.last.mode === 'practice' ? 228 : 168, t(loc, 'result.answerWas', { word: this.last.answer }), {
             fontFamily: FONT, fontSize: 19, color: COLORS.headText,
           })
           .setOrigin(0.5)
@@ -122,7 +163,16 @@ export class GameOver extends Scene {
     }
 
     btn(t(loc, 'result.share'), () => this.session.shareResult(share));
+
+    // В тренировке предлагаем следующий уровень, если он открылся этой победой.
+    const nextN = this.last.level + 1;
+    const hasNext = this.last.mode === 'practice' && won
+      && nextN <= LADDER_SIZE && isUnlocked(loadProgress(SLUG), nextN);
+    if (hasNext) {
+      btn(t(loc, 'result.nextLevel', { n: nextN }), () => this.playLevel(nextN), true);
+    }
     btn(t(loc, 'result.playAgain'), () => this.scene.start('MainMenu'));
+    void record;
 
     // Лидерборд.
     const lbY = y + 16;
@@ -150,6 +200,30 @@ export class GameOver extends Scene {
   }
 
   /** Появление снизу вверх с fade. */
+  /**
+   * Записывает результат тренировки в лестницу. Слово дня в лестницу не идёт —
+   * это отдельный режим со своей наградой, но в счётчики дня попадает.
+   */
+  private recordLadder(won: boolean): RecordResult | null {
+    if (this.last.mode !== 'practice') {
+      recordEndlessResult(SLUG, won ? computeScore({ guessesUsed: this.last.guessesUsed, solved: won, durationMs: 0 }) : 0);
+      return null;
+    }
+    if (!won) {
+      recordEndlessResult(SLUG, 0);
+      return null;
+    }
+    const stars = starsFor(levelAt(this.last.level).goals, this.last.guessesUsed);
+    const score = computeScore({ guessesUsed: this.last.guessesUsed, solved: true, durationMs: 0 });
+    return recordLevelResult({ slug: SLUG, n: this.last.level, stars, score });
+  }
+
+  private playLevel(n: number) {
+    this.registry.set('level', n);
+    this.registry.set('mode', 'practice');
+    this.scene.start('Game');
+  }
+
   private appear(obj: { y: number; setAlpha(a: number): unknown }, delay: number) {
     const toY = obj.y;
     obj.setAlpha(0);

@@ -80,7 +80,16 @@ export interface Flight {
   step(dtMs: number): StepResult;
 }
 
-export function createFlight(rnd: () => number): Flight {
+export interface FlightOptions {
+  /**
+   * Фаза старта: сколько проёмов засчитывается до первого кадра.
+   * Стены сразу идут быстрее — поздний уровень не начинается со скучного разгона.
+   */
+  startPhase?: number;
+}
+
+export function createFlight(rnd: () => number, opts: FlightOptions = {}): Flight {
+  const phase = Math.max(0, Math.round(opts.startPhase ?? 0));
   let y = HERO_START_Y;
   let vy = 0;
   let score = 0;
@@ -95,7 +104,7 @@ export function createFlight(rnd: () => number): Flight {
   fill();
 
   function speed(): number {
-    return Math.min(SPEED_MAX, SPEED_START + score * SPEED_PER_SCORE);
+    return Math.min(SPEED_MAX, SPEED_START + (score + phase) * SPEED_PER_SCORE);
   }
 
   /** Держим одну стену за правым краем экрана — новых объектов на кадр не создаём. */

@@ -9,16 +9,6 @@ export const SYMBOLS = [
   'drop', 'ring', 'square', 'triangle', 'diamond', 'hexagon', 'bolt',
 ] as const;
 
-export type LevelId = 'easy' | 'medium' | 'hard';
-
-export interface LevelSpec { cols: number; rows: number; pairs: number; }
-
-export const LEVELS: Record<LevelId, LevelSpec> = {
-  easy: { cols: 3, rows: 4, pairs: 6 },
-  medium: { cols: 4, rows: 5, pairs: 10 },
-  hard: { cols: 5, rows: 6, pairs: 15 },
-};
-
 export interface Card { symbol: string; }
 
 /** Колода уровня: pairs случайных символов × 2, перетасовано. */

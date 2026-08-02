@@ -52,6 +52,32 @@
   }
   .back:active { opacity: .6; }
 
+  /* ── Счётчик бонусов в шапке ───────────────────────────────────────── */
+  .bonus {
+    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    display: flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px 0 8px;
+    border-radius: 13px; background: rgba(255, 255, 255, .22);
+    color: #fff; font-size: 14px; font-weight: 590;
+  }
+  .bonus .coin, .fly-bonus .coin {
+    width: 16px; height: 16px; border-radius: 50%; flex: none;
+    background: radial-gradient(circle at 35% 30%, #FFF3CF 0%, #F3C64B 45%, #D99A12 100%);
+  }
+  .bonus.pulse { animation: bonus-pulse .28s ease-out; }
+  @keyframes bonus-pulse {
+    50% { transform: translateY(-50%) scale(1.18); }
+  }
+
+  /* Летящий «+N»: рождается в центре, transition уводит его в чип. */
+  .fly-bonus {
+    position: fixed; z-index: 40; display: flex; align-items: center; gap: 6px;
+    color: #D99A12; font-weight: 700; font-size: 22px; pointer-events: none;
+    transform: translate(-50%, -50%) scale(.2); opacity: 0;
+    transition: transform .55s cubic-bezier(.55, 0, .85, .36), left .55s cubic-bezier(.55, 0, .85, .36),
+                top .55s cubic-bezier(.55, 0, .85, .36), opacity .2s linear;
+  }
+  .fly-bonus .coin { width: 20px; height: 20px; }
+
   .wrap {
     max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px;
     padding: 20px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
@@ -118,6 +144,9 @@
         </svg>
       </button>
       <h1 id="hTitle">Игры</h1>
+      <div class="bonus" id="bonusChip" aria-label="Бонусы">
+        <span class="coin"></span><span id="bonusVal">0</span>
+      </div>
     </div>
   </header>
 
@@ -419,6 +448,89 @@
     }));
 
   render();
+
+  // ── Бонусы: чек-ин за вход и счётчик в шапке ───────────────────────────────
+  // Кошелёк зеркалит @gamewingo/game-progress (ключ и форма данных совпадают):
+  // хаб — статический HTML и не может импортировать TS-пакет. Демо-режим:
+  // в проде баланс придёт от сервера, начисление здесь исчезнет, анимация останется.
+  const BONUS_KEY = 'wingo:bonus';
+  const CHECKIN_BASE = 5, CHECKIN_CAP = 25;
+  const dayIdNow = () => Math.floor((Date.now() + 5 * 3600e3) / 86400e3);
+
+  function readWallet() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(BONUS_KEY) || '{}');
+      return {
+        balance: Number(raw.balance) || 0,
+        keys: Array.isArray(raw.keys) ? raw.keys : [],
+        checkin: { last: Number(raw.checkin && raw.checkin.last) || 0, run: Number(raw.checkin && raw.checkin.run) || 0 },
+      };
+    } catch (err) { return { balance: 0, keys: [], checkin: { last: 0, run: 0 } }; }
+  }
+  function saveWallet(w) {
+    try { localStorage.setItem(BONUS_KEY, JSON.stringify(w)); } catch (err) { /* приватный режим */ }
+  }
+
+  /** Чек-ин с серией: вчера заходил — серия растёт, пропустил день — заново. */
+  function claimCheckin() {
+    const w = readWallet();
+    const day = dayIdNow();
+    if (w.checkin.last === day) return null;
+    const run = w.checkin.last === day - 1 ? w.checkin.run + 1 : 1;
+    const amount = Math.min(CHECKIN_BASE * run, CHECKIN_CAP);
+    w.checkin = { last: day, run };
+    w.balance += amount;
+    saveWallet(w);
+    return { amount: amount, run: run };
+  }
+
+  const bonusVal = document.getElementById('bonusVal');
+  const bonusChip = document.getElementById('bonusChip');
+
+  /** Число докручивается до нового значения — баланс растёт на глазах. */
+  function countBalanceUp(from, to) {
+    const t0 = performance.now();
+    const step = (t) => {
+      const k = Math.min(1, (t - t0) / 450);
+      bonusVal.textContent = String(Math.round(from + (to - from) * k));
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  /** «+N» появляется в центре экрана и улетает в счётчик шапки. */
+  function flyBonus(amount, from, to) {
+    const el = document.createElement('div');
+    el.className = 'fly-bonus';
+    el.innerHTML = '<span class="coin"></span>+' + amount;
+    el.style.left = '50%';
+    el.style.top = '190px';
+    document.body.appendChild(el);
+    // Кадр 1: появление с отскоком; затем полёт к чипу.
+    requestAnimationFrame(() => {
+      el.style.opacity = '1';
+      el.style.transform = 'translate(-50%, -50%) scale(1)';
+      setTimeout(() => {
+        const r = bonusChip.getBoundingClientRect();
+        el.style.left = (r.left + r.width / 2) + 'px';
+        el.style.top = (r.top + r.height / 2) + 'px';
+        el.style.transform = 'translate(-50%, -50%) scale(.35)';
+        setTimeout(() => {
+          el.remove();
+          bonusChip.classList.add('pulse');
+          setTimeout(() => bonusChip.classList.remove('pulse'), 300);
+          countBalanceUp(from, to);
+        }, 560);
+      }, 820);
+    });
+  }
+
+  const balanceBefore = readWallet().balance;
+  bonusVal.textContent = String(balanceBefore);
+  const checkin = claimCheckin();
+  if (checkin) {
+    setTimeout(() => flyBonus(checkin.amount, balanceBefore, balanceBefore + checkin.amount), 700);
+  }
 </script>
 </body>
 </html>

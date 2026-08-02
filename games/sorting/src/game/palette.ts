@@ -24,6 +24,8 @@ export const COLORS = {
   red: 0xe8453c,
   yellow: 0xf6c026,
   blue: 0x2f80ed,
+  /** Четвёртый цвет — появляется только на поздних уровнях лестницы. */
+  green: 0x3aa657,
   /** Нейтральная корзина режима «по форме» (различается только формой). */
   binNeutral: C.slot,
   /** Площадка, с которой ребёнок берёт фигурку. */
@@ -35,7 +37,8 @@ export const COLORS = {
 };
 
 /** Цвет фигурки по её признаку. */
-export const FIGURE_COLORS: Record<'red' | 'yellow' | 'blue', number> = {
+export const FIGURE_COLORS: Record<'red' | 'yellow' | 'blue' | 'green', number> = {
+  green: COLORS.green,
   red: COLORS.red,
   yellow: COLORS.yellow,
   blue: COLORS.blue,

@@ -15,12 +15,14 @@ export const ITEMS = [
   'apple', 'star', 'ball', 'heart', 'flower', 'leaf', 'fish', 'balloon', 'drop', 'ring',
 ] as const;
 
-/** Вопросов в партии. */
+/** Вопросов в партии по умолчанию (уровень задаёт своё число). */
 export const TOTAL_QUESTIONS = 10;
-/** Сколько кнопок-цифр показываем (длина `options` постоянна). */
+/** Сколько кнопок-цифр показываем по умолчанию. */
 export const OPTIONS_COUNT = 4;
-/** Максимальное количество предметов (и максимальный вариант ответа). */
+/** Потолок счёта по умолчанию (уровень задаёт свой). */
 export const MAX_COUNT = 10;
+/** Абсолютный потолок: столько цифр помещается в ряд кнопок и в поле. */
+export const MAX_COUNT_CAP = 20;
 /** Насколько далеко от правильного ответа может отстоять вариант (соседние числа). */
 export const MAX_OPTION_DELTA = 3;
 
@@ -54,14 +56,16 @@ export interface CountingGame {
  * Диапазон количества предметов для вопроса №index (0-based). Сложность растёт мягко:
  * первые вопросы — до 5 предметов, дальше — до 10.
  */
-export function countRange(index: number): [number, number] {
-  if (index < 3) return [1, 5];
-  if (index < 6) return [3, 7];
-  return [5, MAX_COUNT];
+export function countRange(index: number, total: number, maxCount: number): [number, number] {
+  // Партия делится на три трети: сначала мало предметов, к концу — потолок уровня.
+  const third = Math.max(1, Math.ceil(total / 3));
+  if (index < third) return [1, Math.max(2, Math.round(maxCount * 0.5))];
+  if (index < third * 2) return [Math.max(2, Math.round(maxCount * 0.3)), Math.max(3, Math.round(maxCount * 0.75))];
+  return [Math.max(3, Math.round(maxCount * 0.5)), maxCount];
 }
 
-function pickCount(index: number, rnd: () => number): number {
-  const [min, max] = countRange(index);
+function pickCount(index: number, total: number, maxCount: number, rnd: () => number): number {
+  const [min, max] = countRange(index, total, maxCount);
   return min + Math.floor(rnd() * (max - min + 1));
 }
 
@@ -69,15 +73,16 @@ function pickCount(index: number, rnd: () => number): number {
  * Варианты ответа: правильный плюс ближайшие соседи — сначала ±1, затем ±2, ±3.
  * Так у ребёнка есть настоящий выбор, а не «одно очевидное число среди далёких».
  */
-function buildOptions(count: number, rnd: () => number): number[] {
+function buildOptions(count: number, options: number, maxCount: number, rnd: () => number): number[] {
   const picked: number[] = [count];
-  for (let d = 1; d <= MAX_OPTION_DELTA && picked.length < OPTIONS_COUNT; d++) {
+  // Соседей берём кольцами ±1, ±2, … пока не наберём нужное число кнопок.
+  for (let d = 1; d <= maxCount && picked.length < options; d++) {
     const band = shuffle(
-      [count - d, count + d].filter((n) => n >= 1 && n <= MAX_COUNT),
+      [count - d, count + d].filter((n) => n >= 1 && n <= maxCount),
       rnd,
     );
     for (const n of band) {
-      if (picked.length >= OPTIONS_COUNT) break;
+      if (picked.length >= options) break;
       if (!picked.includes(n)) picked.push(n);
     }
   }
@@ -91,26 +96,32 @@ function pickItem(rnd: () => number, prev: number): number {
 }
 
 /** Фабрика партии. `rnd` — инжектируемый PRNG (см. `mulberry32`) для детерминизма. */
-export function createCountingGame(rnd: () => number): CountingGame {
+export function createCountingGame(
+  rnd: () => number,
+  opts: { questions?: number; maxCount?: number; options?: number } = {},
+): CountingGame {
+  const total = opts.questions ?? TOTAL_QUESTIONS;
+  const maxCount = Math.min(MAX_COUNT_CAP, opts.maxCount ?? MAX_COUNT);
+  const optionCount = opts.options ?? OPTIONS_COUNT;
   let correct = 0;
   let mistakes = 0;
   let done = false;
   let itemIndex = -1;
 
   const makeQuestion = (index: number): Question => {
-    const count = pickCount(index, rnd);
+    const count = pickCount(index, total, maxCount, rnd);
     itemIndex = pickItem(rnd, itemIndex);
-    return { count, options: buildOptions(count, rnd), itemIndex };
+    return { count, options: buildOptions(count, optionCount, maxCount, rnd), itemIndex };
   };
 
   let question = makeQuestion(0);
 
   return {
     get question() { return question; },
-    get asked() { return Math.min(correct + 1, TOTAL_QUESTIONS); },
+    get asked() { return Math.min(correct + 1, total); },
     get correct() { return correct; },
     get mistakes() { return mistakes; },
-    get total() { return TOTAL_QUESTIONS; },
+    get total() { return total; },
     get isDone() { return done; },
     answer(n: number): AnswerResult {
       if (done) return { correct: false, done: true };
@@ -120,7 +131,7 @@ export function createCountingGame(rnd: () => number): CountingGame {
         return { correct: false, done: false };
       }
       correct++;
-      if (correct >= TOTAL_QUESTIONS) {
+      if (correct >= total) {
         done = true;
         return { correct: true, done: true };
       }

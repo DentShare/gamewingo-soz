@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createPairsGame } from './game';
-import { buildDeck, LEVELS, SYMBOLS } from './deck';
+import { buildDeck, SYMBOLS } from './deck';
 import { mulberry32 } from './rng';
 import { computeScore, stars } from './score';
 
@@ -19,11 +19,8 @@ describe('deck', () => {
     expect([...counts.values()].every((n) => n === 2)).toBe(true);
   });
 
-  it('уровни укладываются в набор символов', () => {
-    for (const spec of Object.values(LEVELS)) {
-      expect(spec.cols * spec.rows).toBe(spec.pairs * 2);
-      expect(spec.pairs).toBeLessThanOrEqual(SYMBOLS.length);
-    }
+  it('колода не просит больше пар, чем есть значков', () => {
+    expect(() => buildDeck(SYMBOLS.length + 1, mulberry32(1))).toThrow();
   });
 });
 

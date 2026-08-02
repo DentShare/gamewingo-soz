@@ -1,21 +1,33 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
-import type { Mode } from '../../core/sorting';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeGlyph } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
-import { computeScore, stars } from '../../core/score';
-import { saveBest } from '../../core/persistence';
+import { computeScore } from '../../core/score';
+import { levelAt, LADDER_SIZE } from '../../core/levels';
+import {
+  recordLevelResult, starsFor, loadProgress, isUnlocked,
+  dailyMissions, grantRoundBonuses, type RecordResult,
+} from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 import confetti from 'canvas-confetti';
 
 interface LastGame {
-  mode: Mode; locale: Locale; placed: number; mistakes: number; durationMs: number;
+  level: number;
+  locale: Locale;
+  placed: number;
+  mistakes: number;
+  durationMs: number;
 }
 
 const CX = 200;
+const SLUG = 'sorting';
 
+/**
+ * Итог детской партии. Проиграть нельзя: уровень всегда засчитывается,
+ * ошибки влияют только на число звёзд.
+ */
 export class GameOver extends Scene {
   constructor() {
     super('GameOver');
@@ -29,18 +41,27 @@ export class GameOver extends Scene {
     const last = this.registry.get('lastGame') as LastGame;
     const loc = last.locale;
 
-    const score = computeScore(last);
-    const starCount = stars(last.mistakes);
-    const isNewBest = saveBest(last.mode, {
-      score, mistakes: last.mistakes, durationMs: last.durationMs,
-    });
+    const level = levelAt(last.level);
+    const score = computeScore({ placed: last.placed, mistakes: last.mistakes });
+    const missionsBefore = dailyMissions();
+    const stars = starsFor(level.goals, last.mistakes);
+    const record = recordLevelResult({ slug: SLUG, n: last.level, stars, score });
+    // Бонусы за партию: первый проход уровня + закрывшиеся задания дня.
+    const bonus = grantRoundBonuses({ slug: SLUG, n: last.level, record, missionsBefore });
+    const bonusChip = makeBonusChip(this, 386, 30);
+    if (bonus.total > 0) {
+      // Чип создан после начисления — откатываем показ на баланс «до»,
+      // чтобы прилёт «+N» докрутил его до нового, а не удвоил прибавку.
+      bonusChip.setValue(bonus.balance - bonus.total);
+      this.time.delayedCall(900, () => bonusChip.award(bonus.total, CX, 196));
+    }
 
-    // Проиграть нельзя — конфетти получает каждый.
-    confetti({ disableForReducedMotion: true, particleCount: 110, spread: 78, origin: { y: 0.4 } });
+
+    confetti({ disableForReducedMotion: true, particleCount: 110, spread: 80, origin: { y: 0.4 } });
 
     const title = this.add
-      .text(CX, 104, t(loc, 'result.title'), {
-        fontFamily: FONT, fontSize: 34, color: COLORS.headText, fontStyle: 'bold',
+      .text(CX, 110, t(loc, 'result.title'), {
+        fontFamily: FONT, fontSize: 32, color: COLORS.headText, fontStyle: 'bold',
       })
       .setOrigin(0.5)
       .setResolution(DPR)
@@ -48,71 +69,75 @@ export class GameOver extends Scene {
       .setAlpha(0);
     this.tweens.add({ targets: title, scale: 1, alpha: 1, duration: 380, delay: 120, ease: 'Back.easeOut' });
 
-    // Звёзды (заполненные/пустые) — по очереди с отскоком.
-    for (let i = 0; i < 3; i++) {
-      const star = makeGlyph(this, CX + (i - 1) * 64, 186, 'star', 46)
-        .setAlpha(i < starCount ? 1 : 0.22)
-        .setScale(0);
-      this.tweens.add({ targets: star, scale: 1, duration: 320, delay: 300 + i * 130, ease: 'Back.easeOut' });
-    }
+    this.add
+      .text(CX, 150, t(loc, 'result.level', { n: last.level, total: LADDER_SIZE }), {
+        fontFamily: FONT, fontSize: 15, color: COLORS.headMuted,
+      })
+      .setOrigin(0.5)
+      .setResolution(DPR);
+
+    const starRow = makeStarRow(this, CX, 210, stars, 26).setScale(0);
+    this.tweens.add({ targets: starRow, scale: 1, duration: 400, delay: 300, ease: 'Back.easeOut' });
 
     this.appear(
       this.add
-        .text(CX, 258, t(loc, 'result.score', { score }), {
+        .text(CX, 274, t(loc, 'result.score', { score }), {
           fontFamily: FONT, fontSize: 26, color: COLORS.headText, fontStyle: 'bold',
         })
         .setOrigin(0.5)
         .setResolution(DPR),
-      520,
+      460,
     );
-    this.appear(
-      this.add
-        .text(CX, 294, t(loc, 'result.mistakes', { n: last.mistakes }), {
-          fontFamily: FONT, fontSize: 16, color: COLORS.headMuted,
-        })
-        .setOrigin(0.5)
-        .setResolution(DPR),
-      580,
-    );
-    if (isNewBest) {
+
+    const hint = this.hintText(loc, last, record);
+    if (hint) {
       this.appear(
         this.add
-          .text(CX, 328, t(loc, 'result.newBest'), {
-            fontFamily: FONT, fontSize: 17, color: COLORS.headText, fontStyle: 'bold',
-          })
+          .text(CX, 312, hint, { fontFamily: FONT, fontSize: 17, color: COLORS.headText, fontStyle: 'bold' })
           .setOrigin(0.5)
           .setResolution(DPR),
-        640,
+        540,
       );
     }
 
-    const again = makeButton(this, CX, 394, t(loc, 'result.playAgain'), () => this.scene.start('Game'), { primary: true });
-    this.appear(again.root, 700);
-    const menu = makeButton(this, CX, 456, t(loc, 'result.menu'), () => this.scene.start('MainMenu'));
-    this.appear(menu.root, 770);
+    this.buildButtons(loc, last);
+    void session;
+  }
 
-    // Лидерборд.
-    const lbTitle = this.add
-      .text(CX, 518, t(loc, 'result.leaderboard'), {
-        fontFamily: FONT, fontSize: 17, color: COLORS.headText, fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-    const listText = this.add
-      .text(CX, 544, '…', { fontFamily: FONT, fontSize: 15, color: COLORS.headMuted, align: 'center' })
-      .setOrigin(0.5, 0)
-      .setResolution(DPR);
-    this.appear(lbTitle, 840);
-    this.appear(listText, 880);
-    void (session?.leaderboard(5) ?? Promise.resolve([])).then((entries) => {
-      if (!entries.length) {
-        listText.setText(t(loc, 'error.network'));
-        return;
-      }
-      listText.setText(
-        entries.map((e) => `${e.rank}. ${e.name}  ${e.score}${e.isCurrentUser ? '  ←' : ''}`).join('\n'),
-      );
+  /** Кнопки итога: следующий уровень (если открылся), повтор, меню. */
+  private buildButtons(loc: Locale, last: LastGame) {
+    const nextN = last.level + 1;
+    const hasNext = nextN <= LADDER_SIZE && isUnlocked(loadProgress(SLUG), nextN);
+    let y = 380;
+
+    if (hasNext) {
+      const next = makeButton(this, CX, y, t(loc, 'result.nextLevel', { n: nextN }), () => this.play(nextN), {
+        primary: true,
+      });
+      this.appear(next.root, 620);
+      y += 56;
+    }
+
+    const again = makeButton(this, CX, y, t(loc, 'result.playAgain'), () => this.play(last.level), {
+      primary: !hasNext,
     });
+    this.appear(again.root, hasNext ? 680 : 620);
+    y += 56;
+
+    const menu = makeButton(this, CX, y, t(loc, 'result.menu'), () => this.scene.start('MainMenu'));
+    this.appear(menu.root, hasNext ? 740 : 690);
+  }
+
+  private play(n: number) {
+    this.registry.set('level', n);
+    this.scene.start('Game');
+  }
+
+  /** Одна строка о том, что изменилось: открылся уровень или побит рекорд. */
+  private hintText(loc: Locale, last: LastGame, record: RecordResult): string {
+    if (record.unlockedNext && last.level < LADDER_SIZE) return t(loc, 'result.unlocked', { n: last.level + 1 });
+    if (record.isRecord) return t(loc, 'result.newBest');
+    return '';
   }
 
   /** Появление снизу вверх с fade. */

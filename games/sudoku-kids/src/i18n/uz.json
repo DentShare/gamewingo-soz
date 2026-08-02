@@ -1,12 +1,8 @@
 {
   "app.title": "Mini sudoku",
-  "menu.easy4": "Bolalar · 4×4",
-  "menu.easy6": "Oson · 6×6",
-  "menu.hard6": "Qiyinroq · 6×6",
   "menu.howto": "Qanday oʻynash",
   "menu.back": "Orqaga",
   "menu.catalog": "Oʻyinlarga",
-  "menu.best": "Rekord: {score}",
   "game.hints": "Yordam: {n}",
   "onboarding.grid": "Boʻsh kataklarni 1 dan 4 gacha raqamlar bilan toʻldiring. Qora raqamlarni oʻzgartirib boʻlmaydi.",
   "onboarding.row": "Har bir qatorda har bir raqam faqat bir marta keladi.",
@@ -24,5 +20,16 @@
   "result.playAgain": "Yana",
   "result.menu": "Menyuga",
   "result.leaderboard": "Reyting",
-  "error.network": "Aloqa yoʻq"
+  "error.network": "Aloqa yoʻq",
+  "menu.ladder": "{total} dan {n}-daraja",
+  "menu.play": "Oʻynash · {n}-daraja",
+  "game.level": "{n}-daraja",
+  "game.mistakes": "Xatolar: {n} / {limit}",
+  "game.fail.mistakes": "Xatolar juda koʻp",
+  "game.fail.time": "Vaqt tugadi",
+  "result.failed": "Daraja oʻtilmadi",
+  "result.level": "{total} dan {n}-daraja",
+  "result.nextLevel": "{n}-daraja",
+  "result.unlocked": "{n}-daraja ochildi!",
+  "result.tryAgain": "Yana urinib koʻring"
 }

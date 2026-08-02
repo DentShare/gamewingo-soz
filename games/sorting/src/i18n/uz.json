@@ -1,11 +1,8 @@
 {
   "app.title": "Saralash",
-  "menu.byColor": "Rang boʻyicha",
-  "menu.byShape": "Shakl boʻyicha",
   "menu.howto": "Qanday oʻynash",
   "menu.back": "Orqaga",
   "menu.catalog": "Oʻyinlarga",
-  "menu.best": "Rekord: {score}",
   "mode.color": "Rang boʻyicha joylaymiz",
   "mode.shape": "Shakl boʻyicha joylaymiz",
   "game.progress": "{total} dan {n}",
@@ -23,5 +20,10 @@
   "result.playAgain": "Yana",
   "result.menu": "Menyuga",
   "result.leaderboard": "Reyting",
-  "error.network": "Aloqa yoʻq"
+  "error.network": "Aloqa yoʻq",
+  "menu.ladder": "{total} dan {n}-daraja",
+  "menu.play": "Oʻynash · {n}-daraja",
+  "result.level": "{total} dan {n}-daraja",
+  "result.nextLevel": "{n}-daraja",
+  "result.unlocked": "{n}-daraja ochildi!"
 }
