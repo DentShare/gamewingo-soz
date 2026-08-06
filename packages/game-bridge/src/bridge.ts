@@ -1,5 +1,11 @@
-import type { AppToGameEvent, GameToAppEvent } from './events.js';
+import type { AppToGameEvent, GameResult, GameToAppEvent, RoundEvent } from './events.js';
 import { BRIDGE_PROTOCOL_VERSION } from './events.js';
+
+/**
+ * Сырые события копятся и уходят пакетом: аркада может слать десятки событий
+ * в секунду, и дёргать нативный мост на каждое — дорого для WebView.
+ */
+const FLUSH_DELAY_MS = 250;
 
 /**
  * Транспорт: отправка события приложению.
@@ -43,6 +49,18 @@ export interface GameBridge {
   claimReward(rewardId: string, sessionId: string): void;
   /** Произвольное аналитическое событие. */
   track(name: string, payload?: Record<string, unknown>): void;
+  /**
+   * Сырое игровое событие для событийного скоринга. Мост батчит их и шлёт
+   * пакетом GAME_EVENTS. clientTs проставляется здесь.
+   */
+  sendEvent(event: Omit<RoundEvent, 'clientTs'>): void;
+  /**
+   * Структурированный итог партии. Перед отправкой выталкивает накопленные
+   * события, чтобы результат не обогнал их. Ответ придёт PROGRESS_RESULT.
+   */
+  sendResult(result: GameResult): void;
+  /** Вытолкнуть накопленные события немедленно (пауза, сворачивание WebView). */
+  flushEvents(): void;
   /** Выйти из игры в каталог. Приложение вернёт WebView к списку игр. */
   exit(sessionId: string): void;
   /** Сообщить об ошибке. */
@@ -55,6 +73,8 @@ export interface GameBridge {
 
 export function createBridge(): GameBridge {
   const handlers = new Set<Handler>();
+  const queue: RoundEvent[] = [];
+  let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
   const onMessage = (ev: MessageEvent) => {
     const data = ev.data as AppToGameEvent | undefined;
@@ -62,6 +82,15 @@ export function createBridge(): GameBridge {
     for (const h of handlers) h(data);
   };
   window.addEventListener('message', onMessage);
+
+  const flush = () => {
+    if (flushTimer !== null) {
+      clearTimeout(flushTimer);
+      flushTimer = null;
+    }
+    if (!queue.length) return;
+    post({ type: 'GAME_EVENTS', events: queue.splice(0, queue.length) });
+  };
 
   return {
     ready() {
@@ -79,6 +108,17 @@ export function createBridge(): GameBridge {
     track(name, payload) {
       post({ type: 'GAME_EVENT', name, payload });
     },
+    sendEvent(event) {
+      queue.push({ ...event, clientTs: Date.now() });
+      if (flushTimer === null) flushTimer = setTimeout(flush, FLUSH_DELAY_MS);
+    },
+    sendResult(result) {
+      flush();
+      post({ type: 'GAME_RESULT', result });
+    },
+    flushEvents() {
+      flush();
+    },
     exit(sessionId) {
       post({ type: 'GAME_EXIT', sessionId });
     },
@@ -90,6 +130,7 @@ export function createBridge(): GameBridge {
       return () => handlers.delete(handler);
     },
     destroy() {
+      flush();
       handlers.clear();
       window.removeEventListener('message', onMessage);
     },

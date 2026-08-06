@@ -4,6 +4,8 @@
  * Валидация, антифрод и начисление — на сервере.
  */
 
+import type { GameResult, RoundEvent } from './events.js';
+
 export interface ApiConfig {
   baseUrl: string;
   authToken: string;
@@ -29,6 +31,22 @@ export interface LeaderboardEntry {
   name: string;
   score: number;
   isCurrentUser: boolean;
+}
+
+/** Ответ Score Engine на пакет сырых событий. */
+export interface EventsAccepted {
+  xp: number;
+  balance?: number;
+  /** Пакет отклонён антифродом (лимит частоты/времени сессии). */
+  rejected?: boolean;
+}
+
+/** Ответ Score Engine на финальный результат партии. */
+export interface AwardResult {
+  xp: number;
+  stars: number;
+  unlockedAchievements: string[];
+  balance: number;
 }
 
 export function createApiClient(config: ApiConfig) {
@@ -58,6 +76,20 @@ export function createApiClient(config: ApiConfig) {
       return request<LeaderboardEntry[]>(
         `/games/${encodeURIComponent(gameId)}/leaderboard?limit=${limit}`,
       );
+    },
+    /** Отправить пакет сырых событий в Score Engine. */
+    submitEvents(events: RoundEvent[]): Promise<EventsAccepted> {
+      return request<EventsAccepted>('/progression/events', {
+        method: 'POST',
+        body: JSON.stringify(events),
+      });
+    },
+    /** Отправить финальный результат партии в Score Engine. */
+    submitResult(result: GameResult): Promise<AwardResult> {
+      return request<AwardResult>('/progression/result', {
+        method: 'POST',
+        body: JSON.stringify(result),
+      });
     },
   };
 }
