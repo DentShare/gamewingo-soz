@@ -1,0 +1,259 @@
+{
+  "gameId": "counting",
+  "version": 1,
+  "scoring": [
+    {
+      "event": "correct_answer",
+      "base": 20,
+      "modifiers": [
+        {
+          "source": "consecutive",
+          "type": "linear",
+          "factor": 0.3,
+          "cap": 2
+        }
+      ]
+    },
+    {
+      "event": "session_complete",
+      "base": 100
+    },
+    {
+      "event": "streak_bonus",
+      "base": 10
+    }
+  ],
+  "starMetric": "mistakes",
+  "starsFallback": [
+    {
+      "stars": 1,
+      "metric": "mistakes",
+      "op": "lte",
+      "value": 4
+    },
+    {
+      "stars": 2,
+      "metric": "mistakes",
+      "op": "lte",
+      "value": 2
+    },
+    {
+      "stars": 3,
+      "metric": "mistakes",
+      "op": "lte",
+      "value": 0
+    }
+  ],
+  "dailyQuests": [
+    {
+      "id": "counting_q_correct20",
+      "title": {
+        "ru": "20 правильных ответов",
+        "uz": "20 ta toʻgʻri javob"
+      },
+      "metric": "correctAnswers",
+      "target": 20,
+      "reward": 30
+    }
+  ],
+  "achievements": [
+    {
+      "id": "counting_math",
+      "title": {
+        "ru": "Юный математик",
+        "uz": "Yosh matematik"
+      },
+      "metric": "levelsDone",
+      "op": "gte",
+      "value": 15,
+      "reward": 200
+    }
+  ],
+  "antiFraud": {
+    "maxScorePerSession": 1800,
+    "maxSessionMs": 900000,
+    "maxEventsPerMinute": 240
+  },
+  "levels": [
+    {
+      "n": 1,
+      "params": {
+        "questions": 5,
+        "maxCount": 5,
+        "options": 3
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 1
+      }
+    },
+    {
+      "n": 2,
+      "params": {
+        "questions": 6,
+        "maxCount": 5,
+        "options": 3
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 3,
+      "params": {
+        "questions": 8,
+        "maxCount": 6,
+        "options": 3
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 4,
+      "params": {
+        "questions": 8,
+        "maxCount": 8,
+        "options": 4
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 5,
+      "params": {
+        "questions": 10,
+        "maxCount": 10,
+        "options": 4
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 6,
+      "params": {
+        "questions": 10,
+        "maxCount": 10,
+        "options": 4
+      },
+      "goals": {
+        "gold": 1,
+        "silver": 3
+      }
+    },
+    {
+      "n": 7,
+      "params": {
+        "questions": 10,
+        "maxCount": 12,
+        "options": 4
+      },
+      "goals": {
+        "gold": 1,
+        "silver": 3
+      }
+    },
+    {
+      "n": 8,
+      "params": {
+        "questions": 12,
+        "maxCount": 12,
+        "options": 5
+      },
+      "goals": {
+        "gold": 1,
+        "silver": 3
+      }
+    },
+    {
+      "n": 9,
+      "params": {
+        "questions": 12,
+        "maxCount": 14,
+        "options": 5
+      },
+      "goals": {
+        "gold": 1,
+        "silver": 3
+      }
+    },
+    {
+      "n": 10,
+      "params": {
+        "questions": 12,
+        "maxCount": 15,
+        "options": 5
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 4
+      }
+    },
+    {
+      "n": 11,
+      "params": {
+        "questions": 14,
+        "maxCount": 16,
+        "options": 5
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 4
+      }
+    },
+    {
+      "n": 12,
+      "params": {
+        "questions": 14,
+        "maxCount": 18,
+        "options": 6
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 4
+      }
+    },
+    {
+      "n": 13,
+      "params": {
+        "questions": 15,
+        "maxCount": 18,
+        "options": 6
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 5
+      }
+    },
+    {
+      "n": 14,
+      "params": {
+        "questions": 15,
+        "maxCount": 20,
+        "options": 6
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 5
+      }
+    },
+    {
+      "n": 15,
+      "params": {
+        "questions": 15,
+        "maxCount": 20,
+        "options": 6
+      },
+      "goals": {
+        "gold": 3,
+        "silver": 5
+      }
+    }
+  ]
+}

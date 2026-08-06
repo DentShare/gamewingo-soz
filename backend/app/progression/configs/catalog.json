@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "tariff": {
+    "mission": 15,
+    "daily": 25,
+    "checkinBase": 5,
+    "checkinCap": 25,
+    "levelBase": 20,
+    "levelStep": 2
+  },
+  "missions": {
+    "perDay": 3,
+    "pool": [
+      {
+        "kind": "levels",
+        "target": 3
+      },
+      {
+        "kind": "levels",
+        "target": 5
+      },
+      {
+        "kind": "stars",
+        "target": 6
+      },
+      {
+        "kind": "stars",
+        "target": 9
+      },
+      {
+        "kind": "score",
+        "target": 2000
+      },
+      {
+        "kind": "score",
+        "target": 5000
+      },
+      {
+        "kind": "variety",
+        "target": 2
+      },
+      {
+        "kind": "variety",
+        "target": 3
+      }
+    ]
+  },
+  "achievements": [
+    {
+      "id": "levels10",
+      "kind": "levels",
+      "target": 10
+    },
+    {
+      "id": "levels50",
+      "kind": "levels",
+      "target": 50
+    },
+    {
+      "id": "levels150",
+      "kind": "levels",
+      "target": 150
+    },
+    {
+      "id": "stars30",
+      "kind": "stars",
+      "target": 30
+    },
+    {
+      "id": "stars100",
+      "kind": "stars",
+      "target": 100
+    },
+    {
+      "id": "stars300",
+      "kind": "stars",
+      "target": 300
+    },
+    {
+      "id": "score25k",
+      "kind": "score",
+      "target": 25000
+    },
+    {
+      "id": "score100k",
+      "kind": "score",
+      "target": 100000
+    },
+    {
+      "id": "variety5",
+      "kind": "variety",
+      "target": 5
+    },
+    {
+      "id": "varietyAll",
+      "kind": "variety",
+      "target": 11
+    },
+    {
+      "id": "streak3",
+      "kind": "streak",
+      "target": 3
+    },
+    {
+      "id": "streak7",
+      "kind": "streak",
+      "target": 7
+    }
+  ],
+  "catalogSize": 11
+}

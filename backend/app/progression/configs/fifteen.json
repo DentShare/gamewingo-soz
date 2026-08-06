@@ -1,0 +1,270 @@
+{
+  "gameId": "fifteen",
+  "version": 1,
+  "scoring": [
+    {
+      "event": "session_complete",
+      "base": 500,
+      "modifiers": [
+        {
+          "source": "movesEfficiency",
+          "type": "linear",
+          "factor": 1.2,
+          "cap": 2
+        }
+      ]
+    },
+    {
+      "event": "speed_bonus",
+      "base": 100
+    }
+  ],
+  "starMetric": "moves",
+  "starsFallback": [
+    {
+      "stars": 1,
+      "metric": "moves",
+      "op": "lte",
+      "value": 120
+    },
+    {
+      "stars": 2,
+      "metric": "moves",
+      "op": "lte",
+      "value": 80
+    },
+    {
+      "stars": 3,
+      "metric": "moves",
+      "op": "lte",
+      "value": 60
+    }
+  ],
+  "dailyQuests": [
+    {
+      "id": "fifteen_q_solve3",
+      "title": {
+        "ru": "Реши 3 головоломки",
+        "uz": "3 ta boshqotirma yech"
+      },
+      "metric": "solved",
+      "target": 3,
+      "reward": 60
+    }
+  ],
+  "achievements": [
+    {
+      "id": "fifteen_grand",
+      "title": {
+        "ru": "Гроссмейстер",
+        "uz": "Grossmeyster"
+      },
+      "metric": "optimalWins",
+      "op": "gte",
+      "value": 10,
+      "reward": 250
+    }
+  ],
+  "antiFraud": {
+    "maxScorePerSession": 9000,
+    "maxSessionMs": 900000,
+    "maxEventsPerMinute": 240
+  },
+  "levels": [
+    {
+      "n": 1,
+      "params": {
+        "size": 3,
+        "walk": 30,
+        "moveLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 24,
+        "silver": 40
+      }
+    },
+    {
+      "n": 2,
+      "params": {
+        "size": 3,
+        "walk": 60,
+        "moveLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 34,
+        "silver": 55
+      }
+    },
+    {
+      "n": 3,
+      "params": {
+        "size": 3,
+        "walk": 100,
+        "moveLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 42,
+        "silver": 70
+      }
+    },
+    {
+      "n": 4,
+      "params": {
+        "size": 3,
+        "walk": 100,
+        "moveLimit": 70,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 40,
+        "silver": 60
+      }
+    },
+    {
+      "n": 5,
+      "params": {
+        "size": 3,
+        "walk": 140,
+        "moveLimit": 60,
+        "timeLimitSec": 120
+      },
+      "goals": {
+        "gold": 38,
+        "silver": 55
+      }
+    },
+    {
+      "n": 6,
+      "params": {
+        "size": 4,
+        "walk": 60,
+        "moveLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 50,
+        "silver": 85
+      }
+    },
+    {
+      "n": 7,
+      "params": {
+        "size": 4,
+        "walk": 120,
+        "moveLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 75,
+        "silver": 125
+      }
+    },
+    {
+      "n": 8,
+      "params": {
+        "size": 4,
+        "walk": 200,
+        "moveLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 100,
+        "silver": 170
+      }
+    },
+    {
+      "n": 9,
+      "params": {
+        "size": 4,
+        "walk": 200,
+        "moveLimit": 180,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 95,
+        "silver": 150
+      }
+    },
+    {
+      "n": 10,
+      "params": {
+        "size": 4,
+        "walk": 260,
+        "moveLimit": 0,
+        "timeLimitSec": 240
+      },
+      "goals": {
+        "gold": 115,
+        "silver": 190
+      }
+    },
+    {
+      "n": 11,
+      "params": {
+        "size": 4,
+        "walk": 260,
+        "moveLimit": 170,
+        "timeLimitSec": 210
+      },
+      "goals": {
+        "gold": 105,
+        "silver": 155
+      }
+    },
+    {
+      "n": 12,
+      "params": {
+        "size": 4,
+        "walk": 320,
+        "moveLimit": 150,
+        "timeLimitSec": 180
+      },
+      "goals": {
+        "gold": 100,
+        "silver": 140
+      }
+    },
+    {
+      "n": 13,
+      "params": {
+        "size": 5,
+        "walk": 40,
+        "moveLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 60,
+        "silver": 110
+      }
+    },
+    {
+      "n": 14,
+      "params": {
+        "size": 5,
+        "walk": 90,
+        "moveLimit": 0,
+        "timeLimitSec": 240
+      },
+      "goals": {
+        "gold": 110,
+        "silver": 190
+      }
+    },
+    {
+      "n": 15,
+      "params": {
+        "size": 5,
+        "walk": 150,
+        "moveLimit": 0,
+        "timeLimitSec": 300
+      },
+      "goals": {
+        "gold": 150,
+        "silver": 250
+      }
+    }
+  ]
+}

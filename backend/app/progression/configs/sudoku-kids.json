@@ -1,0 +1,282 @@
+{
+  "gameId": "sudoku-kids",
+  "version": 1,
+  "scoring": [
+    {
+      "event": "cell_correct",
+      "base": 10,
+      "modifiers": [
+        {
+          "source": "consecutive",
+          "type": "linear",
+          "factor": 0.3,
+          "cap": 2
+        }
+      ]
+    },
+    {
+      "event": "session_complete",
+      "base": 300,
+      "modifiers": [
+        {
+          "source": "accuracy",
+          "type": "linear",
+          "factor": 1,
+          "cap": 2
+        }
+      ]
+    },
+    {
+      "event": "no_hints",
+      "base": 100
+    }
+  ],
+  "starMetric": "timeSec",
+  "starsFallback": [
+    {
+      "stars": 1,
+      "metric": "timeSec",
+      "op": "lte",
+      "value": 300
+    },
+    {
+      "stars": 2,
+      "metric": "timeSec",
+      "op": "lte",
+      "value": 180
+    },
+    {
+      "stars": 3,
+      "metric": "timeSec",
+      "op": "lte",
+      "value": 100
+    }
+  ],
+  "dailyQuests": [
+    {
+      "id": "sudoku_q_solve2",
+      "title": {
+        "ru": "Реши 2 судоку",
+        "uz": "2 ta sudoku yech"
+      },
+      "metric": "solved",
+      "target": 2,
+      "reward": 40
+    }
+  ],
+  "achievements": [
+    {
+      "id": "sudoku_perfect",
+      "title": {
+        "ru": "Безупречный",
+        "uz": "Mukammal"
+      },
+      "metric": "noMistakeWins",
+      "op": "gte",
+      "value": 10,
+      "reward": 200
+    }
+  ],
+  "antiFraud": {
+    "maxScorePerSession": 4800,
+    "maxSessionMs": 900000,
+    "maxEventsPerMinute": 240
+  },
+  "levels": [
+    {
+      "n": 1,
+      "params": {
+        "size": 4,
+        "clues": 11,
+        "mistakeLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 45,
+        "silver": 90
+      }
+    },
+    {
+      "n": 2,
+      "params": {
+        "size": 4,
+        "clues": 10,
+        "mistakeLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 55,
+        "silver": 110
+      }
+    },
+    {
+      "n": 3,
+      "params": {
+        "size": 4,
+        "clues": 9,
+        "mistakeLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 65,
+        "silver": 130
+      }
+    },
+    {
+      "n": 4,
+      "params": {
+        "size": 4,
+        "clues": 8,
+        "mistakeLimit": 3,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 70,
+        "silver": 140
+      }
+    },
+    {
+      "n": 5,
+      "params": {
+        "size": 4,
+        "clues": 7,
+        "mistakeLimit": 3,
+        "timeLimitSec": 120
+      },
+      "goals": {
+        "gold": 75,
+        "silver": 110
+      }
+    },
+    {
+      "n": 6,
+      "params": {
+        "size": 4,
+        "clues": 6,
+        "mistakeLimit": 2,
+        "timeLimitSec": 100
+      },
+      "goals": {
+        "gold": 70,
+        "silver": 95
+      }
+    },
+    {
+      "n": 7,
+      "params": {
+        "size": 6,
+        "clues": 24,
+        "mistakeLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 100,
+        "silver": 200
+      }
+    },
+    {
+      "n": 8,
+      "params": {
+        "size": 6,
+        "clues": 22,
+        "mistakeLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 120,
+        "silver": 240
+      }
+    },
+    {
+      "n": 9,
+      "params": {
+        "size": 6,
+        "clues": 20,
+        "mistakeLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 140,
+        "silver": 260
+      }
+    },
+    {
+      "n": 10,
+      "params": {
+        "size": 6,
+        "clues": 19,
+        "mistakeLimit": 4,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 150,
+        "silver": 280
+      }
+    },
+    {
+      "n": 11,
+      "params": {
+        "size": 6,
+        "clues": 18,
+        "mistakeLimit": 4,
+        "timeLimitSec": 300
+      },
+      "goals": {
+        "gold": 160,
+        "silver": 260
+      }
+    },
+    {
+      "n": 12,
+      "params": {
+        "size": 6,
+        "clues": 17,
+        "mistakeLimit": 3,
+        "timeLimitSec": 300
+      },
+      "goals": {
+        "gold": 170,
+        "silver": 260
+      }
+    },
+    {
+      "n": 13,
+      "params": {
+        "size": 6,
+        "clues": 16,
+        "mistakeLimit": 3,
+        "timeLimitSec": 270
+      },
+      "goals": {
+        "gold": 165,
+        "silver": 240
+      }
+    },
+    {
+      "n": 14,
+      "params": {
+        "size": 6,
+        "clues": 15,
+        "mistakeLimit": 2,
+        "timeLimitSec": 260
+      },
+      "goals": {
+        "gold": 160,
+        "silver": 230
+      }
+    },
+    {
+      "n": 15,
+      "params": {
+        "size": 6,
+        "clues": 14,
+        "mistakeLimit": 2,
+        "timeLimitSec": 240
+      },
+      "goals": {
+        "gold": 150,
+        "silver": 220
+      }
+    }
+  ]
+}

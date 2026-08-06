@@ -26,10 +26,12 @@ GameWingo/
 ├── packages/game-progress/    ← лестница уровней, звёзды, задания дня (@gamewingo/game-progress)
 ├── hub/                       ← хаб каталога (HTML), собирается в корень домена
 ├── games/<slug>/              ← отдельные игры (Vite-проекты) + SPEC.md на каждую
+├── backend/                   ← Score Engine (FastAPI): событийный скоринг, антифрод, админка баланса
 ├── docs/
 │   ├── SPEC.template.md        ← шаблон спеки игры
 │   ├── DESIGN.md               ← дизайн-система: цвета, типографика, компоненты
 │   ├── PROGRESSION.md          ← лестница уровней, звёзды, задания дня
+│   ├── PROGRESSION-SERVER.md   ← событийный скоринг: конфиги, экспорт, Score Engine
 │   ├── ICONS.md                ← иконки игр: требования и подключение
 │   ├── LICENSES.md             ← реестр лицензий (обязателен)
 │   ├── DEPLOY.md               ← один Vercel-проект на весь каталог
@@ -72,6 +74,7 @@ npm run bridge:build                     # собрать общие пакет�
 npm run dev  -w @gamewingo/<slug>        # запустить игру в дев-режиме
 npm run build -w @gamewingo/<slug>       # прод-билд игры
 npm run typecheck                        # проверка типов по всем пакетам
+npm run progression:export               # выгрузить конфиги прогрессии для Score Engine (backend/)
 ```
 
 ## Локализация

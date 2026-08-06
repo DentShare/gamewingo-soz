@@ -1,5 +1,6 @@
 import type {
   ApiClient, SubmitScorePayload, SubmitScoreResult, LeaderboardEntry,
+  RoundEvent, GameResult, EventsAccepted, AwardResult,
 } from '@gamewingo/game-bridge';
 
 /**
@@ -21,6 +22,13 @@ export function createDemoApi(): ApiClient {
     async submitScore(p: SubmitScorePayload): Promise<SubmitScoreResult> {
       put(KEY_SCORE, Math.max(get(KEY_SCORE, 0), p.score));
       return { accepted: true, pointsAwarded: Math.round(p.score / 100) };
+    },
+    async submitEvents(_events: RoundEvent[]): Promise<EventsAccepted> {
+      // Демо: событийный скоринг есть только на сервере, локально пакет глотается.
+      return { xp: 0 };
+    },
+    async submitResult(_result: GameResult): Promise<AwardResult> {
+      return { xp: 0, stars: 0, unlockedAchievements: [], balance: 0 };
     },
     async leaderboard(_gameId: string, limit = 10): Promise<LeaderboardEntry[]> {
       const myScore = get(KEY_SCORE, 0);
