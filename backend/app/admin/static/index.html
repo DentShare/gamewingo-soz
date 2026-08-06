@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GameWingo — баланс</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; font: 14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif;
+         background: #f5f6f8; color: #1c2330; }
+  h1 { font-size: 20px; margin: 0 0 16px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  select, button, input { font: inherit; padding: 8px 12px; border-radius: 8px; border: 1px solid #d6dae2; background: #fff; }
+  button { cursor: pointer; }
+  button.primary { background: #ff7a00; border-color: #ff7a00; color: #fff; font-weight: 600; }
+  textarea { width: 100%; height: 420px; font: 12px/1.45 ui-monospace, monospace; padding: 12px;
+             border-radius: 10px; border: 1px solid #d6dae2; background: #fff; }
+  pre { background: #fff; border: 1px solid #d6dae2; border-radius: 10px; padding: 12px; overflow: auto; }
+  .status { min-height: 20px; font-weight: 600; }
+  .status.err { color: #c62828; } .status.ok { color: #2e7d32; }
+  .hint { color: #6a7383; font-size: 12px; margin: -6px 0 12px; }
+</style>
+</head>
+<body>
+<h1>GameWingo — баланс прогрессии</h1>
+<p class="hint">Правки применяются сразу после «Сохранить» — без релиза. Перед сохранением прогоните симуляцию.</p>
+
+<div class="row">
+  <select id="game"></select>
+  <input id="token" type="password" placeholder="X-Admin-Token (если задан)">
+  <button id="load">Загрузить</button>
+  <button id="save" class="primary">Сохранить и опубликовать</button>
+  <button id="drop">Снять override</button>
+</div>
+
+<textarea id="editor" spellcheck="false"></textarea>
+<div class="status" id="status"></div>
+
+<div class="row">
+  <button id="simulate">Симулировать</button>
+  <label>партий/день <input id="sessions" type="number" value="3" min="1" style="width:70px"></label>
+  <label>умение 0..1 <input id="skill" type="number" value="0.6" min="0" max="1" step="0.1" style="width:70px"></label>
+  <label>дней <input id="days" type="number" value="7" min="1" style="width:70px"></label>
+</div>
+<pre id="result" hidden></pre>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const status = (text, cls) => { $('status').textContent = text; $('status').className = 'status ' + (cls || ''); };
+  const headers = () => {
+    const h = { 'Content-Type': 'application/json' };
+    if ($('token').value) h['X-Admin-Token'] = $('token').value;
+    return h;
+  };
+  const api = async (path, init) => {
+    const res = await fetch(path, { headers: headers(), ...init });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.detail ? JSON.stringify(body.detail) : res.statusText);
+    return body;
+  };
+
+  async function loadGames() {
+    const games = await api('/progression/games');
+    $('game').innerHTML = games.map((g) => `<option>${g}</option>`).join('');
+    await load();
+  }
+
+  async function load() {
+    try {
+      const data = await api(`/admin/configs/${$('game').value}`);
+      $('editor').value = JSON.stringify(data.override ?? data.base, null, 2);
+      status(data.override ? `override v${data.override.version}` : 'база из репозитория', 'ok');
+    } catch (e) { status(e.message, 'err'); }
+  }
+
+  async function save() {
+    try {
+      const config = JSON.parse($('editor').value);
+      const res = await api(`/admin/configs/${$('game').value}`, { method: 'PUT', body: JSON.stringify(config) });
+      status(`Опубликовано, версия ${res.version}`, 'ok');
+    } catch (e) { status(e.message, 'err'); }
+  }
+
+  async function drop() {
+    try {
+      await api(`/admin/configs/${$('game').value}/override`, { method: 'DELETE' });
+      await load();
+      status('Override снят — работает база из репозитория', 'ok');
+    } catch (e) { status(e.message, 'err'); }
+  }
+
+  async function simulate() {
+    try {
+      const body = {
+        config: JSON.parse($('editor').value),
+        profile: { sessionsPerDay: +$('sessions').value, avgSkill: +$('skill').value, days: +$('days').value },
+      };
+      const res = await api(`/admin/simulate/${$('game').value}`, { method: 'POST', body: JSON.stringify(body) });
+      $('result').hidden = false;
+      $('result').textContent = JSON.stringify(res, null, 2);
+    } catch (e) { status(e.message, 'err'); }
+  }
+
+  $('load').onclick = load;
+  $('save').onclick = save;
+  $('drop').onclick = drop;
+  $('simulate').onclick = simulate;
+  $('game').onchange = load;
+  loadGames().catch((e) => status(e.message, 'err'));
+</script>
+</body>
+</html>
