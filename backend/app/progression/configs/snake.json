@@ -1,0 +1,255 @@
+{
+  "gameId": "snake",
+  "version": 1,
+  "scoring": [
+    {
+      "event": "food_eaten",
+      "base": 10,
+      "modifiers": [
+        {
+          "source": "length",
+          "type": "linear",
+          "factor": 0.05,
+          "cap": 3
+        }
+      ]
+    },
+    {
+      "event": "special_food",
+      "base": 50
+    }
+  ],
+  "starMetric": "score",
+  "starsFallback": [
+    {
+      "stars": 1,
+      "metric": "length",
+      "op": "gte",
+      "value": 15
+    },
+    {
+      "stars": 2,
+      "metric": "length",
+      "op": "gte",
+      "value": 30
+    },
+    {
+      "stars": 3,
+      "metric": "length",
+      "op": "gte",
+      "value": 50
+    }
+  ],
+  "dailyQuests": [
+    {
+      "id": "snake_q_len25",
+      "title": {
+        "ru": "Длина 25",
+        "uz": "25 uzunlikka yet"
+      },
+      "metric": "length",
+      "target": 25,
+      "reward": 50
+    }
+  ],
+  "achievements": [
+    {
+      "id": "snake_giant",
+      "title": {
+        "ru": "Гигант",
+        "uz": "Ulkan ilon"
+      },
+      "metric": "bestLength",
+      "op": "gte",
+      "value": 100,
+      "reward": 300
+    }
+  ],
+  "antiFraud": {
+    "maxScorePerSession": 100000,
+    "maxSessionMs": 900000,
+    "maxEventsPerMinute": 500
+  },
+  "levels": [
+    {
+      "n": 1,
+      "params": {
+        "target": 300,
+        "startPhase": 0
+      },
+      "goals": {
+        "gold": 600,
+        "silver": 450,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 2,
+      "params": {
+        "target": 321,
+        "startPhase": 1
+      },
+      "goals": {
+        "gold": 642,
+        "silver": 482,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 3,
+      "params": {
+        "target": 386,
+        "startPhase": 1
+      },
+      "goals": {
+        "gold": 772,
+        "silver": 579,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 4,
+      "params": {
+        "target": 493,
+        "startPhase": 2
+      },
+      "goals": {
+        "gold": 986,
+        "silver": 740,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 5,
+      "params": {
+        "target": 643,
+        "startPhase": 2
+      },
+      "goals": {
+        "gold": 1286,
+        "silver": 965,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 6,
+      "params": {
+        "target": 836,
+        "startPhase": 3
+      },
+      "goals": {
+        "gold": 1672,
+        "silver": 1254,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 7,
+      "params": {
+        "target": 1071,
+        "startPhase": 3
+      },
+      "goals": {
+        "gold": 2142,
+        "silver": 1607,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 8,
+      "params": {
+        "target": 1350,
+        "startPhase": 4
+      },
+      "goals": {
+        "gold": 2700,
+        "silver": 2025,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 9,
+      "params": {
+        "target": 1671,
+        "startPhase": 5
+      },
+      "goals": {
+        "gold": 3342,
+        "silver": 2507,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 10,
+      "params": {
+        "target": 2036,
+        "startPhase": 5
+      },
+      "goals": {
+        "gold": 4072,
+        "silver": 3054,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 11,
+      "params": {
+        "target": 2443,
+        "startPhase": 6
+      },
+      "goals": {
+        "gold": 4886,
+        "silver": 3665,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 12,
+      "params": {
+        "target": 2893,
+        "startPhase": 6
+      },
+      "goals": {
+        "gold": 5786,
+        "silver": 4340,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 13,
+      "params": {
+        "target": 3386,
+        "startPhase": 7
+      },
+      "goals": {
+        "gold": 6772,
+        "silver": 5079,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 14,
+      "params": {
+        "target": 3921,
+        "startPhase": 7
+      },
+      "goals": {
+        "gold": 7842,
+        "silver": 5882,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 15,
+      "params": {
+        "target": 4500,
+        "startPhase": 8
+      },
+      "goals": {
+        "gold": 9000,
+        "silver": 6750,
+        "higherIsBetter": true
+      }
+    }
+  ]
+}

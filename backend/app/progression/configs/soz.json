@@ -1,0 +1,295 @@
+{
+  "gameId": "soz",
+  "version": 1,
+  "scoring": [
+    {
+      "event": "word_guessed",
+      "base": 100,
+      "modifiers": [
+        {
+          "source": "attemptsLeft",
+          "type": "linear",
+          "factor": 0.25,
+          "cap": 2.5
+        }
+      ]
+    },
+    {
+      "event": "first_try",
+      "base": 50
+    },
+    {
+      "event": "session_complete",
+      "base": 20
+    }
+  ],
+  "starMetric": "guessesUsed",
+  "starsFallback": [
+    {
+      "stars": 1,
+      "metric": "guessesUsed",
+      "op": "lte",
+      "value": 6
+    },
+    {
+      "stars": 2,
+      "metric": "guessesUsed",
+      "op": "lte",
+      "value": 4
+    },
+    {
+      "stars": 3,
+      "metric": "guessesUsed",
+      "op": "lte",
+      "value": 2
+    }
+  ],
+  "dailyQuests": [
+    {
+      "id": "soz_q_words3",
+      "title": {
+        "ru": "Угадай 3 слова",
+        "uz": "3 ta soʻz top"
+      },
+      "metric": "wordsGuessed",
+      "target": 3,
+      "reward": 30
+    },
+    {
+      "id": "soz_q_streak5",
+      "title": {
+        "ru": "Серия 5 дней",
+        "uz": "5 kun seriya"
+      },
+      "metric": "streakDays",
+      "target": 5,
+      "reward": 100
+    }
+  ],
+  "achievements": [
+    {
+      "id": "soz_erudite",
+      "title": {
+        "ru": "Эрудит",
+        "uz": "Bilimdon"
+      },
+      "metric": "wordsGuessed",
+      "op": "gte",
+      "value": 100,
+      "reward": 200
+    },
+    {
+      "id": "soz_lightning",
+      "title": {
+        "ru": "Молния",
+        "uz": "Chaqqon"
+      },
+      "metric": "firstTryCount",
+      "op": "gte",
+      "value": 10,
+      "reward": 150
+    }
+  ],
+  "antiFraud": {
+    "maxScorePerSession": 10000,
+    "maxSessionMs": 900000,
+    "maxEventsPerMinute": 60
+  },
+  "levels": [
+    {
+      "n": 1,
+      "params": {
+        "guesses": 6,
+        "strict": false,
+        "keyboardHints": true,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 3,
+        "silver": 5
+      }
+    },
+    {
+      "n": 2,
+      "params": {
+        "guesses": 6,
+        "strict": false,
+        "keyboardHints": true,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 3,
+        "silver": 5
+      }
+    },
+    {
+      "n": 3,
+      "params": {
+        "guesses": 6,
+        "strict": false,
+        "keyboardHints": true,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 3,
+        "silver": 4
+      }
+    },
+    {
+      "n": 4,
+      "params": {
+        "guesses": 6,
+        "strict": true,
+        "keyboardHints": true,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 3,
+        "silver": 5
+      }
+    },
+    {
+      "n": 5,
+      "params": {
+        "guesses": 6,
+        "strict": true,
+        "keyboardHints": true,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 3,
+        "silver": 4
+      }
+    },
+    {
+      "n": 6,
+      "params": {
+        "guesses": 5,
+        "strict": false,
+        "keyboardHints": true,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 3,
+        "silver": 4
+      }
+    },
+    {
+      "n": 7,
+      "params": {
+        "guesses": 5,
+        "strict": true,
+        "keyboardHints": true,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 3,
+        "silver": 4
+      }
+    },
+    {
+      "n": 8,
+      "params": {
+        "guesses": 5,
+        "strict": true,
+        "keyboardHints": true,
+        "timeLimitSec": 240
+      },
+      "goals": {
+        "gold": 3,
+        "silver": 4
+      }
+    },
+    {
+      "n": 9,
+      "params": {
+        "guesses": 5,
+        "strict": true,
+        "keyboardHints": false,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 3,
+        "silver": 4
+      }
+    },
+    {
+      "n": 10,
+      "params": {
+        "guesses": 5,
+        "strict": true,
+        "keyboardHints": false,
+        "timeLimitSec": 210
+      },
+      "goals": {
+        "gold": 3,
+        "silver": 4
+      }
+    },
+    {
+      "n": 11,
+      "params": {
+        "guesses": 4,
+        "strict": false,
+        "keyboardHints": true,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 3
+      }
+    },
+    {
+      "n": 12,
+      "params": {
+        "guesses": 4,
+        "strict": true,
+        "keyboardHints": true,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 3
+      }
+    },
+    {
+      "n": 13,
+      "params": {
+        "guesses": 4,
+        "strict": true,
+        "keyboardHints": true,
+        "timeLimitSec": 180
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 3
+      }
+    },
+    {
+      "n": 14,
+      "params": {
+        "guesses": 4,
+        "strict": true,
+        "keyboardHints": false,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 3
+      }
+    },
+    {
+      "n": 15,
+      "params": {
+        "guesses": 4,
+        "strict": true,
+        "keyboardHints": false,
+        "timeLimitSec": 150
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 3
+      }
+    }
+  ]
+}

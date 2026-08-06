@@ -1,0 +1,279 @@
+{
+  "gameId": "2048",
+  "version": 1,
+  "scoring": [
+    {
+      "event": "tile_merged",
+      "base": 1,
+      "perItemKey": "value",
+      "modifiers": [
+        {
+          "source": "combo",
+          "type": "linear",
+          "factor": 0.2,
+          "cap": 2
+        }
+      ]
+    },
+    {
+      "event": "new_high_tile",
+      "base": 1,
+      "perItemKey": "value",
+      "modifiers": [
+        {
+          "source": "value",
+          "type": "threshold",
+          "threshold": 128,
+          "multiplier": 2
+        }
+      ]
+    },
+    {
+      "event": "game_won",
+      "base": 200
+    }
+  ],
+  "starMetric": "score",
+  "starsFallback": [
+    {
+      "stars": 1,
+      "metric": "maxTile",
+      "op": "gte",
+      "value": 512
+    },
+    {
+      "stars": 2,
+      "metric": "maxTile",
+      "op": "gte",
+      "value": 1024
+    },
+    {
+      "stars": 3,
+      "metric": "maxTile",
+      "op": "gte",
+      "value": 2048
+    }
+  ],
+  "dailyQuests": [
+    {
+      "id": "g2048_q_tile512",
+      "title": {
+        "ru": "Собери плитку 512",
+        "uz": "512 plitka yigʻ"
+      },
+      "metric": "maxTile",
+      "target": 512,
+      "reward": 50
+    },
+    {
+      "id": "g2048_q_wins3",
+      "title": {
+        "ru": "Выиграй 3 партии",
+        "uz": "3 ta oʻyinda yut"
+      },
+      "metric": "wins",
+      "target": 3,
+      "reward": 80
+    }
+  ],
+  "achievements": [
+    {
+      "id": "g2048_master",
+      "title": {
+        "ru": "Мастер 2048",
+        "uz": "2048 ustasi"
+      },
+      "metric": "maxTile",
+      "op": "gte",
+      "value": 2048,
+      "reward": 300
+    }
+  ],
+  "antiFraud": {
+    "maxScorePerSession": 50000,
+    "maxSessionMs": 900000,
+    "maxEventsPerMinute": 400
+  },
+  "levels": [
+    {
+      "n": 1,
+      "params": {
+        "targetTile": 64,
+        "startClutter": 0
+      },
+      "goals": {
+        "gold": 900,
+        "silver": 600,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 2,
+      "params": {
+        "targetTile": 128,
+        "startClutter": 0
+      },
+      "goals": {
+        "gold": 1800,
+        "silver": 1200,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 3,
+      "params": {
+        "targetTile": 128,
+        "startClutter": 2
+      },
+      "goals": {
+        "gold": 2000,
+        "silver": 1400,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 4,
+      "params": {
+        "targetTile": 256,
+        "startClutter": 0
+      },
+      "goals": {
+        "gold": 3600,
+        "silver": 2600,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 5,
+      "params": {
+        "targetTile": 256,
+        "startClutter": 2
+      },
+      "goals": {
+        "gold": 4000,
+        "silver": 2900,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 6,
+      "params": {
+        "targetTile": 256,
+        "startClutter": 4
+      },
+      "goals": {
+        "gold": 4400,
+        "silver": 3200,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 7,
+      "params": {
+        "targetTile": 512,
+        "startClutter": 0
+      },
+      "goals": {
+        "gold": 7200,
+        "silver": 5400,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 8,
+      "params": {
+        "targetTile": 512,
+        "startClutter": 2
+      },
+      "goals": {
+        "gold": 7800,
+        "silver": 5800,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 9,
+      "params": {
+        "targetTile": 512,
+        "startClutter": 4
+      },
+      "goals": {
+        "gold": 8400,
+        "silver": 6200,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 10,
+      "params": {
+        "targetTile": 1024,
+        "startClutter": 0
+      },
+      "goals": {
+        "gold": 15000,
+        "silver": 11000,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 11,
+      "params": {
+        "targetTile": 1024,
+        "startClutter": 3
+      },
+      "goals": {
+        "gold": 16000,
+        "silver": 12000,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 12,
+      "params": {
+        "targetTile": 1024,
+        "startClutter": 5
+      },
+      "goals": {
+        "gold": 17000,
+        "silver": 13000,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 13,
+      "params": {
+        "targetTile": 2048,
+        "startClutter": 0
+      },
+      "goals": {
+        "gold": 30000,
+        "silver": 22000,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 14,
+      "params": {
+        "targetTile": 2048,
+        "startClutter": 3
+      },
+      "goals": {
+        "gold": 32000,
+        "silver": 24000,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 15,
+      "params": {
+        "targetTile": 2048,
+        "startClutter": 6
+      },
+      "goals": {
+        "gold": 34000,
+        "silver": 26000,
+        "higherIsBetter": true
+      }
+    }
+  ]
+}

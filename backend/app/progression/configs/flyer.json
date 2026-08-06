@@ -1,0 +1,252 @@
+{
+  "gameId": "flyer",
+  "version": 1,
+  "scoring": [
+    {
+      "event": "distance",
+      "base": 1,
+      "perItemKey": "units"
+    },
+    {
+      "event": "obstacle_avoided",
+      "base": 15
+    },
+    {
+      "event": "close_call",
+      "base": 10
+    }
+  ],
+  "starMetric": "score",
+  "starsFallback": [
+    {
+      "stars": 1,
+      "metric": "distance",
+      "op": "gte",
+      "value": 1000
+    },
+    {
+      "stars": 2,
+      "metric": "distance",
+      "op": "gte",
+      "value": 3000
+    },
+    {
+      "stars": 3,
+      "metric": "distance",
+      "op": "gte",
+      "value": 5000
+    }
+  ],
+  "dailyQuests": [
+    {
+      "id": "flyer_q_dist2000",
+      "title": {
+        "ru": "Пролети 2000",
+        "uz": "2000 masofa uch"
+      },
+      "metric": "distance",
+      "target": 2000,
+      "reward": 50
+    }
+  ],
+  "achievements": [
+    {
+      "id": "flyer_ace",
+      "title": {
+        "ru": "Ас",
+        "uz": "Uchuvchilar ustasi"
+      },
+      "metric": "bestDistance",
+      "op": "gte",
+      "value": 10000,
+      "reward": 300
+    }
+  ],
+  "antiFraud": {
+    "maxScorePerSession": 100000,
+    "maxSessionMs": 900000,
+    "maxEventsPerMinute": 600
+  },
+  "levels": [
+    {
+      "n": 1,
+      "params": {
+        "target": 300,
+        "startPhase": 0
+      },
+      "goals": {
+        "gold": 600,
+        "silver": 450,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 2,
+      "params": {
+        "target": 321,
+        "startPhase": 2
+      },
+      "goals": {
+        "gold": 642,
+        "silver": 482,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 3,
+      "params": {
+        "target": 386,
+        "startPhase": 3
+      },
+      "goals": {
+        "gold": 772,
+        "silver": 579,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 4,
+      "params": {
+        "target": 493,
+        "startPhase": 5
+      },
+      "goals": {
+        "gold": 986,
+        "silver": 740,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 5,
+      "params": {
+        "target": 643,
+        "startPhase": 7
+      },
+      "goals": {
+        "gold": 1286,
+        "silver": 965,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 6,
+      "params": {
+        "target": 836,
+        "startPhase": 9
+      },
+      "goals": {
+        "gold": 1672,
+        "silver": 1254,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 7,
+      "params": {
+        "target": 1071,
+        "startPhase": 10
+      },
+      "goals": {
+        "gold": 2142,
+        "silver": 1607,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 8,
+      "params": {
+        "target": 1350,
+        "startPhase": 12
+      },
+      "goals": {
+        "gold": 2700,
+        "silver": 2025,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 9,
+      "params": {
+        "target": 1671,
+        "startPhase": 14
+      },
+      "goals": {
+        "gold": 3342,
+        "silver": 2507,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 10,
+      "params": {
+        "target": 2036,
+        "startPhase": 15
+      },
+      "goals": {
+        "gold": 4072,
+        "silver": 3054,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 11,
+      "params": {
+        "target": 2443,
+        "startPhase": 17
+      },
+      "goals": {
+        "gold": 4886,
+        "silver": 3665,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 12,
+      "params": {
+        "target": 2893,
+        "startPhase": 19
+      },
+      "goals": {
+        "gold": 5786,
+        "silver": 4340,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 13,
+      "params": {
+        "target": 3386,
+        "startPhase": 21
+      },
+      "goals": {
+        "gold": 6772,
+        "silver": 5079,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 14,
+      "params": {
+        "target": 3921,
+        "startPhase": 22
+      },
+      "goals": {
+        "gold": 7842,
+        "silver": 5882,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 15,
+      "params": {
+        "target": 4500,
+        "startPhase": 24
+      },
+      "goals": {
+        "gold": 9000,
+        "silver": 6750,
+        "higherIsBetter": true
+      }
+    }
+  ]
+}

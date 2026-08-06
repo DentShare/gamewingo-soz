@@ -11,6 +11,7 @@ export * from './day.js';
 export * from './missions.js';
 export * from './achievements.js';
 export * from './bonus.js';
+export * from './config/index.js';
 
 import type { Stars } from './ladder.js';
 import { recordLevel, type RecordResult } from './progress.js';

@@ -1,0 +1,318 @@
+{
+  "gameId": "pairs",
+  "version": 1,
+  "scoring": [
+    {
+      "event": "pair_found",
+      "base": 20,
+      "modifiers": [
+        {
+          "source": "consecutive",
+          "type": "linear",
+          "factor": 0.5,
+          "cap": 3
+        }
+      ]
+    },
+    {
+      "event": "session_complete",
+      "base": 100,
+      "modifiers": [
+        {
+          "source": "efficiency",
+          "type": "linear",
+          "factor": 1,
+          "cap": 2
+        }
+      ]
+    },
+    {
+      "event": "flawless",
+      "base": 50
+    }
+  ],
+  "starMetric": "moves",
+  "starsFallback": [
+    {
+      "stars": 1,
+      "metric": "moves",
+      "op": "lte",
+      "value": 40
+    },
+    {
+      "stars": 2,
+      "metric": "moves",
+      "op": "lte",
+      "value": 28
+    },
+    {
+      "stars": 3,
+      "metric": "moves",
+      "op": "lte",
+      "value": 20
+    }
+  ],
+  "dailyQuests": [
+    {
+      "id": "pairs_q_pairs10",
+      "title": {
+        "ru": "Найди 10 пар",
+        "uz": "10 juftlik top"
+      },
+      "metric": "pairsFound",
+      "target": 10,
+      "reward": 40
+    },
+    {
+      "id": "pairs_q_combo5",
+      "title": {
+        "ru": "5 пар подряд",
+        "uz": "5 juft ketma-ket"
+      },
+      "metric": "bestCombo",
+      "target": 5,
+      "reward": 30
+    }
+  ],
+  "achievements": [
+    {
+      "id": "pairs_memory",
+      "title": {
+        "ru": "Феноменальная память",
+        "uz": "Zoʻr xotira"
+      },
+      "metric": "flawlessCount",
+      "op": "gte",
+      "value": 5,
+      "reward": 200
+    },
+    {
+      "id": "pairs_sprinter",
+      "title": {
+        "ru": "Спринтер",
+        "uz": "Tezkor"
+      },
+      "metric": "fastWins",
+      "op": "gte",
+      "value": 10,
+      "reward": 150
+    }
+  ],
+  "antiFraud": {
+    "maxScorePerSession": 20000,
+    "maxSessionMs": 900000,
+    "maxEventsPerMinute": 240
+  },
+  "levels": [
+    {
+      "n": 1,
+      "params": {
+        "pairs": 4,
+        "cols": 2,
+        "rows": 4,
+        "moveLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 5,
+        "silver": 8
+      }
+    },
+    {
+      "n": 2,
+      "params": {
+        "pairs": 5,
+        "cols": 2,
+        "rows": 5,
+        "moveLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 7,
+        "silver": 10
+      }
+    },
+    {
+      "n": 3,
+      "params": {
+        "pairs": 6,
+        "cols": 3,
+        "rows": 4,
+        "moveLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 8,
+        "silver": 12
+      }
+    },
+    {
+      "n": 4,
+      "params": {
+        "pairs": 6,
+        "cols": 3,
+        "rows": 4,
+        "moveLimit": 14,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 8,
+        "silver": 11
+      }
+    },
+    {
+      "n": 5,
+      "params": {
+        "pairs": 8,
+        "cols": 4,
+        "rows": 4,
+        "moveLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 11,
+        "silver": 16
+      }
+    },
+    {
+      "n": 6,
+      "params": {
+        "pairs": 8,
+        "cols": 4,
+        "rows": 4,
+        "moveLimit": 18,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 11,
+        "silver": 15
+      }
+    },
+    {
+      "n": 7,
+      "params": {
+        "pairs": 9,
+        "cols": 3,
+        "rows": 6,
+        "moveLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 13,
+        "silver": 18
+      }
+    },
+    {
+      "n": 8,
+      "params": {
+        "pairs": 9,
+        "cols": 3,
+        "rows": 6,
+        "moveLimit": 20,
+        "timeLimitSec": 90
+      },
+      "goals": {
+        "gold": 12,
+        "silver": 16
+      }
+    },
+    {
+      "n": 9,
+      "params": {
+        "pairs": 10,
+        "cols": 4,
+        "rows": 5,
+        "moveLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 14,
+        "silver": 20
+      }
+    },
+    {
+      "n": 10,
+      "params": {
+        "pairs": 10,
+        "cols": 4,
+        "rows": 5,
+        "moveLimit": 22,
+        "timeLimitSec": 80
+      },
+      "goals": {
+        "gold": 14,
+        "silver": 18
+      }
+    },
+    {
+      "n": 11,
+      "params": {
+        "pairs": 12,
+        "cols": 4,
+        "rows": 6,
+        "moveLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 17,
+        "silver": 24
+      }
+    },
+    {
+      "n": 12,
+      "params": {
+        "pairs": 12,
+        "cols": 4,
+        "rows": 6,
+        "moveLimit": 26,
+        "timeLimitSec": 90
+      },
+      "goals": {
+        "gold": 16,
+        "silver": 21
+      }
+    },
+    {
+      "n": 13,
+      "params": {
+        "pairs": 15,
+        "cols": 5,
+        "rows": 6,
+        "moveLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 21,
+        "silver": 30
+      }
+    },
+    {
+      "n": 14,
+      "params": {
+        "pairs": 15,
+        "cols": 5,
+        "rows": 6,
+        "moveLimit": 32,
+        "timeLimitSec": 100
+      },
+      "goals": {
+        "gold": 20,
+        "silver": 26
+      }
+    },
+    {
+      "n": 15,
+      "params": {
+        "pairs": 15,
+        "cols": 5,
+        "rows": 6,
+        "moveLimit": 28,
+        "timeLimitSec": 80
+      },
+      "goals": {
+        "gold": 19,
+        "silver": 24
+      }
+    }
+  ]
+}

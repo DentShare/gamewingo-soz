@@ -1,0 +1,259 @@
+{
+  "gameId": "sorting",
+  "version": 1,
+  "scoring": [
+    {
+      "event": "item_sorted",
+      "base": 15,
+      "modifiers": [
+        {
+          "source": "consecutive",
+          "type": "linear",
+          "factor": 0.2,
+          "cap": 2
+        }
+      ]
+    },
+    {
+      "event": "session_complete",
+      "base": 100
+    },
+    {
+      "event": "speed_bonus",
+      "base": 20
+    }
+  ],
+  "starMetric": "mistakes",
+  "starsFallback": [
+    {
+      "stars": 1,
+      "metric": "mistakes",
+      "op": "lte",
+      "value": 4
+    },
+    {
+      "stars": 2,
+      "metric": "mistakes",
+      "op": "lte",
+      "value": 2
+    },
+    {
+      "stars": 3,
+      "metric": "mistakes",
+      "op": "lte",
+      "value": 0
+    }
+  ],
+  "dailyQuests": [
+    {
+      "id": "sorting_q_items30",
+      "title": {
+        "ru": "Отсортируй 30 предметов",
+        "uz": "30 ta buyumni saralab chiq"
+      },
+      "metric": "itemsSorted",
+      "target": 30,
+      "reward": 30
+    }
+  ],
+  "achievements": [
+    {
+      "id": "sorting_attentive",
+      "title": {
+        "ru": "Внимательный",
+        "uz": "Diqqatli"
+      },
+      "metric": "bestStreak",
+      "op": "gte",
+      "value": 50,
+      "reward": 150
+    }
+  ],
+  "antiFraud": {
+    "maxScorePerSession": 2300,
+    "maxSessionMs": 900000,
+    "maxEventsPerMinute": 240
+  },
+  "levels": [
+    {
+      "n": 1,
+      "params": {
+        "total": 8,
+        "mode": "color",
+        "bins": 3
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 2,
+      "params": {
+        "total": 10,
+        "mode": "color",
+        "bins": 3
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 3,
+      "params": {
+        "total": 12,
+        "mode": "color",
+        "bins": 3
+      },
+      "goals": {
+        "gold": 1,
+        "silver": 3
+      }
+    },
+    {
+      "n": 4,
+      "params": {
+        "total": 10,
+        "mode": "shape",
+        "bins": 3
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 5,
+      "params": {
+        "total": 12,
+        "mode": "shape",
+        "bins": 3
+      },
+      "goals": {
+        "gold": 1,
+        "silver": 3
+      }
+    },
+    {
+      "n": 6,
+      "params": {
+        "total": 14,
+        "mode": "shape",
+        "bins": 3
+      },
+      "goals": {
+        "gold": 1,
+        "silver": 3
+      }
+    },
+    {
+      "n": 7,
+      "params": {
+        "total": 12,
+        "mode": "color",
+        "bins": 4
+      },
+      "goals": {
+        "gold": 1,
+        "silver": 3
+      }
+    },
+    {
+      "n": 8,
+      "params": {
+        "total": 14,
+        "mode": "color",
+        "bins": 4
+      },
+      "goals": {
+        "gold": 1,
+        "silver": 3
+      }
+    },
+    {
+      "n": 9,
+      "params": {
+        "total": 16,
+        "mode": "color",
+        "bins": 4
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 4
+      }
+    },
+    {
+      "n": 10,
+      "params": {
+        "total": 12,
+        "mode": "shape",
+        "bins": 4
+      },
+      "goals": {
+        "gold": 1,
+        "silver": 3
+      }
+    },
+    {
+      "n": 11,
+      "params": {
+        "total": 14,
+        "mode": "shape",
+        "bins": 4
+      },
+      "goals": {
+        "gold": 1,
+        "silver": 3
+      }
+    },
+    {
+      "n": 12,
+      "params": {
+        "total": 16,
+        "mode": "shape",
+        "bins": 4
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 4
+      }
+    },
+    {
+      "n": 13,
+      "params": {
+        "total": 18,
+        "mode": "color",
+        "bins": 4
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 4
+      }
+    },
+    {
+      "n": 14,
+      "params": {
+        "total": 18,
+        "mode": "shape",
+        "bins": 4
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 4
+      }
+    },
+    {
+      "n": 15,
+      "params": {
+        "total": 20,
+        "mode": "shape",
+        "bins": 4
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 5
+      }
+    }
+  ]
+}

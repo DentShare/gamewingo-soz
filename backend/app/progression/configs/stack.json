@@ -1,0 +1,259 @@
+{
+  "gameId": "stack",
+  "version": 1,
+  "scoring": [
+    {
+      "event": "block_placed",
+      "base": 10,
+      "modifiers": [
+        {
+          "source": "height",
+          "type": "linear",
+          "factor": 0.1,
+          "cap": 3
+        }
+      ]
+    },
+    {
+      "event": "perfect_placement",
+      "base": 20
+    },
+    {
+      "event": "combo_perfect",
+      "base": 50
+    }
+  ],
+  "starMetric": "score",
+  "starsFallback": [
+    {
+      "stars": 1,
+      "metric": "height",
+      "op": "gte",
+      "value": 20
+    },
+    {
+      "stars": 2,
+      "metric": "height",
+      "op": "gte",
+      "value": 40
+    },
+    {
+      "stars": 3,
+      "metric": "height",
+      "op": "gte",
+      "value": 60
+    }
+  ],
+  "dailyQuests": [
+    {
+      "id": "stack_q_height30",
+      "title": {
+        "ru": "Башня из 30 блоков",
+        "uz": "30 blokli minora"
+      },
+      "metric": "height",
+      "target": 30,
+      "reward": 60
+    }
+  ],
+  "achievements": [
+    {
+      "id": "stack_architect",
+      "title": {
+        "ru": "Архитектор",
+        "uz": "Meʼmor"
+      },
+      "metric": "bestHeight",
+      "op": "gte",
+      "value": 100,
+      "reward": 300
+    }
+  ],
+  "antiFraud": {
+    "maxScorePerSession": 100000,
+    "maxSessionMs": 900000,
+    "maxEventsPerMinute": 500
+  },
+  "levels": [
+    {
+      "n": 1,
+      "params": {
+        "target": 500,
+        "startPhase": 0
+      },
+      "goals": {
+        "gold": 1000,
+        "silver": 750,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 2,
+      "params": {
+        "target": 528,
+        "startPhase": 2
+      },
+      "goals": {
+        "gold": 1056,
+        "silver": 792,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 3,
+      "params": {
+        "target": 612,
+        "startPhase": 4
+      },
+      "goals": {
+        "gold": 1224,
+        "silver": 918,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 4,
+      "params": {
+        "target": 753,
+        "startPhase": 6
+      },
+      "goals": {
+        "gold": 1506,
+        "silver": 1130,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 5,
+      "params": {
+        "target": 949,
+        "startPhase": 9
+      },
+      "goals": {
+        "gold": 1898,
+        "silver": 1424,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 6,
+      "params": {
+        "target": 1202,
+        "startPhase": 11
+      },
+      "goals": {
+        "gold": 2404,
+        "silver": 1803,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 7,
+      "params": {
+        "target": 1510,
+        "startPhase": 13
+      },
+      "goals": {
+        "gold": 3020,
+        "silver": 2265,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 8,
+      "params": {
+        "target": 1875,
+        "startPhase": 15
+      },
+      "goals": {
+        "gold": 3750,
+        "silver": 2813,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 9,
+      "params": {
+        "target": 2296,
+        "startPhase": 17
+      },
+      "goals": {
+        "gold": 4592,
+        "silver": 3444,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 10,
+      "params": {
+        "target": 2773,
+        "startPhase": 19
+      },
+      "goals": {
+        "gold": 5546,
+        "silver": 4160,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 11,
+      "params": {
+        "target": 3306,
+        "startPhase": 21
+      },
+      "goals": {
+        "gold": 6612,
+        "silver": 4959,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 12,
+      "params": {
+        "target": 3895,
+        "startPhase": 24
+      },
+      "goals": {
+        "gold": 7790,
+        "silver": 5843,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 13,
+      "params": {
+        "target": 4541,
+        "startPhase": 26
+      },
+      "goals": {
+        "gold": 9082,
+        "silver": 6812,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 14,
+      "params": {
+        "target": 5242,
+        "startPhase": 28
+      },
+      "goals": {
+        "gold": 10484,
+        "silver": 7863,
+        "higherIsBetter": true
+      }
+    },
+    {
+      "n": 15,
+      "params": {
+        "target": 6000,
+        "startPhase": 30
+      },
+      "goals": {
+        "gold": 12000,
+        "silver": 9000,
+        "higherIsBetter": true
+      }
+    }
+  ]
+}
