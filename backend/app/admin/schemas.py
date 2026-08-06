@@ -96,6 +96,24 @@ class ExportedLevel(BaseModel):
     goals: StarGoals
 
 
+class ChallengeDef(BaseModel):
+    """Испытание игры без раскладов: метрика забега ≥ порога, номер = уровень."""
+    model_config = ConfigDict(extra="forbid")
+    n: int = Field(ge=1)
+    id: str = Field(min_length=1)
+    metric: str
+    target: float
+
+
+class MilestoneDef(BaseModel):
+    """Веха: разовая награда по естественной шкале механики."""
+    model_config = ConfigDict(extra="forbid")
+    id: str = Field(min_length=1)
+    metric: str
+    target: float
+    reward: int = Field(gt=0)
+
+
 class ProgressionConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     gameId: str = Field(min_length=1)
@@ -104,6 +122,14 @@ class ProgressionConfig(BaseModel):
     starMetric: str
     starsFallback: list[StarRule]
     levels: Optional[list[ExportedLevel]] = None
+    challenges: Optional[list[ChallengeDef]] = None
+    milestones: Optional[list[MilestoneDef]] = None
     dailyQuests: list[QuestDef]
     achievements: list[GameAchievementDef]
     antiFraud: AntiFraudLimits
+
+    @model_validator(mode="after")
+    def _has_progression(self) -> "ProgressionConfig":
+        if not self.levels and not self.challenges:
+            raise ValueError("конфигу нужны levels (головоломка) или challenges (аркада)")
+        return self

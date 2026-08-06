@@ -111,6 +111,13 @@ export interface ProgressionConfig {
   starsFallback: StarRule[];
   /** Реальная лестница игры; появляется в JSON после progression:export. */
   levels?: ExportedLevel[];
+  /**
+   * Испытания игр без раскладов (аркады, 2048) — вместо levels; тоже
+   * подшиваются экспортом из games/<slug>/src/core/challenges.ts.
+   */
+  challenges?: Array<{ n: number; id: string; metric: string; target: number }>;
+  /** Вехи таких игр: разовые награды по естественной шкале механики. */
+  milestones?: Array<{ id: string; metric: string; target: number; reward: number }>;
   dailyQuests: QuestDef[];
   achievements: GameAchievementDef[];
   antiFraud: AntiFraudLimits;

@@ -4,9 +4,10 @@ import uz from './uz.json';
 import { t } from './index';
 
 const REQUIRED = [
-  'app.title', 'menu.play', 'menu.howto', 'menu.catalog', 'menu.best',
-  'game.tapToStart',
-  'result.title', 'result.score', 'result.newBest', 'result.playAgain', 'result.menu',
+  'app.title', 'menu.play', 'menu.howto', 'menu.catalog', 'menu.record',
+  'menu.challenges', 'menu.nextMilestone', 'menu.milestonesDone',
+  'game.tapToStart', 'game.challenge',
+  'result.run', 'result.score', 'result.newBest', 'result.closed', 'result.playAgain', 'result.menu',
   'result.leaderboard',
   'onboarding.flap', 'onboarding.gap', 'onboarding.score',
   'onboarding.next', 'onboarding.done', 'onboarding.skip',
@@ -30,11 +31,11 @@ describe('i18n (flyer)', () => {
       expect(uz[k as keyof typeof uz].length).toBeGreaterThan(0);
     }
     expect(uz['app.title']).not.toBe(ru['app.title']);
-    expect(uz['result.title']).not.toBe(ru['result.title']);
+    expect(uz['result.run']).not.toBe(ru['result.run']);
   });
 
   it('t() подставляет параметры', () => {
     expect(t('ru', 'result.score', { score: 1234 })).toContain('1234');
-    expect(t('uz', 'menu.best', { score: 700 })).toContain('700');
+    expect(t('uz', 'menu.challenges', { k: 7, n: 15 })).toContain('7');
   });
 });

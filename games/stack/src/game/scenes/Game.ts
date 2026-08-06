@@ -6,7 +6,8 @@ import { COLORS, FONT, blockColor } from '../palette';
 import { applyTheme, darken, setupCamera, shakeCamera, makeBackButton } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
-import { levelAt } from '../../core/levels';
+import { CHALLENGES } from '../../core/challenges';
+import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
@@ -32,12 +33,14 @@ const TUTORIAL_MISS = 26;
  */
 export class Game extends Scene {
   private locale: Locale = 'ru';
-  private level = 1;
-  private endless = false;
-  private startPhase = 0;
-  private target = 0;
   private session!: Session;
   private core!: StackGame;
+  /** Активное испытание — его прогресс висит под счётом. */
+  private challenge: ChallengeDef | null = null;
+  private challengeText?: Phaser.GameObjects.Text;
+  /** Текущая и лучшая серия идеальных попаданий подряд. */
+  private streak = 0;
+  private streakMax = 0;
 
   private tower!: Phaser.GameObjects.Container;
   private blockViews = new Map<number, Phaser.GameObjects.Rectangle>();
@@ -72,11 +75,10 @@ export class Game extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
-    this.level = (this.registry.get('level') as number) ?? 1;
-    this.endless = !!this.registry.get('endless');
-    const params = levelAt(this.level).params;
-    this.startPhase = params.startPhase;
-    this.target = params.target;
+    // Активное испытание: его условие показывается под счётом и живёт всю партию.
+    this.challenge = challengeStates('stack', CHALLENGES).find((c) => c.active) ?? null;
+    this.streak = 0;
+    this.streakMax = 0;
     this.session = this.registry.get('session') as Session;
 
     this.buildHud();
@@ -124,10 +126,7 @@ export class Game extends Scene {
     // Подложка-«земля» под фундаментом.
     this.tower.add(this.add.rectangle(W / 2, BASE_Y + 10, W - 40, 8, COLORS.shade).setOrigin(0.5));
 
-    this.core = createStackGame({
-      seed: Math.floor(Math.random() * 2 ** 31),
-      startPhase: this.startPhase,
-    });
+    this.core = createStackGame({ seed: Math.floor(Math.random() * 2 ** 31) });
     this.placeView(0);
     this.currentView = this.obtain();
     this.syncCurrent();
@@ -199,10 +198,10 @@ export class Game extends Scene {
       .setOrigin(0.5)
       .setResolution(DPR)
       .setDepth(20);
-    // Цель уровня — под счётом; в бесконечном режиме цели нет.
-    if (!this.endless) {
-      this.add
-        .text(W / 2, 126, this.goalLabel(), {
+    // Активное испытание с живым прогрессом — под счётом; когда всё пройдено, строки нет.
+    if (this.challenge) {
+      this.challengeText = this.add
+        .text(W / 2, 126, this.challengeLabel(), {
           fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
         })
         .setOrigin(0.5)
@@ -281,9 +280,16 @@ export class Game extends Scene {
       this.style(cut, index, res.cutX, res.cutWidth, this.yOf(index));
       this.fall(cut, res.cutX > this.core.blocks[index].x ? 1 : -1);
     }
-    if (res.perfect) this.showPerfect(index);
+    if (res.perfect) {
+      this.showPerfect(index);
+      this.streak += 1;
+      this.streakMax = Math.max(this.streakMax, this.streak);
+    } else {
+      this.streak = 0;
+    }
 
     this.scoreText.setText(t(this.locale, 'game.score', { n: this.core.score }));
+    this.updateChallengeLine();
 
     // Новый едущий блок + прокрутка башни вниз.
     this.currentView = this.obtain();
@@ -455,16 +461,36 @@ export class Game extends Scene {
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
-      locale: this.locale, level: this.level, endless: this.endless,
-      score: this.core.score, blocks, perfects, durationMs,
+      locale: this.locale, score: serverScore, blocks, perfects,
+      perfectStreak: this.streakMax, durationMs,
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }
 
-  /** «Цель: 1200» — сколько очков нужно набрать на этом уровне. */
-  private goalLabel(): string {
-    return t(this.locale, 'game.goal', { n: this.target });
+  /** «Построй башню из 14 блоков · 6/14» — активное испытание с прогрессом. */
+  private challengeLabel(): string {
+    const ch = this.challenge;
+    if (!ch) return '';
+    return t(this.locale, 'game.challenge', {
+      text: t(this.locale, `challenge.${ch.id}`),
+      v: Math.min(ch.target, this.metricValue(ch.metric)),
+      n: ch.target,
+    });
+  }
+
+  /** Текущее значение метрики партии — для живого прогресса испытания. */
+  private metricValue(metric: string): number {
+    switch (metric) {
+      case 'blocks': return this.core.placed;
+      case 'perfects': return this.core.perfects;
+      case 'perfectStreak': return this.streakMax;
+      default: return 0;
+    }
+  }
+
+  private updateChallengeLine() {
+    this.challengeText?.setText(this.challengeLabel());
   }
 }
 

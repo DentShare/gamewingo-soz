@@ -7,7 +7,8 @@ import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
 import { applyTheme, setupCamera, makeBackButton } from '../ui';
 import { t } from '../../i18n';
-import { levelAt } from '../../core/levels';
+import { CHALLENGES } from '../../core/challenges';
+import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
@@ -39,12 +40,11 @@ interface TargetView {
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
-  private level = 1;
-  private endless = false;
-  private startPhase = 0;
-  private target = 0;
   private session?: Session;
   private core!: TargetsGame;
+  /** Активное испытание — его прогресс висит под счётом. */
+  private challenge: ChallengeDef | null = null;
+  private challengeText?: Phaser.GameObjects.Text;
   private timer?: RoundTimer;
 
   private scoreText!: Phaser.GameObjects.Text;
@@ -92,16 +92,11 @@ export class Game extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
-    this.level = (this.registry.get('level') as number) ?? 1;
-    this.endless = !!this.registry.get('endless');
-    const params = levelAt(this.level).params;
-    this.startPhase = params.startPhase;
-    this.target = params.target;
+    // Активное испытание: его условие показывается под счётом и живёт весь раунд.
+    this.challenge = challengeStates('targets', CHALLENGES).find((c) => c.active) ?? null;
     this.session = this.registry.get('session') as Session | undefined;
 
-    this.core = createTargetsGame(mulberry32(Math.floor(Math.random() * 2 ** 31)), {
-      startPhase: this.startPhase,
-    });
+    this.core = createTargetsGame(mulberry32(Math.floor(Math.random() * 2 ** 31)));
 
     this.buildField();
     this.buildHud();
@@ -165,10 +160,10 @@ export class Game extends Scene {
       })
       .setOrigin(0, 0.5)
       .setResolution(DPR);
-    // Цель уровня — под счётом; в бесконечном режиме цели нет.
-    if (!this.endless) {
-      this.add
-        .text(18, HUD_ROW_Y + 22, this.goalLabel(), {
+    // Активное испытание с живым прогрессом — под счётом; когда всё пройдено, строки нет.
+    if (this.challenge) {
+      this.challengeText = this.add
+        .text(18, HUD_ROW_Y + 22, this.challengeLabel(), {
           fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
         })
         .setOrigin(0, 0.5)
@@ -203,6 +198,7 @@ export class Game extends Scene {
     if (this.core.score !== this.lastScore) {
       this.lastScore = this.core.score;
       this.scoreText.setText(t(this.locale, 'game.score', { n: this.lastScore }));
+      this.updateChallengeLine();
     }
 
     // Показываем серию, только когда множитель реально выше единицы — «×1» ни о чём.
@@ -466,7 +462,7 @@ export class Game extends Scene {
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
-      locale: this.locale, level: this.level, endless: this.endless, score, hits, maxCombo, durationMs,
+      locale: this.locale, score, hits, maxCombo, durationMs,
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
@@ -575,9 +571,29 @@ export class Game extends Scene {
     this.comboText.setText('');
   }
 
-  /** «Цель: 1200» — сколько очков нужно набрать на этом уровне. */
-  private goalLabel(): string {
-    return t(this.locale, 'game.goal', { n: this.target });
+  /** «Серия из 10 подряд · 6/10» — активное испытание с прогрессом. */
+  private challengeLabel(): string {
+    const ch = this.challenge;
+    if (!ch) return '';
+    return t(this.locale, 'game.challenge', {
+      text: t(this.locale, `challenge.${ch.id}`),
+      v: Math.min(ch.target, this.metricValue(ch.metric)),
+      n: ch.target,
+    });
+  }
+
+  /** Текущее значение метрики раунда — для живого прогресса испытания. */
+  private metricValue(metric: string): number {
+    switch (metric) {
+      case 'score': return this.core.score;
+      case 'hits': return this.core.hits;
+      case 'maxCombo': return this.core.maxCombo;
+      default: return 0;
+    }
+  }
+
+  private updateChallengeLine() {
+    this.challengeText?.setText(this.challengeLabel());
   }
 }
 

@@ -2,11 +2,13 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import {
-  makeButton, applyTheme, darken, setupCamera, makeTopBar, makeLevelGrid, makeLadderSummary,
-  type LevelTileState,
+  makeButton, applyTheme, darken, setupCamera, makeTopBar,
+  makeRecordBadge, makeMilestoneBar, makeChallengeList, type ChallengeRowState,
 } from '../ui';
-import { LADDER, LADDER_SIZE, levelAt } from '../../core/levels';
-import { isUnlocked, loadProgress, nextLevel, totalStars } from '@gamewingo/game-progress';
+import { CHALLENGES, CHALLENGES_TOTAL, MILESTONES } from '../../core/challenges';
+import {
+  challengeStates, milestoneStates, nextMilestone, loadBests,
+} from '@gamewingo/game-progress';
 import { COLORS, FONT, tileColor, tileTextColor } from '../palette';
 import { DPR } from '../dpr';
 import { loadSave, clearSave } from '../../core/persistence';
@@ -37,43 +39,47 @@ export class MainMenu extends Scene {
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
     this.buildLogo(t(this.locale, 'app.title'));
 
-    const progress = loadProgress(SLUG);
-    const next = nextLevel(progress, LADDER_SIZE);
+    // Личный рекорд — главная цифра партийной игры.
+    const bests = loadBests(SLUG);
+    makeRecordBadge(this, CX, 196, {
+      value: String(Math.round(bests.score ?? 0)),
+      label: t(this.locale, 'menu.record'),
+    });
 
-    makeLadderSummary(
-      this,
-      CX,
-      196,
-      t(this.locale, 'menu.ladder', { n: next, total: LADDER_SIZE }),
-      totalStars(progress),
-      LADDER_SIZE * 3,
-    );
+    // Полоса до следующей вехи-номинала.
+    const miles = milestoneStates(SLUG, MILESTONES);
+    const next = nextMilestone(miles);
+    makeMilestoneBar(this, CX, 252, {
+      label: next
+        ? t(this.locale, 'menu.nextMilestone', { n: next.target, r: next.reward })
+        : t(this.locale, 'menu.milestonesDone'),
+      value: next ? Math.round(bests.maxTile ?? 0) : 1,
+      target: next ? next.target : 1,
+    });
 
-    // Лестница целей: уровень пройден, когда собрана заданная плитка.
-    const tiles: LevelTileState[] = LADDER.map((lv) => ({
-      n: lv.n,
-      unlocked: isUnlocked(progress, lv.n),
-      stars: progress.stars[lv.n - 1] ?? 0,
-      current: lv.n === next,
+    // Испытания: выполненные, активное и пара следующих.
+    const states = challengeStates(SLUG, CHALLENGES);
+    const doneCount = states.filter((s) => s.done).length;
+    const rows: ChallengeRowState[] = states.map((s) => ({
+      n: s.n,
+      text: t(this.locale, `challenge.${s.id}`),
+      done: s.done,
+      active: s.active,
     }));
-    const grid = makeLevelGrid(this, CX, 238, tiles, (n) => this.startLevel(n));
+    const list = makeChallengeList(this, CX, 282, {
+      header: t(this.locale, 'menu.challenges', { k: doneCount, n: CHALLENGES_TOTAL }),
+      rows,
+    });
 
-    this.add
-      .text(CX, 238 + grid.height + 14, t(this.locale, 'menu.goalTile', { tile: levelAt(next).params.targetTile }), {
-        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-
-    // Незаконченная партия — отдельной кнопкой над лестницей.
-    let y = 238 + grid.height + 44;
+    // Незаконченная партия — «Продолжить» первым, новая партия — под ним.
+    let y = 282 + list.height + 34;
     const saved = loadSave();
     if (saved) {
       makeButton(this, CX, y, `${t(this.locale, 'menu.continue')} · ${saved.score}`,
         () => this.startGame(true), { primary: true });
       y += 52;
     }
-    makeButton(this, CX, y, t(this.locale, 'menu.play', { n: next }), () => this.startLevel(next), {
+    makeButton(this, CX, y, t(this.locale, 'menu.play'), () => this.startGame(false), {
       primary: !saved,
     });
     y += 52;
@@ -82,18 +88,7 @@ export class MainMenu extends Scene {
     // Выбор языка — две пилюли под кнопками.
     this.langPill(CX - 92, y + 56, 'ru', 'Русский');
     this.langPill(CX + 92, y + 56, 'uz', 'Oʻzbekcha');
-
   }
-
-  private startLevel(n: number) {
-    this.registry.set('level', n);
-    this.registry.set('locale', this.locale);
-    clearSave();
-    this.registry.set('resume', false);
-    this.scene.start('Game');
-  }
-
-  /** Ссылка «‹ К играм» слева вверху — выход в каталог игр WinGo. */
 
   /** Выход в каталог: событие мосту (реальный WebView вернётся к списку), а в вебе — переход на хаб. */
   private exitToCatalog() {
@@ -108,19 +103,19 @@ export class MainMenu extends Scene {
   /** Заголовок-логотип: цифры названия как мини-плитки нарастающих номиналов. */
   private buildLogo(title: string) {
     const chars = title.split('');
-    const size = 64, gap = 8;
+    const size = 56, gap = 8;
     const total = chars.length * size + (chars.length - 1) * gap;
     const startX = CX - total / 2 + size / 2;
     const values = [2, 16, 256, 2048];
     chars.forEach((ch, i) => {
       const v = values[Math.min(i, values.length - 1)];
       const x = startX + i * (size + gap);
-      const cont = this.add.container(x, 128).setScale(0);
+      const cont = this.add.container(x, 118).setScale(0);
       const g = this.add.graphics();
-      g.fillStyle(darken(tileColor(v), 0.18), 1).fillRoundedRect(-size / 2, -size / 2 + 3, size, size, 14);
-      g.fillStyle(tileColor(v), 1).fillRoundedRect(-size / 2, -size / 2, size, size, 14);
+      g.fillStyle(darken(tileColor(v), 0.18), 1).fillRoundedRect(-size / 2, -size / 2 + 3, size, size, 12);
+      g.fillStyle(tileColor(v), 1).fillRoundedRect(-size / 2, -size / 2, size, size, 12);
       const txt = this.add
-        .text(0, 0, ch, { fontFamily: FONT, fontSize: 30, color: tileTextColor(v), fontStyle: 'bold' })
+        .text(0, 0, ch, { fontFamily: FONT, fontSize: 26, color: tileTextColor(v), fontStyle: 'bold' })
         .setOrigin(0.5)
         .setResolution(DPR);
       cont.add([g, txt]);

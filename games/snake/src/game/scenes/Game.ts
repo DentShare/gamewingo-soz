@@ -3,7 +3,8 @@ import type { Locale } from '../../core/locale';
 import { COLORS, FONT } from '../palette';
 import { applyTheme, darken, setupCamera, makeBackButton } from '../ui';
 import { t } from '../../i18n';
-import { levelAt } from '../../core/levels';
+import { CHALLENGES } from '../../core/challenges';
+import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
 import {
   createSnakeGame, COLS, ROWS, type Dir, type Point, type SnakeGame,
 } from '../../core/snake';
@@ -47,12 +48,14 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
-  private level = 1;
-  private endless = false;
-  private startPhase = 0;
-  private target = 0;
   private session!: Session;
   private core!: SnakeGame;
+  /** Активное испытание — его прогресс висит под счётом. */
+  private challenge: ChallengeDef | null = null;
+  private challengeText?: Phaser.GameObjects.Text;
+  /** Времена съеденной еды (мс от старта) — для метрики «жор за 12 секунд». */
+  private eatTimes: number[] = [];
+  private feast12 = 0;
 
   private snakeLayer!: Phaser.GameObjects.Container;
   /** Пул сегментов тела: объекты переиспользуются, на каждом тике только позиции. */
@@ -95,17 +98,14 @@ export class Game extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
-    this.level = (this.registry.get('level') as number) ?? 1;
-    this.endless = !!this.registry.get('endless');
-    const params = levelAt(this.level).params;
-    this.startPhase = params.startPhase;
-    this.target = params.target;
     this.session = this.registry.get('session') as Session;
+    // Активное испытание: его условие показывается под счётом и живёт весь забег.
+    this.challenge = challengeStates('snake', CHALLENGES).find((c) => c.active) ?? null;
+    this.eatTimes = [];
+    this.feast12 = 0;
 
     this.ensureTextures();
-    this.core = createSnakeGame(COLS, ROWS, mulberry32(Math.floor(Math.random() * 2 ** 31)), {
-      startPhase: this.startPhase,
-    });
+    this.core = createSnakeGame(COLS, ROWS, mulberry32(Math.floor(Math.random() * 2 ** 31)));
     this.prevBody = this.core.body.map((p) => ({ ...p }));
 
     this.buildHud();
@@ -135,6 +135,8 @@ export class Game extends Scene {
       this.renderSnake(1);
       return;
     }
+    // Испытания на выживание тикают от времени — обновляем строку раз в кадр недорого.
+    if (this.challenge?.metric === 'survivedSec') this.updateChallengeLine();
     this.acc += delta;
     let tick = this.core.speedMs();
     // Догоняем пропущенные тики (например, после лага), но не больше пары за кадр.
@@ -171,6 +173,13 @@ export class Game extends Scene {
     this.tweens.add({ targets: this.scoreText, scale: 1.18, duration: 110, yoyo: true, ease: 'Quad.easeOut' });
     this.lengthText.setText(t(this.locale, 'game.length', { n: this.core.length }));
 
+    // «Жор»: сколько еды съедено в скользящее окно 12 секунд.
+    const now = this.timer?.elapsedMs() ?? 0;
+    this.eatTimes.push(now);
+    while (this.eatTimes.length && this.eatTimes[0] < now - 12_000) this.eatTimes.shift();
+    this.feast12 = Math.max(this.feast12, this.eatTimes.length);
+    this.updateChallengeLine();
+
     this.placeFood();
     this.foodC.setScale(0.4);
     this.tweens.add({ targets: this.foodC, scale: 1, duration: 220, ease: 'Back.easeOut' });
@@ -201,7 +210,8 @@ export class Game extends Scene {
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
-      locale: this.locale, level: this.level, endless: this.endless, score, eaten, length, durationMs,
+      locale: this.locale, score, eaten, lengthMax: length,
+      survivedSec: Math.floor(durationMs / 1000), feast12: this.feast12, durationMs,
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
@@ -346,10 +356,10 @@ export class Game extends Scene {
       })
       .setOrigin(0.5)
       .setResolution(DPR);
-    // Цель уровня — под счётом; в бесконечном режиме цели нет.
-    if (!this.endless) {
-      this.add
-        .text(W / 2, 146, this.goalLabel(), {
+    // Активное испытание с живым прогрессом — под счётом; когда всё пройдено, строки нет.
+    if (this.challenge) {
+      this.challengeText = this.add
+        .text(W / 2, 146, this.challengeLabel(), {
           fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
         })
         .setOrigin(0.5)
@@ -373,9 +383,30 @@ export class Game extends Scene {
     makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
   }
 
-  /** «Цель: 1200» — сколько очков нужно набрать на этом уровне. */
-  private goalLabel(): string {
-    return t(this.locale, 'game.goal', { n: this.target });
+  /** «Съешь 12 яблок за забег · 7/12» — активное испытание с прогрессом. */
+  private challengeLabel(): string {
+    const ch = this.challenge;
+    if (!ch) return '';
+    return t(this.locale, 'game.challenge', {
+      text: t(this.locale, `challenge.${ch.id}`),
+      v: Math.min(ch.target, this.metricValue(ch.metric)),
+      n: ch.target,
+    });
+  }
+
+  /** Текущее значение метрики забега — для живого прогресса испытания. */
+  private metricValue(metric: string): number {
+    switch (metric) {
+      case 'eaten': return this.core.eaten;
+      case 'lengthMax': return this.core.length;
+      case 'survivedSec': return Math.floor((this.timer?.elapsedMs() ?? 0) / 1000);
+      case 'feast12': return this.feast12;
+      default: return 0;
+    }
+  }
+
+  private updateChallengeLine() {
+    this.challengeText?.setText(this.challengeLabel());
   }
 
   private goBack() {

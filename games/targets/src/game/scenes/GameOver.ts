@@ -1,24 +1,24 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip } from '../ui';
+import {
+  makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip,
+} from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
-import { levelAt, LADDER_SIZE } from '../../core/levels';
+import { CHALLENGES, MILESTONES } from '../../core/challenges';
 import {
-  recordLevelResult, recordEndlessResult, starsFor, loadProgress, isUnlocked,
-  dailyMissions, grantRoundBonuses, type RecordResult,
+  recordArcadeRound, milestoneStates, grantArcadeBonuses, dailyMissions,
 } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 import confetti from 'canvas-confetti';
 
 interface LastGame {
   locale: Locale;
-  level: number;
   score: number;
+  hits: number;
+  maxCombo: number;
   durationMs: number;
-  /** Забег без цели — в лестницу не пишется. */
-  endless: boolean;
 }
 
 const CX = 200;
@@ -37,36 +37,38 @@ export class GameOver extends Scene {
     const last = this.registry.get('lastGame') as LastGame;
     const loc = last.locale;
 
-    const level = levelAt(last.level);
-    const target = level.params.target;
-    const cleared = !last.endless && last.score >= target;
-
+    // Запись забега: испытания каскадом, рекорды, счётчики дня.
+    // Задания дня снимаем ДО записи — иначе не увидеть, что закрылось сейчас.
     const missionsBefore = dailyMissions();
-    let starCount = 0;
-    let record: RecordResult | null = null;
-    if (cleared) {
-      const stars = starsFor(level.goals, last.score);
-      starCount = stars;
-      record = recordLevelResult({ slug: SLUG, n: last.level, stars, score: last.score });
-      confetti({ disableForReducedMotion: true, particleCount: 90, spread: 70, origin: { y: 0.4 } });
-    } else {
-      // Недобранная цель и бесконечный забег в лестницу не идут, но день считают.
-      recordEndlessResult(SLUG, last.score);
-    }
-    // Бонусы за партию: первый проход уровня + закрывшиеся задания дня.
-    const bonus = grantRoundBonuses({ slug: SLUG, n: last.level, record, missionsBefore });
+    const round = recordArcadeRound({
+      slug: SLUG,
+      defs: CHALLENGES,
+      metrics: { score: last.score, hits: last.hits, maxCombo: last.maxCombo },
+      score: last.score,
+    });
+
+    // Бонусы: испытания по тарифу уровня, свежие вехи, задания дня.
+    const bonus = grantArcadeBonuses({
+      slug: SLUG,
+      closed: round.closed,
+      milestones: milestoneStates(SLUG, MILESTONES),
+      missionsBefore,
+    });
     const bonusChip = makeBonusChip(this, 386, 30);
     if (bonus.total > 0) {
       // Чип создан после начисления — откатываем показ на баланс «до»,
       // чтобы прилёт «+N» докрутил его до нового, а не удвоил прибавку.
       bonusChip.setValue(bonus.balance - bonus.total);
-      this.time.delayedCall(900, () => bonusChip.award(bonus.total, CX, 196));
+      this.time.delayedCall(900, () => bonusChip.award(bonus.total, CX, 210));
     }
 
+    const isRecord = round.records.improved.includes('score');
+    if (round.closed.length || isRecord) {
+      confetti({ disableForReducedMotion: true, particleCount: 90, spread: 70, origin: { y: 0.4 } });
+    }
 
-    const titleKey = last.endless ? 'result.endless' : cleared ? 'result.title' : 'result.failed';
     const title = this.add
-      .text(CX, 100, t(loc, titleKey), {
+      .text(CX, 96, t(loc, 'result.run'), {
         fontFamily: FONT, fontSize: 30, color: COLORS.headText, fontStyle: 'bold',
       })
       .setOrigin(0.5)
@@ -75,86 +77,64 @@ export class GameOver extends Scene {
       .setAlpha(0);
     this.tweens.add({ targets: title, scale: 1, alpha: 1, duration: 380, delay: 120, ease: 'Back.easeOut' });
 
-    if (!last.endless) {
-      this.add
-        .text(CX, 138, t(loc, 'result.level', { n: last.level, total: LADDER_SIZE }), {
-          fontFamily: FONT, fontSize: 15, color: COLORS.headMuted,
-        })
-        .setOrigin(0.5)
-        .setResolution(DPR);
-
-      const stars = makeStarRow(this, CX, 190, starCount, 22).setScale(0);
-      this.tweens.add({ targets: stars, scale: 1, duration: 380, delay: 300, ease: 'Back.easeOut' });
-    }
-
     this.appear(
       this.add
-        .text(CX, 246, t(loc, 'result.score', { score: last.score }), {
+        .text(CX, 148, t(loc, 'result.score', { score: last.score }), {
           fontFamily: FONT, fontSize: 26, color: COLORS.headText, fontStyle: 'bold',
         })
         .setOrigin(0.5)
         .setResolution(DPR),
-      460,
+      260,
+    );
+    this.appear(
+      this.add
+        .text(CX, 182, `${t(loc, 'result.hits', { hits: last.hits, combo: last.maxCombo })}${isRecord ? ` · ${t(loc, 'result.newBest')}` : ''}`, {
+          fontFamily: FONT, fontSize: 16, color: COLORS.headMuted,
+        })
+        .setOrigin(0.5)
+        .setResolution(DPR),
+      320,
     );
 
-    const hint = this.hintText(loc, last, cleared, target, record);
-    if (hint) {
+    // Закрытые этим забегом испытания — по строке с тремя звёздами.
+    let y = 236;
+    if (round.closed.length) {
       this.appear(
         this.add
-          .text(CX, 284, hint, { fontFamily: FONT, fontSize: 17, color: COLORS.headText, fontStyle: 'bold' })
+          .text(CX, y, t(loc, 'result.closed'), {
+            fontFamily: FONT, fontSize: 15, color: COLORS.headMuted, fontStyle: 'bold',
+          })
           .setOrigin(0.5)
           .setResolution(DPR),
-        520,
+        380,
       );
+      y += 30;
+      for (const [i, ch] of round.closed.slice(0, 3).entries()) {
+        const row = this.add.container(CX, y);
+        const text = this.add
+          .text(-24, 0, t(loc, `challenge.${ch.id}`), {
+            fontFamily: FONT, fontSize: 15, color: COLORS.headText,
+          })
+          .setOrigin(0.5, 0.5)
+          .setResolution(DPR);
+        row.add(text);
+        row.add(makeStarRow(this, text.width / 2 + 12, 0, 3, 7));
+        this.appear(row, 420 + i * 60);
+        y += 28;
+      }
     }
 
-    this.buildButtons(loc, last, cleared);
+    this.buildButtons(loc, Math.max(y + 24, 330));
     void session;
   }
 
-  /** Кнопки итога: следующий уровень (если открылся), повтор, меню. */
-  private buildButtons(loc: Locale, last: LastGame, cleared: boolean) {
-    const nextN = last.level + 1;
-    const hasNext = cleared && nextN <= LADDER_SIZE && isUnlocked(loadProgress(SLUG), nextN);
-    let y = 360;
-
-    if (hasNext) {
-      const next = makeButton(this, CX, y, t(loc, 'result.nextLevel', { n: nextN }), () => this.play(nextN, false), {
-        primary: true,
-      });
-      this.appear(next.root, 600);
-      y += 56;
-    }
-
-    const again = makeButton(this, CX, y, t(loc, 'result.playAgain'), () => this.play(last.level, last.endless), {
-      primary: !hasNext,
+  private buildButtons(loc: Locale, top: number) {
+    const again = makeButton(this, CX, top + 30, t(loc, 'result.playAgain'), () => this.scene.start('Game'), {
+      primary: true,
     });
-    this.appear(again.root, hasNext ? 660 : 600);
-    y += 56;
-
-    const menu = makeButton(this, CX, y, t(loc, 'result.menu'), () => this.scene.start('MainMenu'));
-    this.appear(menu.root, hasNext ? 720 : 670);
-  }
-
-  private play(n: number, endless: boolean) {
-    this.registry.set('level', n);
-    this.registry.set('endless', endless);
-    this.scene.start('Game');
-  }
-
-  /** Одна строка о том, что изменилось: открылся уровень, побит рекорд или сколько не хватило. */
-  private hintText(
-    loc: Locale,
-    last: LastGame,
-    cleared: boolean,
-    target: number,
-    record: RecordResult | null,
-  ): string {
-    if (last.endless) return '';
-    if (!cleared) return t(loc, 'result.goalMissed', { n: target });
-    if (record?.unlockedNext && last.level < LADDER_SIZE) return t(loc, 'result.unlocked', { n: last.level + 1 });
-    if (record?.isRecord) return t(loc, 'result.newBest');
-    return '';
+    this.appear(again.root, 600);
+    const menu = makeButton(this, CX, top + 86, t(loc, 'result.menu'), () => this.scene.start('MainMenu'));
+    this.appear(menu.root, 660);
   }
 
   /** Появление снизу вверх с fade. */
