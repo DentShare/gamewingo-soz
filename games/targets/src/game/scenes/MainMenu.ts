@@ -2,13 +2,14 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import {
-  makeButton, applyTheme, setupCamera, makeTopBar, makeGameIcon, makeLevelGrid, makeLadderSummary,
-  type LevelTileState,
+  makeButton, applyTheme, setupCamera, makeTopBar, makeGameIcon,
+  makeRecordBadge, makeMilestoneBar, makeChallengeList, type ChallengeRowState,
 } from '../ui';
-import { COLORS, FONT } from '../palette';
-import { DPR } from '../dpr';
-import { LADDER, LADDER_SIZE, levelAt } from '../../core/levels';
-import { isUnlocked, loadProgress, nextLevel, totalStars, isLadderComplete } from '@gamewingo/game-progress';
+import { COLORS } from '../palette';
+import { CHALLENGES, CHALLENGES_TOTAL, MILESTONES } from '../../core/challenges';
+import {
+  challengeStates, milestoneStates, nextMilestone, loadBests,
+} from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 
 const CX = 200;
@@ -35,53 +36,49 @@ export class MainMenu extends Scene {
 
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
 
-    makeGameIcon(this, CX, 92, 64);
+    makeGameIcon(this, CX, 84, 56);
 
-    const progress = loadProgress(SLUG);
-    const next = nextLevel(progress, LADDER_SIZE);
-
-    makeLadderSummary(
-      this,
-      CX,
-      142,
-      t(this.locale, 'menu.ladder', { n: next, total: LADDER_SIZE }),
-      totalStars(progress),
-      LADDER_SIZE * 3,
-    );
-
-    // Лестница целей: пройденные со звёздами, следующая выделена, дальше — замки.
-    const tiles: LevelTileState[] = LADDER.map((lv) => ({
-      n: lv.n,
-      unlocked: isUnlocked(progress, lv.n),
-      stars: progress.stars[lv.n - 1] ?? 0,
-      current: lv.n === next,
-    }));
-    const grid = makeLevelGrid(this, CX, 186, tiles, (n) => this.startLevel(n));
-
-    // Что именно нужно сделать на следующем уровне.
-    this.add
-      .text(CX, 186 + grid.height + 14, t(this.locale, 'menu.goal', { n: levelAt(next).params.target }), {
-        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-
-    const belowGrid = 186 + grid.height + 44;
-    makeButton(this, CX, belowGrid, t(this.locale, 'menu.play', { n: next }), () => this.startLevel(next), {
-      primary: true,
+    // Личный рекорд — главная цифра игры без уровней.
+    const bests = loadBests(SLUG);
+    makeRecordBadge(this, CX, 138, {
+      value: String(Math.round(bests.score ?? 0)),
+      label: t(this.locale, 'menu.record'),
     });
 
-    // Бесконечный режим открывается, когда вся лестница пройдена.
-    let y = belowGrid + 52;
-    if (isLadderComplete(progress, LADDER_SIZE)) {
-      makeButton(this, CX, y, t(this.locale, 'menu.endless'), () => this.startEndless());
-      y += 52;
-    }
-    makeButton(this, CX, y, t(this.locale, 'menu.howto'), () => this.showHowto());
+    // Полоса до следующей вехи длины.
+    const miles = milestoneStates(SLUG, MILESTONES);
+    const next = nextMilestone(miles);
+    makeMilestoneBar(this, CX, 196, {
+      label: next
+        ? t(this.locale, 'menu.nextMilestone', { n: next.target, r: next.reward })
+        : t(this.locale, 'menu.milestonesDone'),
+      value: next ? Math.round(bests.score ?? 0) : 1,
+      target: next ? next.target : 1,
+    });
+
+    // Испытания: выполненные, активное и пара следующих.
+    const states = challengeStates(SLUG, CHALLENGES);
+    const doneCount = states.filter((s) => s.done).length;
+    const rows: ChallengeRowState[] = states.map((s) => ({
+      n: s.n,
+      text: t(this.locale, `challenge.${s.id}`),
+      done: s.done,
+      active: s.active,
+    }));
+    const list = makeChallengeList(this, CX, 226, {
+      header: t(this.locale, 'menu.challenges', { k: doneCount, n: CHALLENGES_TOTAL }),
+      rows,
+    });
+
+    const belowList = 226 + list.height + 34;
+    makeButton(this, CX, belowList, t(this.locale, 'menu.play'), () => this.startRun(), {
+      primary: true,
+    });
+    makeButton(this, CX, belowList + 52, t(this.locale, 'menu.howto'), () => this.showHowto());
 
     // Выбор языка — две пилюли под кнопками.
-    this.langPill(CX - 92, y + 56, 'ru', 'Русский');
-    this.langPill(CX + 92, y + 56, 'uz', 'Oʻzbekcha');
+    this.langPill(CX - 92, belowList + 108, 'ru', 'Русский');
+    this.langPill(CX + 92, belowList + 108, 'uz', 'Oʻzbekcha');
   }
 
   /** Пилюля выбора языка. Выбранная подсвечена; по тапу переключает и перерисовывает меню. */
@@ -93,17 +90,7 @@ export class MainMenu extends Scene {
     }, { width: 176, height: 40, primary: this.locale === loc });
   }
 
-  private startLevel(n: number) {
-    this.registry.set('level', n);
-    this.registry.set('endless', false);
-    this.registry.set('locale', this.locale);
-    this.scene.start('Game');
-  }
-
-  /** Забег без цели: играется на максимальной сложности, в лестницу не пишется. */
-  private startEndless() {
-    this.registry.set('level', LADDER_SIZE);
-    this.registry.set('endless', true);
+  private startRun() {
     this.registry.set('locale', this.locale);
     this.scene.start('Game');
   }
@@ -122,7 +109,6 @@ export class MainMenu extends Scene {
   private showHowto() {
     this.registry.set('howto', true);
     this.registry.set('locale', this.locale);
-    this.registry.set('level', 1);
     this.scene.start('Game');
   }
 }

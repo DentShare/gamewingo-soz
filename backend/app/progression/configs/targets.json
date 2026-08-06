@@ -74,186 +74,146 @@
     "maxSessionMs": 900000,
     "maxEventsPerMinute": 500
   },
-  "levels": [
+  "challenges": [
     {
       "n": 1,
-      "params": {
-        "target": 600,
-        "startPhase": 0
-      },
-      "goals": {
-        "gold": 1200,
-        "silver": 900,
-        "higherIsBetter": true
-      }
+      "id": "hits10",
+      "metric": "hits",
+      "target": 10
     },
     {
       "n": 2,
-      "params": {
-        "target": 643,
-        "startPhase": 2
-      },
-      "goals": {
-        "gold": 1286,
-        "silver": 965,
-        "higherIsBetter": true
-      }
+      "id": "score1200",
+      "metric": "score",
+      "target": 1200
     },
     {
       "n": 3,
-      "params": {
-        "target": 771,
-        "startPhase": 4
-      },
-      "goals": {
-        "gold": 1542,
-        "silver": 1157,
-        "higherIsBetter": true
-      }
+      "id": "combo5",
+      "metric": "maxCombo",
+      "target": 5
     },
     {
       "n": 4,
-      "params": {
-        "target": 986,
-        "startPhase": 6
-      },
-      "goals": {
-        "gold": 1972,
-        "silver": 1479,
-        "higherIsBetter": true
-      }
+      "id": "hits20",
+      "metric": "hits",
+      "target": 20
     },
     {
       "n": 5,
-      "params": {
-        "target": 1286,
-        "startPhase": 9
-      },
-      "goals": {
-        "gold": 2572,
-        "silver": 1929,
-        "higherIsBetter": true
-      }
+      "id": "score2500",
+      "metric": "score",
+      "target": 2500
     },
     {
       "n": 6,
-      "params": {
-        "target": 1671,
-        "startPhase": 11
-      },
-      "goals": {
-        "gold": 3342,
-        "silver": 2507,
-        "higherIsBetter": true
-      }
+      "id": "combo10",
+      "metric": "maxCombo",
+      "target": 10
     },
     {
       "n": 7,
-      "params": {
-        "target": 2143,
-        "startPhase": 13
-      },
-      "goals": {
-        "gold": 4286,
-        "silver": 3215,
-        "higherIsBetter": true
-      }
+      "id": "hits30",
+      "metric": "hits",
+      "target": 30
     },
     {
       "n": 8,
-      "params": {
-        "target": 2700,
-        "startPhase": 15
-      },
-      "goals": {
-        "gold": 5400,
-        "silver": 4050,
-        "higherIsBetter": true
-      }
+      "id": "score4000",
+      "metric": "score",
+      "target": 4000
     },
     {
       "n": 9,
-      "params": {
-        "target": 3343,
-        "startPhase": 17
-      },
-      "goals": {
-        "gold": 6686,
-        "silver": 5015,
-        "higherIsBetter": true
-      }
+      "id": "combo15",
+      "metric": "maxCombo",
+      "target": 15
     },
     {
       "n": 10,
-      "params": {
-        "target": 4071,
-        "startPhase": 19
-      },
-      "goals": {
-        "gold": 8142,
-        "silver": 6107,
-        "higherIsBetter": true
-      }
+      "id": "hits42",
+      "metric": "hits",
+      "target": 42
     },
     {
       "n": 11,
-      "params": {
-        "target": 4886,
-        "startPhase": 21
-      },
-      "goals": {
-        "gold": 9772,
-        "silver": 7329,
-        "higherIsBetter": true
-      }
+      "id": "score5500",
+      "metric": "score",
+      "target": 5500
     },
     {
       "n": 12,
-      "params": {
-        "target": 5786,
-        "startPhase": 24
-      },
-      "goals": {
-        "gold": 11572,
-        "silver": 8679,
-        "higherIsBetter": true
-      }
+      "id": "combo20",
+      "metric": "maxCombo",
+      "target": 20
     },
     {
       "n": 13,
-      "params": {
-        "target": 6771,
-        "startPhase": 26
-      },
-      "goals": {
-        "gold": 13542,
-        "silver": 10157,
-        "higherIsBetter": true
-      }
+      "id": "hits55",
+      "metric": "hits",
+      "target": 55
     },
     {
       "n": 14,
-      "params": {
-        "target": 7843,
-        "startPhase": 28
-      },
-      "goals": {
-        "gold": 15686,
-        "silver": 11765,
-        "higherIsBetter": true
-      }
+      "id": "score7000",
+      "metric": "score",
+      "target": 7000
     },
     {
       "n": 15,
-      "params": {
-        "target": 9000,
-        "startPhase": 30
-      },
-      "goals": {
-        "gold": 18000,
-        "silver": 13500,
-        "higherIsBetter": true
-      }
+      "id": "score9000",
+      "metric": "score",
+      "target": 9000
+    }
+  ],
+  "milestones": [
+    {
+      "id": "score1000",
+      "metric": "score",
+      "target": 1000,
+      "reward": 10
+    },
+    {
+      "id": "score2000",
+      "metric": "score",
+      "target": 2000,
+      "reward": 12
+    },
+    {
+      "id": "score3000",
+      "metric": "score",
+      "target": 3000,
+      "reward": 15
+    },
+    {
+      "id": "score4200",
+      "metric": "score",
+      "target": 4200,
+      "reward": 18
+    },
+    {
+      "id": "score5500",
+      "metric": "score",
+      "target": 5500,
+      "reward": 21
+    },
+    {
+      "id": "score7000",
+      "metric": "score",
+      "target": 7000,
+      "reward": 24
+    },
+    {
+      "id": "score8000",
+      "metric": "score",
+      "target": 8000,
+      "reward": 27
+    },
+    {
+      "id": "score9000",
+      "metric": "score",
+      "target": 9000,
+      "reward": 30
     }
   ]
 }

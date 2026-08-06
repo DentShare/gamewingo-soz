@@ -62,9 +62,18 @@ def test_simulator_forecasts_days():
     assert res["total"] == sum(res["dailyXp"]) > 0
 
 
+ARCADES = {"snake", "flyer", "stack", "targets", "2048"}
+
+
 def test_all_exported_configs_pass_admin_schema():
-    """Каждый JSON из progression:export обязан проходить валидацию админки."""
+    """Каждый JSON из progression:export обязан проходить валидацию админки.
+
+    У головоломок — 15 уровней; у игр без раскладов — 15 испытаний и вехи."""
     from app.admin.schemas import ProgressionConfig
     for game in config_loader.list_games():
         cfg = ProgressionConfig.model_validate(config_loader.get_config(game))
-        assert cfg.levels is not None and len(cfg.levels) == 15, game
+        if game in ARCADES:
+            assert cfg.challenges is not None and len(cfg.challenges) == 15, game
+            assert cfg.milestones, game
+        else:
+            assert cfg.levels is not None and len(cfg.levels) == 15, game

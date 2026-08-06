@@ -1,6 +1,5 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
-import { levelAt, type Grid2048Params } from '../../core/levels';
 import { createGrid2048, applyMove, SIZE, type Grid2048, type Dir } from '../../core/grid';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT, tileColor, tileTextColor, tileFontSize } from '../palette';
@@ -8,6 +7,8 @@ import { applyTheme, darken, toast, setupCamera, makeBackButton } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
+import { CHALLENGES } from '../../core/challenges';
+import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import {
@@ -37,9 +38,14 @@ const TUTORIAL_CELLS: number[][] = [
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
-  private level = 1;
-  private params: Grid2048Params = levelAt(1).params;
   private session!: Session;
+  /** Активное испытание — его прогресс висит в шапке поля. */
+  private challenge: ChallengeDef | null = null;
+  private challengeText?: Phaser.GameObjects.Text;
+  /** Номиналы, уже отпразднованные тостом в этой партии. */
+  private cheered = new Set<number>();
+  /** Ход, на котором впервые собран номинал (для испытаний на скорость). */
+  private tileMoves = new Map<number, number>();
   private core!: Grid2048;
   private tileLayer!: Phaser.GameObjects.Container;
   private scoreText!: Phaser.GameObjects.Text;
@@ -47,7 +53,6 @@ export class Game extends Scene {
   private best = 0;
   private timer!: RoundTimer;
   private finished = false;
-  private wonShown = false;
   /** Идёт обучение: игровой ввод (свайпы и стрелки) заблокирован. */
   private tutorialActive = false;
   private swipeFrom: { x: number; y: number } | null = null;
@@ -59,7 +64,6 @@ export class Game extends Scene {
   create() {
     // Сцена переиспользуется между рестартами — сбрасываем изменяемое состояние.
     this.finished = false;
-    this.wonShown = false;
     this.tutorialActive = false;
     this.swipeFrom = null;
 
@@ -67,8 +71,10 @@ export class Game extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
-    this.level = (this.registry.get('level') as number) ?? 1;
-    this.params = levelAt(this.level).params;
+    // Активное испытание: его условие показывается в шапке и живёт всю партию.
+    this.challenge = challengeStates('2048', CHALLENGES).find((c) => c.active) ?? null;
+    this.cheered = new Set();
+    this.tileMoves = new Map();
     this.session = this.registry.get('session') as Session;
 
     // «Как играть» из меню: обучение поверх настоящего поля, без сессии и таймера.
@@ -85,7 +91,7 @@ export class Game extends Scene {
       this.core = createGrid2048(this.freshRng(), saved);
     } else {
       clearSave(); // старая партия больше не нужна
-      this.core = createGrid2048(this.freshRng(), undefined, { startClutter: this.params.startClutter });
+      this.core = createGrid2048(this.freshRng());
     }
     this.best = loadBest();
 
@@ -228,6 +234,15 @@ export class Game extends Scene {
       })
       .setOrigin(1, 0.5)
       .setResolution(DPR);
+    // Активное испытание с живым прогрессом — слева, напротив счёта.
+    if (this.challenge) {
+      this.challengeText = this.add
+        .text(112, 46, this.challengeLabel(), {
+          fontFamily: FONT, fontSize: 12, color: COLORS.headMuted,
+        })
+        .setOrigin(0, 0.5)
+        .setResolution(DPR);
+    }
   }
 
   /** Обновляет счёт и, при необходимости, рекорд в шапке по состоянию ядра. */
@@ -371,15 +386,14 @@ export class Game extends Scene {
     this.redraw({ spawn: this.findSpawn(expected.cells), merged: expected.merges.map((m) => [m.row, m.col]) });
     this.refreshScore();
 
-    // Уровень пройден, как только собрана плитка-цель: партия не тянется без нужды.
-    if (!this.wonShown && this.core.maxTile() >= this.params.targetTile) {
-      this.wonShown = true;
-      toast(this, W / 2, 580, t(this.locale, 'game.reached', { tile: this.params.targetTile }));
-      this.finished = true;
-      clearSave();
-      this.time.delayedCall(900, () => this.endGame());
-      return;
+    // Партию больше ничего не обрывает: новый крупный номинал — только праздник.
+    const mt = this.core.maxTile();
+    if (mt >= 128 && !this.cheered.has(mt)) {
+      this.cheered.add(mt);
+      toast(this, W / 2, 580, t(this.locale, 'game.reached', { tile: mt }));
     }
+    if (!this.tileMoves.has(mt)) this.tileMoves.set(mt, this.core.moves);
+    this.updateChallengeLine();
 
     if (this.core.isOver()) {
       this.finished = true;
@@ -410,11 +424,40 @@ export class Game extends Scene {
       .finish({ score, maxTile, moves, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
+    // Скоростные испытания: номинал собран не позднее заданного хода.
+    const fast = (tile: number, byMove: number): number => {
+      const at = this.tileMoves.get(tile);
+      return at !== undefined && at <= byMove ? 1 : 0;
+    };
     this.registry.set('lastGame', {
-      locale: this.locale, level: this.level, score, maxTile, moves, durationMs,
-      cleared: maxTile >= this.params.targetTile,
+      locale: this.locale, score, maxTile, moves, durationMs,
+      tile256in220: fast(256, 220), tile512in400: fast(512, 400), tile1024in800: fast(1024, 800),
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
+  }
+
+  /** «Собери плитку 256 · 128/256» — активное испытание с прогрессом. */
+  private challengeLabel(): string {
+    const ch = this.challenge;
+    if (!ch) return '';
+    return t(this.locale, 'game.challenge', {
+      text: t(this.locale, `challenge.${ch.id}`),
+      v: Math.min(ch.target, this.metricValue(ch.metric)),
+      n: ch.target,
+    });
+  }
+
+  /** Текущее значение метрики партии — для живого прогресса испытания. */
+  private metricValue(metric: string): number {
+    switch (metric) {
+      case 'score': return this.core.score;
+      case 'maxTile': return this.core.maxTile();
+      default: return 0; // скоростные испытания судятся по итогу партии
+    }
+  }
+
+  private updateChallengeLine() {
+    this.challengeText?.setText(this.challengeLabel());
   }
 }

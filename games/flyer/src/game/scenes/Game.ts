@@ -1,7 +1,8 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { levelAt } from '../../core/levels';
+import { CHALLENGES } from '../../core/challenges';
+import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
 import { COLORS, FONT } from '../palette';
 import { setupCamera, shakeCamera, makeBackButton } from '../ui';
 import { DPR, VIEW_TOP, VIEW_BOTTOM } from '../dpr';
@@ -34,12 +35,12 @@ function clamp(v: number, min: number, max: number): number {
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
-  private level = 1;
-  private endless = false;
-  private startPhase = 0;
-  private target = 0;
   private session?: Session;
   private core!: Flight;
+  /** Активное испытание — его прогресс висит под счётом. */
+  private challenge: ChallengeDef | null = null;
+  private challengeText?: Phaser.GameObjects.Text;
+  private challengeLine = '';
 
   private hero!: Phaser.GameObjects.Container;
   private walls: WallView[] = [];
@@ -70,15 +71,10 @@ export class Game extends Scene {
     this.leaving = false;
 
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
-    this.level = (this.registry.get('level') as number) ?? 1;
-    this.endless = !!this.registry.get('endless');
-    const params = levelAt(this.level).params;
-    this.startPhase = params.startPhase;
-    this.target = params.target;
+    // Активное испытание: его условие показывается под счётом и живёт весь полёт.
+    this.challenge = challengeStates('flyer', CHALLENGES).find((c) => c.active) ?? null;
     this.session = this.registry.get('session') as Session | undefined;
-    this.core = createFlight(mulberry32(Math.floor(Math.random() * 2 ** 31)), {
-      startPhase: this.startPhase,
-    });
+    this.core = createFlight(mulberry32(Math.floor(Math.random() * 2 ** 31)));
 
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
@@ -118,6 +114,7 @@ export class Game extends Scene {
     // До первого тапа герой мягко покачивается на месте — экран не выглядит замершим.
     if (!this.core.started) this.hero.y = this.core.y + Math.sin(time / 320) * 5;
     if (this.core.score !== before) this.bumpScore();
+    this.updateChallengeLine();
     if (res.over) this.die();
   }
 
@@ -329,10 +326,10 @@ export class Game extends Scene {
       .setOrigin(0.5)
       .setResolution(DPR)
       .setDepth(20);
-    // Цель уровня — под счётом; в бесконечном режиме цели нет.
-    if (!this.endless) {
-      this.add
-        .text(W / 2, 138, this.goalLabel(), {
+    // Активное испытание с живым прогрессом — под счётом; когда всё пройдено, строки нет.
+    if (this.challenge) {
+      this.challengeText = this.add
+        .text(W / 2, 138, this.challengeLabel(), {
           fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
         })
         .setOrigin(0.5)
@@ -430,16 +427,42 @@ export class Game extends Scene {
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
-      locale: this.locale, level: this.level, endless: this.endless, passed, durationMs, score,
+      locale: this.locale, passed, survivedSec: Math.floor(durationMs / 1000), durationMs, score,
     });
     this.leaving = true;
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }
 
-  /** «Цель: 1200» — сколько очков нужно набрать на этом уровне. */
-  private goalLabel(): string {
-    return t(this.locale, 'game.goal', { n: this.target });
+  /** «Пройди 10 проёмов · 4/10» — активное испытание с прогрессом. */
+  private challengeLabel(): string {
+    const ch = this.challenge;
+    if (!ch) return '';
+    return t(this.locale, 'game.challenge', {
+      text: t(this.locale, `challenge.${ch.id}`),
+      v: Math.min(ch.target, this.metricValue(ch.metric)),
+      n: ch.target,
+    });
   }
 
+  /** Текущее значение метрики полёта — для живого прогресса испытания. */
+  private metricValue(metric: string): number {
+    const durationMs = this.timer?.elapsedMs() ?? 0;
+    switch (metric) {
+      case 'passed': return this.core.score;
+      case 'survivedSec': return Math.floor(durationMs / 1000);
+      case 'score': return computeScore({ passed: this.core.score, durationMs });
+      default: return 0;
+    }
+  }
+
+  /** Обновляет строку испытания, только когда текст реально изменился. */
+  private updateChallengeLine() {
+    if (!this.challengeText) return;
+    const line = this.challengeLabel();
+    if (line !== this.challengeLine) {
+      this.challengeLine = line;
+      this.challengeText.setText(line);
+    }
+  }
 }

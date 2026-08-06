@@ -74,16 +74,21 @@ export function loadCounters(dayId: number = computeDayId()): DayCounters {
 
 export interface RoundOutcome {
   slug: string;
-  /** Уровень пройден (для аркад — забег доигран до конца). */
+  /** Уровень пройден (для аркад — забег закрыл хотя бы одно испытание). */
   cleared: boolean;
   stars: number;
   score: number;
+  /**
+   * Сколько уровней закрыла партия. По умолчанию один; аркадный забег может
+   * закрыть каскад испытаний — тогда здесь их число.
+   */
+  levelsCleared?: number;
 }
 
 /** Записывает итог партии в счётчики дня и возвращает обновлённые. */
 export function recordRound(outcome: RoundOutcome, dayId: number = computeDayId()): DayCounters {
   const c = loadCounters(dayId);
-  if (outcome.cleared) c.levels += 1;
+  if (outcome.cleared) c.levels += Math.max(1, outcome.levelsCleared ?? 1);
   c.stars += Math.max(0, outcome.stars);
   c.score += Math.max(0, outcome.score);
   if (!c.slugs.includes(outcome.slug)) c.slugs.push(outcome.slug);

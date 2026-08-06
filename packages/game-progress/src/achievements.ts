@@ -49,7 +49,7 @@ export function loadStats(): Stats {
  */
 export function recordStats(outcome: RoundOutcome, dayId: number = computeDayId()): Stats {
   const s = loadStats();
-  if (outcome.cleared) s.levels += 1;
+  if (outcome.cleared) s.levels += Math.max(1, outcome.levelsCleared ?? 1);
   s.stars += Math.max(0, outcome.stars);
   s.score += Math.max(0, outcome.score);
   if (!s.slugs.includes(outcome.slug)) s.slugs.push(outcome.slug);

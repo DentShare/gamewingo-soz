@@ -94,186 +94,128 @@
     "maxSessionMs": 900000,
     "maxEventsPerMinute": 400
   },
-  "levels": [
+  "challenges": [
     {
       "n": 1,
-      "params": {
-        "targetTile": 64,
-        "startClutter": 0
-      },
-      "goals": {
-        "gold": 900,
-        "silver": 600,
-        "higherIsBetter": true
-      }
+      "id": "tile64",
+      "metric": "maxTile",
+      "target": 64
     },
     {
       "n": 2,
-      "params": {
-        "targetTile": 128,
-        "startClutter": 0
-      },
-      "goals": {
-        "gold": 1800,
-        "silver": 1200,
-        "higherIsBetter": true
-      }
+      "id": "tile128",
+      "metric": "maxTile",
+      "target": 128
     },
     {
       "n": 3,
-      "params": {
-        "targetTile": 128,
-        "startClutter": 2
-      },
-      "goals": {
-        "gold": 2000,
-        "silver": 1400,
-        "higherIsBetter": true
-      }
+      "id": "score1800",
+      "metric": "score",
+      "target": 1800
     },
     {
       "n": 4,
-      "params": {
-        "targetTile": 256,
-        "startClutter": 0
-      },
-      "goals": {
-        "gold": 3600,
-        "silver": 2600,
-        "higherIsBetter": true
-      }
+      "id": "tile256",
+      "metric": "maxTile",
+      "target": 256
     },
     {
       "n": 5,
-      "params": {
-        "targetTile": 256,
-        "startClutter": 2
-      },
-      "goals": {
-        "gold": 4000,
-        "silver": 2900,
-        "higherIsBetter": true
-      }
+      "id": "score3600",
+      "metric": "score",
+      "target": 3600
     },
     {
       "n": 6,
-      "params": {
-        "targetTile": 256,
-        "startClutter": 4
-      },
-      "goals": {
-        "gold": 4400,
-        "silver": 3200,
-        "higherIsBetter": true
-      }
+      "id": "fast256",
+      "metric": "tile256in220",
+      "target": 1
     },
     {
       "n": 7,
-      "params": {
-        "targetTile": 512,
-        "startClutter": 0
-      },
-      "goals": {
-        "gold": 7200,
-        "silver": 5400,
-        "higherIsBetter": true
-      }
+      "id": "tile512",
+      "metric": "maxTile",
+      "target": 512
     },
     {
       "n": 8,
-      "params": {
-        "targetTile": 512,
-        "startClutter": 2
-      },
-      "goals": {
-        "gold": 7800,
-        "silver": 5800,
-        "higherIsBetter": true
-      }
+      "id": "score7500",
+      "metric": "score",
+      "target": 7500
     },
     {
       "n": 9,
-      "params": {
-        "targetTile": 512,
-        "startClutter": 4
-      },
-      "goals": {
-        "gold": 8400,
-        "silver": 6200,
-        "higherIsBetter": true
-      }
+      "id": "fast512",
+      "metric": "tile512in400",
+      "target": 1
     },
     {
       "n": 10,
-      "params": {
-        "targetTile": 1024,
-        "startClutter": 0
-      },
-      "goals": {
-        "gold": 15000,
-        "silver": 11000,
-        "higherIsBetter": true
-      }
+      "id": "tile1024",
+      "metric": "maxTile",
+      "target": 1024
     },
     {
       "n": 11,
-      "params": {
-        "targetTile": 1024,
-        "startClutter": 3
-      },
-      "goals": {
-        "gold": 16000,
-        "silver": 12000,
-        "higherIsBetter": true
-      }
+      "id": "score15000",
+      "metric": "score",
+      "target": 15000
     },
     {
       "n": 12,
-      "params": {
-        "targetTile": 1024,
-        "startClutter": 5
-      },
-      "goals": {
-        "gold": 17000,
-        "silver": 13000,
-        "higherIsBetter": true
-      }
+      "id": "fast1024",
+      "metric": "tile1024in800",
+      "target": 1
     },
     {
       "n": 13,
-      "params": {
-        "targetTile": 2048,
-        "startClutter": 0
-      },
-      "goals": {
-        "gold": 30000,
-        "silver": 22000,
-        "higherIsBetter": true
-      }
+      "id": "score22000",
+      "metric": "score",
+      "target": 22000
     },
     {
       "n": 14,
-      "params": {
-        "targetTile": 2048,
-        "startClutter": 3
-      },
-      "goals": {
-        "gold": 32000,
-        "silver": 24000,
-        "higherIsBetter": true
-      }
+      "id": "tile2048",
+      "metric": "maxTile",
+      "target": 2048
     },
     {
       "n": 15,
-      "params": {
-        "targetTile": 2048,
-        "startClutter": 6
-      },
-      "goals": {
-        "gold": 34000,
-        "silver": 26000,
-        "higherIsBetter": true
-      }
+      "id": "score30000",
+      "metric": "score",
+      "target": 30000
+    }
+  ],
+  "milestones": [
+    {
+      "id": "tile128",
+      "metric": "maxTile",
+      "target": 128,
+      "reward": 10
+    },
+    {
+      "id": "tile256",
+      "metric": "maxTile",
+      "target": 256,
+      "reward": 13
+    },
+    {
+      "id": "tile512",
+      "metric": "maxTile",
+      "target": 512,
+      "reward": 16
+    },
+    {
+      "id": "tile1024",
+      "metric": "maxTile",
+      "target": 1024,
+      "reward": 21
+    },
+    {
+      "id": "tile2048",
+      "metric": "maxTile",
+      "target": 2048,
+      "reward": 30
     }
   ]
 }

@@ -8,4 +8,5 @@ export * from './viewport.js';
 export * from './widgets.js';
 export * from './glyphs.js';
 export * from './levels.js';
+export * from './arcadeMeta.js';
 export * from './bonus.js';

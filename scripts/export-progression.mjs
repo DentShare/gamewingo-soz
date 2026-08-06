@@ -51,11 +51,29 @@ try {
   for (const [gameId, config] of Object.entries(GAME_CONFIGS)) {
     const coreDir = join(root, 'games', gameId, 'src/core');
 
-    const levelsModule = await importGameModule(workDir, join(coreDir, 'levels.ts'));
-    if (!levelsModule?.LADDER?.length) {
-      throw new Error(`У игры ${gameId} не нашлась лестница LADDER в src/core/levels.ts`);
+    // У головоломок прогрессия — лестница уровней (levels.ts), у игр без
+    // раскладов (аркады, 2048) — испытания и вехи (challenges.ts).
+    const challengesModule = await importGameModule(workDir, join(coreDir, 'challenges.ts'));
+    const levelsModule = challengesModule
+      ? null
+      : await importGameModule(workDir, join(coreDir, 'levels.ts'));
+
+    let shape;
+    let summary;
+    if (challengesModule?.CHALLENGES?.length) {
+      shape = {
+        challenges: challengesModule.CHALLENGES.map(({ n, id, metric, target }) => ({ n, id, metric, target })),
+        milestones: (challengesModule.MILESTONES ?? []).map(
+          ({ id, metric, target, reward }) => ({ id, metric, target, reward }),
+        ),
+      };
+      summary = `${shape.challenges.length} испытаний, ${shape.milestones.length} вех`;
+    } else if (levelsModule?.LADDER?.length) {
+      shape = { levels: levelsModule.LADDER.map(({ n, params, goals }) => ({ n, params, goals })) };
+      summary = `${shape.levels.length} уровней`;
+    } else {
+      throw new Error(`У игры ${gameId} нет ни challenges.ts, ни levels.ts с лестницей`);
     }
-    const levels = levelsModule.LADDER.map(({ n, params, goals }) => ({ n, params, goals }));
 
     const scoreModule = await importGameModule(workDir, join(coreDir, 'score.ts'));
     const scoreCap = scoreModule?.MAX_SCORE ?? scoreModule?.SCORE_CAP;
@@ -63,9 +81,9 @@ try {
       ? { ...config.antiFraud, maxScorePerSession: scoreCap }
       : config.antiFraud;
 
-    const full = { ...config, levels, antiFraud };
+    const full = { ...config, ...shape, antiFraud };
     await writeFile(join(outDir, `${gameId}.json`), `${JSON.stringify(full, null, 2)}\n`);
-    console.log(`✔ ${gameId}: ${levels.length} уровней, потолок очков ${antiFraud.maxScorePerSession}`);
+    console.log(`✔ ${gameId}: ${summary}, потолок очков ${antiFraud.maxScorePerSession}`);
     exported += 1;
   }
 

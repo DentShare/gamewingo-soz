@@ -131,12 +131,49 @@ export function grantRoundBonuses(input: {
     tryAward(`level-${input.slug}-${input.n}`, TARIFF.level(input.n));
   }
 
-  const after = dailyMissions(dayId);
-  after.forEach((m, i) => {
-    if (m.done && !input.missionsBefore[i]?.done) {
+  grantClosedMissions(tryAward, input.missionsBefore, dayId);
+  const total = granted.reduce((sum, g) => sum + g.amount, 0);
+  return { granted, total, balance: bonusBalance() };
+}
+
+/** Задания дня, закрывшиеся этой партией: сверка «до» и «после». */
+function grantClosedMissions(
+  tryAward: (key: string, amount: number) => void,
+  missionsBefore: Mission[],
+  dayId: number,
+): void {
+  dailyMissions(dayId).forEach((m, i) => {
+    if (m.done && !missionsBefore[i]?.done) {
       tryAward(`mission-${dayId}-${i}`, TARIFF.mission);
     }
   });
+}
+
+/**
+ * Бонусы аркадного забега: каждое закрытое испытание оплачивается по тарифу
+ * уровня (испытание n — это уровень n), достигнутые вехи — по своей цене,
+ * плюс задания дня. Ключи идемпотентны — повторов не бывает.
+ */
+export function grantArcadeBonuses(input: {
+  slug: string;
+  closed: ReadonlyArray<{ n: number }>;
+  milestones: ReadonlyArray<{ id: string; reward: number; achieved: boolean }>;
+  missionsBefore: Mission[];
+  dayId?: number;
+}): RoundBonuses {
+  const dayId = input.dayId ?? computeDayId();
+  const granted: GrantedBonus[] = [];
+  const tryAward = (key: string, amount: number) => {
+    if (awardOnce(key, amount)) granted.push({ key, amount });
+  };
+
+  for (const ch of input.closed) {
+    tryAward(`level-${input.slug}-${ch.n}`, TARIFF.level(ch.n));
+  }
+  for (const m of input.milestones) {
+    if (m.achieved) tryAward(`milestone-${input.slug}-${m.id}`, m.reward);
+  }
+  grantClosedMissions(tryAward, input.missionsBefore, dayId);
 
   const total = granted.reduce((sum, g) => sum + g.amount, 0);
   return { granted, total, balance: bonusBalance() };

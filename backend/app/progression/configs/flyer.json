@@ -67,186 +67,146 @@
     "maxSessionMs": 900000,
     "maxEventsPerMinute": 600
   },
-  "levels": [
+  "challenges": [
     {
       "n": 1,
-      "params": {
-        "target": 300,
-        "startPhase": 0
-      },
-      "goals": {
-        "gold": 600,
-        "silver": 450,
-        "higherIsBetter": true
-      }
+      "id": "pass3",
+      "metric": "passed",
+      "target": 3
     },
     {
       "n": 2,
-      "params": {
-        "target": 321,
-        "startPhase": 2
-      },
-      "goals": {
-        "gold": 642,
-        "silver": 482,
-        "higherIsBetter": true
-      }
+      "id": "pass6",
+      "metric": "passed",
+      "target": 6
     },
     {
       "n": 3,
-      "params": {
-        "target": 386,
-        "startPhase": 3
-      },
-      "goals": {
-        "gold": 772,
-        "silver": 579,
-        "higherIsBetter": true
-      }
+      "id": "survive30",
+      "metric": "survivedSec",
+      "target": 30
     },
     {
       "n": 4,
-      "params": {
-        "target": 493,
-        "startPhase": 5
-      },
-      "goals": {
-        "gold": 986,
-        "silver": 740,
-        "higherIsBetter": true
-      }
+      "id": "pass10",
+      "metric": "passed",
+      "target": 10
     },
     {
       "n": 5,
-      "params": {
-        "target": 643,
-        "startPhase": 7
-      },
-      "goals": {
-        "gold": 1286,
-        "silver": 965,
-        "higherIsBetter": true
-      }
+      "id": "survive45",
+      "metric": "survivedSec",
+      "target": 45
     },
     {
       "n": 6,
-      "params": {
-        "target": 836,
-        "startPhase": 9
-      },
-      "goals": {
-        "gold": 1672,
-        "silver": 1254,
-        "higherIsBetter": true
-      }
+      "id": "pass15",
+      "metric": "passed",
+      "target": 15
     },
     {
       "n": 7,
-      "params": {
-        "target": 1071,
-        "startPhase": 10
-      },
-      "goals": {
-        "gold": 2142,
-        "silver": 1607,
-        "higherIsBetter": true
-      }
+      "id": "score2000",
+      "metric": "score",
+      "target": 2000
     },
     {
       "n": 8,
-      "params": {
-        "target": 1350,
-        "startPhase": 12
-      },
-      "goals": {
-        "gold": 2700,
-        "silver": 2025,
-        "higherIsBetter": true
-      }
+      "id": "pass20",
+      "metric": "passed",
+      "target": 20
     },
     {
       "n": 9,
-      "params": {
-        "target": 1671,
-        "startPhase": 14
-      },
-      "goals": {
-        "gold": 3342,
-        "silver": 2507,
-        "higherIsBetter": true
-      }
+      "id": "survive75",
+      "metric": "survivedSec",
+      "target": 75
     },
     {
       "n": 10,
-      "params": {
-        "target": 2036,
-        "startPhase": 15
-      },
-      "goals": {
-        "gold": 4072,
-        "silver": 3054,
-        "higherIsBetter": true
-      }
+      "id": "pass26",
+      "metric": "passed",
+      "target": 26
     },
     {
       "n": 11,
-      "params": {
-        "target": 2443,
-        "startPhase": 17
-      },
-      "goals": {
-        "gold": 4886,
-        "silver": 3665,
-        "higherIsBetter": true
-      }
+      "id": "score3500",
+      "metric": "score",
+      "target": 3500
     },
     {
       "n": 12,
-      "params": {
-        "target": 2893,
-        "startPhase": 19
-      },
-      "goals": {
-        "gold": 5786,
-        "silver": 4340,
-        "higherIsBetter": true
-      }
+      "id": "pass33",
+      "metric": "passed",
+      "target": 33
     },
     {
       "n": 13,
-      "params": {
-        "target": 3386,
-        "startPhase": 21
-      },
-      "goals": {
-        "gold": 6772,
-        "silver": 5079,
-        "higherIsBetter": true
-      }
+      "id": "survive120",
+      "metric": "survivedSec",
+      "target": 120
     },
     {
       "n": 14,
-      "params": {
-        "target": 3921,
-        "startPhase": 22
-      },
-      "goals": {
-        "gold": 7842,
-        "silver": 5882,
-        "higherIsBetter": true
-      }
+      "id": "pass40",
+      "metric": "passed",
+      "target": 40
     },
     {
       "n": 15,
-      "params": {
-        "target": 4500,
-        "startPhase": 24
-      },
-      "goals": {
-        "gold": 9000,
-        "silver": 6750,
-        "higherIsBetter": true
-      }
+      "id": "pass45",
+      "metric": "passed",
+      "target": 45
+    }
+  ],
+  "milestones": [
+    {
+      "id": "pass5",
+      "metric": "passed",
+      "target": 5,
+      "reward": 10
+    },
+    {
+      "id": "pass10",
+      "metric": "passed",
+      "target": 10,
+      "reward": 12
+    },
+    {
+      "id": "pass15",
+      "metric": "passed",
+      "target": 15,
+      "reward": 15
+    },
+    {
+      "id": "pass20",
+      "metric": "passed",
+      "target": 20,
+      "reward": 18
+    },
+    {
+      "id": "pass26",
+      "metric": "passed",
+      "target": 26,
+      "reward": 21
+    },
+    {
+      "id": "pass33",
+      "metric": "passed",
+      "target": 33,
+      "reward": 24
+    },
+    {
+      "id": "pass40",
+      "metric": "passed",
+      "target": 40,
+      "reward": 27
+    },
+    {
+      "id": "pass50",
+      "metric": "passed",
+      "target": 50,
+      "reward": 30
     }
   ]
 }
