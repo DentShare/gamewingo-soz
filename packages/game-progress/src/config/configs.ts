@@ -257,6 +257,56 @@ export const GAME_CONFIGS: Record<GameId, ProgressionConfig> = {
     antiFraud: AF,
   },
 
+  /* ── «Викторина» — вопросы и факты по шести темам ───────────────────── */
+  quiz: {
+    gameId: 'quiz', version: 1,
+    scoring: [
+      { event: 'correct_answer', base: 100,
+        // Ответ до истечения таймера ценнее: множитель растёт с остатком времени.
+        modifiers: [{ source: 'timeLeftSec', type: 'linear', factor: 0.02, cap: 1.5 }] },
+      { event: 'session_complete', base: 100,
+        modifiers: [{ source: 'accuracy', type: 'linear', factor: 1, cap: 2 }] },
+      { event: 'flawless_round', base: 200 },
+    ],
+    starMetric: 'mistakes',
+    starsFallback: starsLte('mistakes', 4, 2, 0),
+    dailyQuests: [
+      { id: 'quiz_q_correct15', title: { ru: '15 верных ответов', uz: '15 ta toʻgʻri javob' },
+        metric: 'correctAnswers', target: 15, reward: 40 },
+      { id: 'quiz_q_topics3', title: { ru: 'Сыграй по 3 темам', uz: '3 ta mavzuda oʻyna' },
+        metric: 'topicsPlayed', target: 3, reward: 30 },
+    ],
+    achievements: [
+      { id: 'quiz_erudite', title: { ru: 'Эрудит каталога', uz: 'Katalog bilimdoni' },
+        metric: 'correctAnswers', op: 'gte', value: 200, reward: 250 },
+      { id: 'quiz_flawless', title: { ru: 'Без единой ошибки', uz: 'Bironta ham xatosiz' },
+        metric: 'flawlessRounds', op: 'gte', value: 10, reward: 200 },
+    ],
+    antiFraud: AF,
+  },
+
+  /* ── «Пазл» — детская, проигрыша нет, звёзды за аккуратность ────────── */
+  jigsaw: {
+    gameId: 'jigsaw', version: 1,
+    scoring: [
+      { event: 'piece_placed', base: 50 },
+      { event: 'session_complete', base: 100 },
+      // Собрал без единого промаха — отдельная награда.
+      { event: 'flawless_picture', base: 200 },
+    ],
+    starMetric: 'wrongDrops',
+    starsFallback: starsLte('wrongDrops', 8, 4, 0),
+    dailyQuests: [
+      { id: 'jigsaw_q_pictures2', title: { ru: 'Собери 2 картинки', uz: '2 ta rasm yigʻ' },
+        metric: 'pictures', target: 2, reward: 40 },
+    ],
+    achievements: [
+      { id: 'jigsaw_collector', title: { ru: 'Собиратель картинок', uz: 'Rasm toʻplovchi' },
+        metric: 'pictures', op: 'gte', value: 30, reward: 200 },
+    ],
+    antiFraud: { ...AF, maxScorePerSession: 5_000 },
+  },
+
   /* ── «Счёт» — детская, проигрыша нет, звёзды за аккуратность ────────── */
   counting: {
     gameId: 'counting', version: 1,

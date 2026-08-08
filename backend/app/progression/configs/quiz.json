@@ -1,0 +1,339 @@
+{
+  "gameId": "quiz",
+  "version": 1,
+  "scoring": [
+    {
+      "event": "correct_answer",
+      "base": 100,
+      "modifiers": [
+        {
+          "source": "timeLeftSec",
+          "type": "linear",
+          "factor": 0.02,
+          "cap": 1.5
+        }
+      ]
+    },
+    {
+      "event": "session_complete",
+      "base": 100,
+      "modifiers": [
+        {
+          "source": "accuracy",
+          "type": "linear",
+          "factor": 1,
+          "cap": 2
+        }
+      ]
+    },
+    {
+      "event": "flawless_round",
+      "base": 200
+    }
+  ],
+  "starMetric": "mistakes",
+  "starsFallback": [
+    {
+      "stars": 1,
+      "metric": "mistakes",
+      "op": "lte",
+      "value": 4
+    },
+    {
+      "stars": 2,
+      "metric": "mistakes",
+      "op": "lte",
+      "value": 2
+    },
+    {
+      "stars": 3,
+      "metric": "mistakes",
+      "op": "lte",
+      "value": 0
+    }
+  ],
+  "dailyQuests": [
+    {
+      "id": "quiz_q_correct15",
+      "title": {
+        "ru": "15 верных ответов",
+        "uz": "15 ta toʻgʻri javob"
+      },
+      "metric": "correctAnswers",
+      "target": 15,
+      "reward": 40
+    },
+    {
+      "id": "quiz_q_topics3",
+      "title": {
+        "ru": "Сыграй по 3 темам",
+        "uz": "3 ta mavzuda oʻyna"
+      },
+      "metric": "topicsPlayed",
+      "target": 3,
+      "reward": 30
+    }
+  ],
+  "achievements": [
+    {
+      "id": "quiz_erudite",
+      "title": {
+        "ru": "Эрудит каталога",
+        "uz": "Katalog bilimdoni"
+      },
+      "metric": "correctAnswers",
+      "op": "gte",
+      "value": 200,
+      "reward": 250
+    },
+    {
+      "id": "quiz_flawless",
+      "title": {
+        "ru": "Без единой ошибки",
+        "uz": "Bironta ham xatosiz"
+      },
+      "metric": "flawlessRounds",
+      "op": "gte",
+      "value": 10,
+      "reward": 200
+    }
+  ],
+  "antiFraud": {
+    "maxScorePerSession": 1580,
+    "maxSessionMs": 900000,
+    "maxEventsPerMinute": 240
+  },
+  "levels": [
+    {
+      "n": 1,
+      "params": {
+        "questions": 5,
+        "options": 3,
+        "timeLimitSec": 0,
+        "maxMistakes": 5,
+        "topics": [
+          "animals"
+        ]
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 1
+      }
+    },
+    {
+      "n": 2,
+      "params": {
+        "questions": 5,
+        "options": 3,
+        "timeLimitSec": 0,
+        "maxMistakes": 5,
+        "topics": [
+          "space"
+        ]
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 1
+      }
+    },
+    {
+      "n": 3,
+      "params": {
+        "questions": 6,
+        "options": 3,
+        "timeLimitSec": 0,
+        "maxMistakes": 4,
+        "topics": [
+          "uzbekistan"
+        ]
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 1
+      }
+    },
+    {
+      "n": 4,
+      "params": {
+        "questions": 6,
+        "options": 3,
+        "timeLimitSec": 25,
+        "maxMistakes": 4,
+        "topics": [
+          "body"
+        ]
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 5,
+      "params": {
+        "questions": 6,
+        "options": 4,
+        "timeLimitSec": 25,
+        "maxMistakes": 3,
+        "topics": [
+          "money"
+        ]
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 6,
+      "params": {
+        "questions": 7,
+        "options": 4,
+        "timeLimitSec": 25,
+        "maxMistakes": 3,
+        "topics": [
+          "science"
+        ]
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 7,
+      "params": {
+        "questions": 7,
+        "options": 4,
+        "timeLimitSec": 20,
+        "maxMistakes": 3,
+        "topics": [
+          "animals",
+          "space"
+        ]
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 8,
+      "params": {
+        "questions": 8,
+        "options": 4,
+        "timeLimitSec": 20,
+        "maxMistakes": 3,
+        "topics": [
+          "uzbekistan",
+          "science"
+        ]
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 9,
+      "params": {
+        "questions": 8,
+        "options": 4,
+        "timeLimitSec": 20,
+        "maxMistakes": 2,
+        "topics": [
+          "body",
+          "money"
+        ]
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 10,
+      "params": {
+        "questions": 8,
+        "options": 4,
+        "timeLimitSec": 18,
+        "maxMistakes": 2,
+        "topics": []
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 11,
+      "params": {
+        "questions": 9,
+        "options": 4,
+        "timeLimitSec": 18,
+        "maxMistakes": 2,
+        "topics": []
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 12,
+      "params": {
+        "questions": 9,
+        "options": 4,
+        "timeLimitSec": 15,
+        "maxMistakes": 2,
+        "topics": []
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 1
+      }
+    },
+    {
+      "n": 13,
+      "params": {
+        "questions": 10,
+        "options": 4,
+        "timeLimitSec": 15,
+        "maxMistakes": 2,
+        "topics": []
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 1
+      }
+    },
+    {
+      "n": 14,
+      "params": {
+        "questions": 10,
+        "options": 4,
+        "timeLimitSec": 12,
+        "maxMistakes": 1,
+        "topics": []
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 1
+      }
+    },
+    {
+      "n": 15,
+      "params": {
+        "questions": 10,
+        "options": 4,
+        "timeLimitSec": 12,
+        "maxMistakes": 1,
+        "topics": []
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 1
+      }
+    }
+  ]
+}

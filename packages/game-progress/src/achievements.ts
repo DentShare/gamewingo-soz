@@ -73,7 +73,7 @@ export interface AchievementDef {
 }
 
 /** Все игры каталога — цель достижения «сыграй во всё». */
-export const CATALOG_SIZE = 11;
+export const CATALOG_SIZE = 13;
 
 export const ACHIEVEMENTS: readonly AchievementDef[] = [
   { id: 'levels10', kind: 'levels', target: 10 },

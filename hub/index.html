@@ -165,6 +165,7 @@
   const FILE_ICONS = new Set([
     'soz', 'pairs', 'fifteen', '2048', 'sudoku-kids',
     'stack', 'flyer', 'targets', 'snake', 'sorting', 'counting',
+    'quiz', 'jigsaw',
   ]);
 
   // Векторный запасной набор — инлайн-SVG (ноль запросов, чёткие на любом DPR).
@@ -273,6 +274,16 @@
       url: 'counting/',
       tags: ['RU', 'UZ', { ru: '4–7 лет', uz: '4–7 yosh', accent: true }],
     },
+    {
+      id: 'jigsaw',
+      title: { ru: 'Пазл', uz: 'Rasm yigʻish' },
+      desc: {
+        ru: 'Собери картинку и узнай про неё историю',
+        uz: 'Rasmni yigʻ va u haqida hikoya bil',
+      },
+      url: 'jigsaw/',
+      tags: ['RU', 'UZ', { ru: '3–7 лет', uz: '3–7 yosh', accent: true }],
+    },
   ];
   // Аркады: заходишь и играешь — партия на 30–60 секунд, управление одним пальцем.
   const ARCADE = [
@@ -340,6 +351,16 @@
       desc: { ru: 'Судоку 4×4 и 6×6 для детей', uz: 'Bolalar uchun 4×4 va 6×6 sudoku' },
       url: 'sudoku-kids/',
       tags: ['RU', 'UZ', { ru: 'Детям', uz: 'Bolalarga', accent: true }],
+    },
+    {
+      id: 'quiz',
+      title: { ru: 'Викторина', uz: 'Viktorina' },
+      desc: {
+        ru: 'Вопросы и интересные факты: космос, животные, деньги',
+        uz: 'Savollar va qiziqarli faktlar: kosmos, hayvonlar, pul',
+      },
+      url: 'quiz/',
+      tags: ['RU', 'UZ', { ru: 'Факты', uz: 'Faktlar', accent: true }],
     },
   ];
   const SOON = [];

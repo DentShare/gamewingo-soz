@@ -26,9 +26,11 @@ def test_health():
     assert client.get("/health").json() == {"status": "ok"}
 
 
-def test_games_list_has_all_eleven():
+def test_games_list_covers_catalog():
     games = client.get("/progression/games").json()
-    assert len(games) == 11 and "soz" in games and "2048" in games
+    assert len(games) == 13
+    for slug in ("soz", "2048", "quiz", "jigsaw"):
+        assert slug in games
 
 
 def test_events_scored_and_balance_grows():

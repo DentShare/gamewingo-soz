@@ -6,7 +6,7 @@ import { GAME_ACHIEVEMENTS, achievementToasts, achievementsForGame } from './reg
 import { TARIFF } from '../bonus.js';
 
 describe('GAME_CONFIGS: целостность', () => {
-  it('покрывает все 11 игр каталога, ключ совпадает с gameId', () => {
+  it('покрывает все игры каталога, ключ совпадает с gameId', () => {
     expect(Object.keys(GAME_CONFIGS).sort()).toEqual([...GAME_IDS].sort());
     for (const [key, cfg] of Object.entries(GAME_CONFIGS)) expect(cfg.gameId).toBe(key);
   });
@@ -47,6 +47,7 @@ describe('GAME_CONFIGS: целостность', () => {
       soz: 'guessesUsed', pairs: 'moves', fifteen: 'moves', '2048': 'score',
       'sudoku-kids': 'timeSec', stack: 'score', flyer: 'score', targets: 'score',
       snake: 'score', sorting: 'mistakes', counting: 'mistakes',
+      quiz: 'mistakes', jigsaw: 'wrongDrops',
     };
     for (const cfg of Object.values(GAME_CONFIGS)) {
       expect(cfg.starMetric, cfg.gameId).toBe(expected[cfg.gameId]);
