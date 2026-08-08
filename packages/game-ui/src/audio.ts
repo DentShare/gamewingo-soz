@@ -1,13 +1,19 @@
 /**
- * Звук игры: синтез на WebAudio — ноль байт в билде и ноль строк в реестре лицензий.
+ * Звук каталога: восемь эффектов из общего пака Kenney (CC0) с синтезом-фолбэком.
  *
- * Копируется в `games/<slug>/src/game/audio.ts` скиллом `game-audio`. Ничего не знает
- * про Phaser, поэтому спокойно импортируется в тестах и в чистых модулях ядра.
+ * Почему так, а не через звуковой менеджер Phaser: слой нужен и вне сцен (мост,
+ * переключатель в меню, тесты), а Phaser-менеджер живёт внутри игры и не умеет
+ * переживать перезапуск сцены. Здесь чистый WebAudio и никаких зависимостей.
  *
  * Три вещи, ради которых слой существует:
  *  - iOS WKWebView не даёт звук до жеста пользователя — `installAudioUnlock()`;
  *  - беззвучный режим общий для каталога — ключ `wingo:sound` в localStorage;
- *  - без AudioContext (тесты, SSR) всё превращается в пустышки, а не в исключения.
+ *  - файл может не догрузиться (3G, офлайн) — тогда играет синтез, а не тишина.
+ *
+ * Файлы кладёт `scripts/sync-audio.mjs` в `games/<slug>/public/audio/`. Формат — mp3:
+ * единственный, который декодируют и WKWebView на iOS, и Android WebView, и любая
+ * сборка Chromium (в AAC открытые сборки Chromium упираются в EncodingError).
+ * Реестр лицензий: строка «Звуки интерфейса» в `docs/LICENSES.md`.
  */
 
 /** Восемь событий, которых хватает любой игре каталога. */
@@ -21,26 +27,25 @@ export type SoundName =
   | 'star'   // получена звезда
   | 'swipe'; // сдвиг, свайп
 
-/** Один тон: волна, частота (при `to` — глиссандо), длительность и место в звуке. */
-export interface Tone {
+export const SOUND_NAMES: readonly SoundName[] = [
+  'tap', 'ok', 'wrong', 'win', 'lose', 'coin', 'star', 'swipe',
+];
+
+/** Один тон синтеза: волна, частота (при `to` — глиссандо), длительность, место в звуке. */
+interface Tone {
   wave: OscillatorType;
-  /** Начальная частота, Гц. */
   from: number;
-  /** Конечная частота, Гц; если не задана — тон ровный. */
   to?: number;
-  /** Длительность, сек. */
   dur: number;
-  /** Относительная громкость 0…1 (по умолчанию 0.4). */
   gain?: number;
-  /** Задержка от начала звука, сек. */
   delay?: number;
 }
 
 /**
- * Партитуры. Меняются свободно: это данные, а не логика — можно править частоты
- * под характер игры, не трогая проигрыватель.
+ * Партитуры фолбэка. Не «замена файлам», а страховка: если пак не догрузился,
+ * игрок слышит хоть что-то осмысленное вместо тишины.
  */
-export const SOUNDS: Record<SoundName, readonly Tone[]> = {
+const SYNTH: Record<SoundName, readonly Tone[]> = {
   tap: [{ wave: 'triangle', from: 660, to: 520, dur: 0.06, gain: 0.5 }],
   ok: [
     { wave: 'sine', from: 740, to: 880, dur: 0.09 },
@@ -75,16 +80,29 @@ export const SOUNDS: Record<SoundName, readonly Tone[]> = {
 const MUTE_KEY = 'wingo:sound';
 
 /** Мастер-громкость: слышно в тишине и не бьёт по ушам в наушниках. */
-const MASTER_GAIN = 0.18;
+const MASTER_GAIN = 0.5;
+
+/** Где лежат файлы относительно корня игры. Меняется через `configureAudio`. */
+let basePath = 'audio/';
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let muted = readMuted();
+let loading = false;
+const buffers = new Map<SoundName, AudioBuffer>();
+
+/** Куда смотреть за файлами. Вызывать до `installAudioUnlock`, если путь нестандартный. */
+export function configureAudio(opts: { basePath?: string }): void {
+  if (opts.basePath !== undefined) basePath = opts.basePath;
+}
 
 /** Конструктор AudioContext или null (тесты, SSR, старые движки). */
 function audioCtor(): typeof AudioContext | null {
   if (typeof window === 'undefined') return null;
-  const w = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+  const w = window as unknown as {
+    AudioContext?: typeof AudioContext;
+    webkitAudioContext?: typeof AudioContext;
+  };
   return w.AudioContext ?? w.webkitAudioContext ?? null;
 }
 
@@ -101,7 +119,7 @@ export function isMuted(): boolean {
   return muted;
 }
 
-/** Включить или выключить звук; состояние переживает перезапуск игры. */
+/** Включить или выключить звук; состояние переживает перезапуск игры и общее для каталога. */
 export function setMuted(value: boolean): void {
   muted = value;
   try {
@@ -109,8 +127,30 @@ export function setMuted(value: boolean): void {
   } catch {
     // Приватный режим WebView — переживём без сохранения.
   }
-  if (value && master) master.gain.value = 0;
-  else if (master) master.gain.value = MASTER_GAIN;
+  if (master) master.gain.value = value ? 0 : MASTER_GAIN;
+  if (!value) void loadPack();
+}
+
+/** Догрузить пак. Тихо выходит при любой ошибке — фолбэком останется синтез. */
+async function loadPack(): Promise<void> {
+  if (!ctx || loading || buffers.size === SOUND_NAMES.length) return;
+  if (typeof fetch !== 'function') return;
+  loading = true;
+  await Promise.all(
+    SOUND_NAMES.map(async (name) => {
+      if (buffers.has(name)) return;
+      try {
+        const res = await fetch(`${basePath}${name}.mp3`);
+        if (!res.ok) return;
+        const raw = await res.arrayBuffer();
+        const decoded = await ctx!.decodeAudioData(raw);
+        buffers.set(name, decoded);
+      } catch {
+        // Нет файла или формат не по зубам движку — останется синтез.
+      }
+    }),
+  );
+  loading = false;
 }
 
 /**
@@ -127,11 +167,12 @@ export function unlockAudio(): void {
     master.connect(ctx.destination);
   }
   if (ctx.state === 'suspended') void ctx.resume();
+  if (!muted) void loadPack();
 }
 
 /**
- * Повесить разблокировку на первый жест. Вызывать один раз в `main.ts`.
- * Слушатели ставятся на документ, поэтому канва Phaser их не перехватывает.
+ * Повесить разблокировку на первый жест. Вызывать один раз в `main.ts` игры.
+ * Слушатели на документе, поэтому канва Phaser их не перехватывает.
  */
 export function installAudioUnlock(): void {
   if (typeof document === 'undefined') return;
@@ -144,11 +185,19 @@ export function installAudioUnlock(): void {
   document.addEventListener('touchend', once);
 }
 
-/** Сыграть один тон в общий мастер-гейн. */
+/** Проиграть готовый буфер из пака. */
+function playBuffer(buffer: AudioBuffer): void {
+  const src = ctx!.createBufferSource();
+  src.buffer = buffer;
+  src.connect(master!);
+  src.start();
+  src.onended = () => src.disconnect();
+}
+
+/** Сыграть один тон синтеза. */
 function playTone(tone: Tone, at: number): void {
-  if (!ctx || !master) return;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
+  const osc = ctx!.createOscillator();
+  const gain = ctx!.createGain();
   const start = at + (tone.delay ?? 0);
   const end = start + tone.dur;
   const peak = tone.gain ?? 0.4;
@@ -163,7 +212,7 @@ function playTone(tone: Tone, at: number): void {
   gain.gain.exponentialRampToValueAtTime(0.0001, end);
 
   osc.connect(gain);
-  gain.connect(master);
+  gain.connect(master!);
   osc.start(start);
   osc.stop(end + 0.02);
   osc.onended = () => {
@@ -174,13 +223,19 @@ function playTone(tone: Tone, at: number): void {
 
 /**
  * Сыграть эффект. Безопасно вызывать до разблокировки и в тестах — тогда это no-op.
+ * Пока пак не догружен, звучит синтез: тишина хуже приблизительного звука.
  */
 export function playSound(name: SoundName): void {
   if (muted) return;
   if (!ctx) unlockAudio();
   if (!ctx || !master || ctx.state !== 'running') return;
+  const buffer = buffers.get(name);
+  if (buffer) {
+    playBuffer(buffer);
+    return;
+  }
   const at = ctx.currentTime;
-  for (const tone of SOUNDS[name]) playTone(tone, at);
+  for (const tone of SYNTH[name]) playTone(tone, at);
 }
 
 /** Закрыть контекст — при выгрузке игры или в `bridge.destroy()`. */
@@ -189,4 +244,5 @@ export function stopAudio(): void {
   void ctx.close();
   ctx = null;
   master = null;
+  buffers.clear();
 }

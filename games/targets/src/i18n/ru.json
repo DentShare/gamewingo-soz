@@ -9,6 +9,8 @@
   "menu.challenges": "Испытания · {k} из {n}",
   "menu.nextMilestone": "Веха: {n} очков · +{r} бонусов",
   "menu.milestonesDone": "Все вехи взяты!",
+  "sound.on": "Звук: вкл",
+  "sound.off": "Звук: выкл",
   "game.score": "Очки: {n}",
   "game.combo": "Серия ×{n}",
   "game.time": "{n} с",

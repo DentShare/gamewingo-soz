@@ -9,6 +9,8 @@
   "menu.nextMilestone": "Bosqich: {n} teshik · +{r} bonus",
   "menu.milestonesDone": "Barcha bosqichlar olindi!",
   "menu.hint": "Bitta tugma — bosish. Oʻyin bir daqiqadan kam.",
+  "sound.on": "Ovoz: yoqilgan",
+  "sound.off": "Ovoz: oʻchirilgan",
   "game.tapToStart": "Uchish uchun bosing",
   "game.challenge": "{text} · {v}/{n}",
   "challenge.pass3": "Bir parvozda 3 ta teshikdan oʻt",

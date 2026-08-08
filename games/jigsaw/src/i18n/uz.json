@@ -6,6 +6,8 @@
   "menu.catalog": "Oʻyinlarga",
   "menu.ladder": "{total} dan {n}-rasm",
   "menu.hint": "Rasmni yigʻ — u haqida hikoya bilib olasan",
+  "sound.on": "Ovoz: yoqilgan",
+  "sound.off": "Ovoz: oʻchirilgan",
   "game.progress": "{total} dan {n}",
   "game.take": "Boʻlakni ol va oʻz joyiga tort",
   "game.almost": "Deyarli! Boshqa joyni sinab koʻr",

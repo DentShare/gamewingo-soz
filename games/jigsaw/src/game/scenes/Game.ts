@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { applyTheme, setupCamera, makeBackButton } from '../ui';
+import { applyTheme, setupCamera, makeBackButton, playSound } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { levelAt } from '../../core/levels';
@@ -249,10 +249,15 @@ export class Game extends Scene {
 
     const result = this.core.drop(piece, slot);
     if (result !== 'placed') {
-      if (result === 'wrong') this.missFeedback(view);
+      if (result === 'wrong') {
+        playSound('wrong');
+        this.missFeedback(view);
+      }
       this.returnToTray(view);
       return;
     }
+
+    playSound('ok');
 
     // Кусочек встал: фиксируем на поле ровно в клетке.
     const center = slotCenter(slot, this.core.cols, this.pieceW, this.pieceH);

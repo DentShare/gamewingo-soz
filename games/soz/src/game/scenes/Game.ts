@@ -9,7 +9,7 @@ import { pickDailyWord, dailyIndex } from '../../core/dailyWord';
 import { saveDaily, loadDaily, hasOnboarded, setOnboarded } from '../../core/persistence';
 import { keyboardFor, ENTER, BACKSPACE, UZ_DIGRAPH_KEYS, type Key } from '../keyboards';
 import { paletteFor, statusColor, COLORS, FONT, type Palette } from '../palette';
-import { toast, applyTheme, setupCamera, makeBackButton, makeKeyCap, type KeyCap } from '../ui';
+import { toast, applyTheme, setupCamera, makeBackButton, makeKeyCap, type KeyCap, playSound } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -369,18 +369,21 @@ export class Game extends Scene {
   private onEnter() {
     const row = this.coreGame.guessesUsed;
     if (this.current.length < WORD_LENGTH) {
+      playSound('wrong');
       this.shake(row);
       toast(this, 200, 640, t(this.locale, 'game.invalidWord'));
       return;
     }
     const word = this.current.join('');
     if (!this.dict.has(word)) {
+      playSound('wrong');
       this.shake(row);
       toast(this, 200, 640, t(this.locale, 'game.notInList'));
       return;
     }
     const violation = this.coreGame.checkStrict(this.current);
     if (violation) {
+      playSound('wrong');
       this.shake(row);
       const message = violation.kind === 'position'
         ? t(this.locale, 'game.strictPosition', { unit: violation.unit.toUpperCase(), n: violation.index + 1 })
@@ -388,6 +391,7 @@ export class Game extends Scene {
       toast(this, 200, 640, message);
       return;
     }
+    playSound('ok');
     this.coreGame.submit(this.current);
     this.current = [];
 

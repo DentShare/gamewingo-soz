@@ -23,6 +23,8 @@
   "error.network": "Aloqa yoʻq",
   "menu.ladder": "{total} dan {n}-daraja",
   "menu.play": "Oʻynash · {n}-daraja",
+  "sound.on": "Ovoz: yoqilgan",
+  "sound.off": "Ovoz: oʻchirilgan",
   "result.level": "{total} dan {n}-daraja",
   "result.nextLevel": "{n}-daraja",
   "result.unlocked": "{n}-daraja ochildi!"

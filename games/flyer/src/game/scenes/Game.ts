@@ -4,7 +4,7 @@ import { t } from '../../i18n';
 import { CHALLENGES } from '../../core/challenges';
 import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
 import { COLORS, FONT } from '../palette';
-import { setupCamera, shakeCamera, makeBackButton } from '../ui';
+import { setupCamera, shakeCamera, makeBackButton, playSound } from '../ui';
 import { DPR, VIEW_TOP, VIEW_BOTTOM } from '../dpr';
 import { mulberry32 } from '../../core/rng';
 import {
@@ -132,6 +132,7 @@ export class Game extends Scene {
   }
 
   private flap() {
+    playSound('swipe');
     if (this.tutorialActive || this.dead || this.leaving) return;
     const first = !this.core.started;
     this.core.flap();

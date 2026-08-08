@@ -4,7 +4,7 @@ import { createBoard, type Board } from '../../core/board';
 import { levelAt, type FifteenParams } from '../../core/levels';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, darken, setupCamera, makeBackButton, toast, shakeCamera } from '../ui';
+import { applyTheme, darken, setupCamera, makeBackButton, toast, shakeCamera, playSound } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -369,6 +369,7 @@ export class Game extends Scene {
 
     const target = this.board.tiles.indexOf(0);   // пустая клетка до хода
     if (!this.board.move(cell)) return;
+    playSound('swipe');
 
     this.views[target] = view;
     this.views[cell] = null;

@@ -4,6 +4,7 @@ import uz from './uz.json';
 import { t } from './index';
 
 const REQUIRED = [
+  'sound.on', 'sound.off',
   'app.title', 'menu.ladder', 'menu.play', 'menu.howto', 'menu.catalog', 'menu.topics',
   'game.progress', 'game.mistakes', 'game.fact', 'game.next', 'game.finish',
   'topic.space', 'topic.animals', 'topic.uzbekistan', 'topic.science', 'topic.body', 'topic.money',

@@ -6,6 +6,8 @@
   "menu.catalog": "Oʻyinlarga",
   "menu.ladder": "{total} dan {n}-daraja",
   "menu.topics": "Mavzular: kosmos, hayvonlar, Oʻzbekiston, fan, tana, pul",
+  "sound.on": "Ovoz: yoqilgan",
+  "sound.off": "Ovoz: oʻchirilgan",
   "game.progress": "{total} dan {n}",
   "game.mistakes": "Xatolar: {n}/{max}",
   "game.fact": "Qiziqarli fakt",

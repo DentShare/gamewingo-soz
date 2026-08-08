@@ -2,6 +2,7 @@ import type { Scene } from 'phaser';
 import { C, S, FONT, RADIUS, TYPE, WEIGHT, TOP_BAR_H, BUTTON_H } from './tokens.js';
 import { DPR, LOGICAL_W, VIEW_TOP } from './viewport.js';
 import { makeBonusChip } from './bonus.js';
+import { isMuted, playSound, setMuted } from './audio.js';
 
 /** Тема бренда из INIT. Совпадает по форме с `BrandTheme` моста, но без зависимости на него. */
 export interface Theme {
@@ -88,7 +89,8 @@ export function makeButton(
   root.add([g, txt, hit]);
 
   let pressed = false;
-  hit.on('pointerdown', () => { pressed = true; paint(pressedFace); });
+  // Щелчок нажатия — один на весь каталог, поэтому живёт в виджете, а не в играх.
+  hit.on('pointerdown', () => { pressed = true; paint(pressedFace); playSound('tap'); });
   hit.on('pointerup', () => { if (pressed) { pressed = false; paint(face); onClick(); } });
   hit.on('pointerout', () => { if (pressed) { pressed = false; paint(face); } });
 
@@ -139,6 +141,7 @@ export function makeTopBar(
   const hit = scene.add
     .rectangle(36, cy, 48, 48, 0x000000, 0)
     .setInteractive({ useHandCursor: true });
+  hit.on('pointerdown', () => playSound('tap'));
   hit.on('pointerup', onBack);
 
   root.add([bar, chevron, heading, hit]);
@@ -198,6 +201,36 @@ export function makeChip(scene: Scene, x: number, y: number, text: string, minWi
     setText: (s: string) => { txt.setText(s); paint(); },
     destroy: () => root.destroy(),
   };
+}
+
+/**
+ * Переключатель звука для меню игры. Подписи приходят из словаря игры —
+ * виджет не знает про локали, но знает, как выглядит чип каталога.
+ *
+ * Живёт в дизайн-системе, а не в играх: беззвучный режим общий для каталога
+ * (ключ `wingo:sound`), значит и переключатель должен быть везде одинаковый.
+ */
+export function makeSoundToggle(
+  scene: Scene,
+  x: number,
+  y: number,
+  labels: { on: string; off: string },
+  minWidth = 132,
+): Chip {
+  const chip = makeChip(scene, x, y, isMuted() ? labels.off : labels.on, minWidth);
+  const h = 26;
+  const hit = scene.add
+    .rectangle(0, 0, minWidth, h + 12, 0x000000, 0)
+    .setInteractive({ useHandCursor: true });
+  chip.root.add(hit);
+
+  hit.on('pointerup', () => {
+    setMuted(!isMuted());
+    chip.setText(isMuted() ? labels.off : labels.on);
+    // Щелчок только при включении: выключили — значит тишина сразу.
+    if (!isMuted()) playSound('tap');
+  });
+  return chip;
 }
 
 export interface KeyCap {
@@ -298,7 +331,7 @@ export function makeBackButton(
   root.add([g, txt, hit]);
 
   let pressed = false;
-  hit.on('pointerdown', () => { pressed = true; paint(C.tint); });
+  hit.on('pointerdown', () => { pressed = true; paint(C.tint); playSound('tap'); });
   hit.on('pointerup', () => { if (pressed) { pressed = false; paint(C.surface); onClick(); } });
   hit.on('pointerout', () => { if (pressed) { pressed = false; paint(C.surface); } });
   return root;

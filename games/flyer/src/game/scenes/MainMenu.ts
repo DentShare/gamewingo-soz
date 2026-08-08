@@ -4,6 +4,7 @@ import { t } from '../../i18n';
 import {
   makeButton, applyTheme, setupCamera, makeTopBar, makeGameIcon,
   makeRecordBadge, makeMilestoneBar, makeChallengeList, type ChallengeRowState,
+  makeSoundToggle,
 } from '../ui';
 import { COLORS } from '../palette';
 import { CHALLENGES, CHALLENGES_TOTAL, MILESTONES } from '../../core/challenges';
@@ -79,6 +80,12 @@ export class MainMenu extends Scene {
     // Выбор языка — две пилюли под кнопками.
     this.langPill(CX - 92, belowList + 108, 'ru', 'Русский');
     this.langPill(CX + 92, belowList + 108, 'uz', 'Oʻzbekcha');
+
+    // Звук: беззвучный режим общий для каталога, поэтому виджет из дизайн-системы.
+    makeSoundToggle(this, CX, belowList + 108 + 44, {
+      on: t(this.locale, 'sound.on'),
+      off: t(this.locale, 'sound.off'),
+    });
   }
 
   /** Пилюля выбора языка. Выбранная подсвечена; по тапу переключает и перерисовывает меню. */

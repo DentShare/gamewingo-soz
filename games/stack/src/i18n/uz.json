@@ -9,6 +9,8 @@
   "menu.challenges": "Sinovlar · {n} tadan {k}",
   "menu.nextMilestone": "Bosqich: {n} blokli minora · +{r} bonus",
   "menu.milestonesDone": "Barcha bosqichlar olindi!",
+  "sound.on": "Ovoz: yoqilgan",
+  "sound.off": "Ovoz: oʻchirilgan",
   "game.score": "{n}",
   "game.hint": "Blokni tashlash uchun bosing",
   "game.perfect": "Aniq!",

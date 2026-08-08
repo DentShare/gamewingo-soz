@@ -46,5 +46,7 @@
   "menu.noHints": "Без подсветки",
   "menu.guessesOne": "{n} попытка",
   "menu.guessesFew": "{n} попытки",
-  "menu.guessesMany": "{n} попыток"
+  "menu.guessesMany": "{n} попыток",
+  "sound.on": "Звук: вкл",
+  "sound.off": "Звук: выкл"
 }

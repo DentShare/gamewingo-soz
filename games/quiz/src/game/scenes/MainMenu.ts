@@ -3,7 +3,7 @@ import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import {
   makeButton, applyTheme, setupCamera, makeTopBar, makeGameIcon, makeLevelGrid, makeLadderSummary,
-  type LevelTileState,
+  makeSoundToggle, type LevelTileState,
 } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
@@ -77,6 +77,12 @@ export class MainMenu extends Scene {
     // Выбор языка — две пилюли под кнопками.
     this.langPill(CX - 92, belowGrid + 108, 'ru', 'Русский');
     this.langPill(CX + 92, belowGrid + 108, 'uz', 'Oʻzbekcha');
+
+    // Звук: беззвучный режим общий для каталога, поэтому виджет из дизайн-системы.
+    makeSoundToggle(this, CX, belowGrid + 152, {
+      on: t(this.locale, 'sound.on'),
+      off: t(this.locale, 'sound.off'),
+    });
   }
 
   /** Пилюля выбора языка. Выбранная подсвечена; по тапу переключает и перерисовывает меню. */

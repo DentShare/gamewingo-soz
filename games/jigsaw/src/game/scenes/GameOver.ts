@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip, playSound } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { levelAt, LADDER_SIZE } from '../../core/levels';
@@ -58,7 +58,10 @@ export class GameOver extends Scene {
       // Чип создан после начисления — откатываем показ на баланс «до»,
       // чтобы прилёт «+N» докрутил его до нового, а не удвоил прибавку.
       bonusChip.setValue(bonus.balance - bonus.total);
-      this.time.delayedCall(1200, () => bonusChip.award(bonus.total, CX, 150));
+      this.time.delayedCall(1200, () => {
+        playSound('coin');
+        bonusChip.award(bonus.total, CX, 150);
+      });
     }
 
     // Собранная картинка целиком — то, чем ребёнок только что гордится.
@@ -93,6 +96,11 @@ export class GameOver extends Scene {
 
     const afterStory = 296 + story.height + 22;
 
+    // Проиграть в пазле нельзя: собранная картинка — всегда победа.
+    playSound('win');
+    for (let i = 0; i < stars; i++) {
+      this.time.delayedCall(680 + i * 160, () => playSound('star'));
+    }
     const starRow = makeStarRow(this, CX, afterStory, stars, 20).setScale(0);
     this.tweens.add({ targets: starRow, scale: 1, duration: 380, delay: 640, ease: 'Back.easeOut' });
 

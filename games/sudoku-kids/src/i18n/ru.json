@@ -23,6 +23,8 @@
   "error.network": "Нет соединения",
   "menu.ladder": "Уровень {n} из {total}",
   "menu.play": "Играть · уровень {n}",
+  "sound.on": "Звук: вкл",
+  "sound.off": "Звук: выкл",
   "game.level": "Уровень {n}",
   "game.mistakes": "Ошибки: {n} / {limit}",
   "game.fail.mistakes": "Ошибок слишком много",

@@ -8,6 +8,8 @@
   "menu.challenges": "Sinovlar · {n} tadan {k}",
   "menu.nextMilestone": "Bosqich: uzunlik {n} · +{r} bonus",
   "menu.milestonesDone": "Barcha bosqichlar olindi!",
+  "sound.on": "Ovoz: yoqilgan",
+  "sound.off": "Ovoz: oʻchirilgan",
   "game.swipeToStart": "Boshlash uchun suring",
   "game.length": "Uzunlik: {n}",
   "game.challenge": "{text} · {v}/{n}",

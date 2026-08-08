@@ -9,6 +9,8 @@
   "menu.challenges": "Испытания · {k} из {n}",
   "menu.nextMilestone": "Веха: башня {n} · +{r} бонусов",
   "menu.milestonesDone": "Все вехи взяты!",
+  "sound.on": "Звук: вкл",
+  "sound.off": "Звук: выкл",
   "game.score": "{n}",
   "game.hint": "Тапните, чтобы уронить блок",
   "game.perfect": "Точно!",

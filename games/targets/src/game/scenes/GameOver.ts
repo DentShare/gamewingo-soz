@@ -3,6 +3,7 @@ import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import {
   makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip,
+  playSound,
 } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
@@ -59,10 +60,20 @@ export class GameOver extends Scene {
       // Чип создан после начисления — откатываем показ на баланс «до»,
       // чтобы прилёт «+N» докрутил его до нового, а не удвоил прибавку.
       bonusChip.setValue(bonus.balance - bonus.total);
-      this.time.delayedCall(900, () => bonusChip.award(bonus.total, CX, 210));
+      this.time.delayedCall(900, () => {
+        playSound('coin');
+        bonusChip.award(bonus.total, CX, 210);
+      });
     }
 
     const isRecord = round.records.improved.includes('score');
+    // Итог забега на слух: закрытое испытание или рекорд — победа, иначе просто конец.
+    playSound(round.closed.length || isRecord ? 'win' : 'lose');
+    // Звёзды звенят по очереди — итог читается на слух, не только глазами.
+    for (let i = 0; i < round.closed.length; i++) {
+      this.time.delayedCall(340 + i * 160, () => playSound('star'));
+    }
+
     if (round.closed.length || isRecord) {
       confetti({ disableForReducedMotion: true, particleCount: 90, spread: 70, origin: { y: 0.4 } });
     }

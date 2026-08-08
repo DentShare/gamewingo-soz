@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip, playSound } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { computeScore } from '../../core/score';
@@ -53,7 +53,10 @@ export class GameOver extends Scene {
       // Чип создан после начисления — откатываем показ на баланс «до»,
       // чтобы прилёт «+N» докрутил его до нового, а не удвоил прибавку.
       bonusChip.setValue(bonus.balance - bonus.total);
-      this.time.delayedCall(900, () => bonusChip.award(bonus.total, CX, 196));
+      this.time.delayedCall(900, () => {
+        playSound('coin');
+        bonusChip.award(bonus.total, CX, 196);
+      });
     }
 
 
@@ -76,6 +79,11 @@ export class GameOver extends Scene {
       .setOrigin(0.5)
       .setResolution(DPR);
 
+    playSound('win');
+    // Звёзды звенят по очереди — итог читается на слух, не только глазами.
+    for (let i = 0; i < stars; i++) {
+      this.time.delayedCall(340 + i * 160, () => playSound('star'));
+    }
     const starRow = makeStarRow(this, CX, 210, stars, 26).setScale(0);
     this.tweens.add({ targets: starRow, scale: 1, duration: 400, delay: 300, ease: 'Back.easeOut' });
 

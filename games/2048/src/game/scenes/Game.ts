@@ -3,7 +3,7 @@ import type { Locale } from '../../core/locale';
 import { createGrid2048, applyMove, SIZE, type Grid2048, type Dir } from '../../core/grid';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT, tileColor, tileTextColor, tileFontSize } from '../palette';
-import { applyTheme, darken, toast, setupCamera, makeBackButton } from '../ui';
+import { applyTheme, darken, toast, setupCamera, makeBackButton, playSound } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -380,6 +380,7 @@ export class Game extends Scene {
     const before = this.core.cells.map((row) => [...row]);
     const res = this.core.move(dir);
     if (!res.moved) return;
+    playSound('swipe');
 
     // Спавн и слитые клетки для подскока: сравниваем с чистым ходом без спавна.
     const expected = applyMove(before, dir);
@@ -390,6 +391,7 @@ export class Game extends Scene {
     const mt = this.core.maxTile();
     if (mt >= 128 && !this.cheered.has(mt)) {
       this.cheered.add(mt);
+      playSound('star');
       toast(this, W / 2, 580, t(this.locale, 'game.reached', { tile: mt }));
     }
     if (!this.tileMoves.has(mt)) this.tileMoves.set(mt, this.core.moves);

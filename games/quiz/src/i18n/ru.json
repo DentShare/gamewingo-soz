@@ -6,6 +6,8 @@
   "menu.catalog": "К играм",
   "menu.ladder": "Уровень {n} из {total}",
   "menu.topics": "Темы: космос, животные, Узбекистан, наука, тело, деньги",
+  "sound.on": "Звук: вкл",
+  "sound.off": "Звук: выкл",
   "game.progress": "{n} из {total}",
   "game.mistakes": "Ошибки: {n}/{max}",
   "game.fact": "Интересный факт",

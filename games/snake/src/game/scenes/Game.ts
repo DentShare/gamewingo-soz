@@ -1,7 +1,7 @@
 import { Scene, Math as PhaserMath } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, darken, setupCamera, makeBackButton } from '../ui';
+import { applyTheme, darken, setupCamera, makeBackButton, playSound } from '../ui';
 import { t } from '../../i18n';
 import { CHALLENGES } from '../../core/challenges';
 import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
@@ -189,6 +189,8 @@ export class Game extends Scene {
   private onCrash() {
     if (this.finished) return;
     this.finished = true;
+    // Короткий удар в момент столкновения; вердикт забега прозвучит на экране итогов.
+    playSound('wrong');
     this.cameras.main.shake(200, 0.012);
     const flash = this.add
       .rectangle(BOARD_LEFT + BOARD_W / 2, BOARD_TOP + BOARD_H / 2, BOARD_W, BOARD_H, COLORS.crash, 0.35)

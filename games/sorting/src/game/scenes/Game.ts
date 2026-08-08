@@ -6,7 +6,7 @@ import {
 import { mulberry32 } from '../../core/rng';
 import { levelAt } from '../../core/levels';
 import { COLORS, FIGURE_COLORS, FONT } from '../palette';
-import { applyTheme, setupCamera, makeGlyph, makeBackButton } from '../ui';
+import { applyTheme, setupCamera, makeGlyph, makeBackButton, playSound } from '../ui';
 import { drawBin, drawFigure } from '../shapes';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
@@ -286,6 +286,7 @@ export class Game extends Scene {
       return;
     }
     const res = this.core.drop(bin);
+    playSound(res.correct ? 'ok' : 'wrong');
     if (res.correct) this.acceptItem(bin, res.done);
     else this.rejectItem(bin);
   }

@@ -5,7 +5,7 @@ import {
 } from '../../core/targets';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, setupCamera, makeBackButton } from '../ui';
+import { applyTheme, setupCamera, makeBackButton, playSound } from '../ui';
 import { t } from '../../i18n';
 import { CHALLENGES } from '../../core/challenges';
 import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
@@ -370,9 +370,11 @@ export class Game extends Scene {
 
     const res = this.core.tap(x, y);
     if (!res.hit) {
+      playSound('wrong');
       this.showRipple(x, y);
       return;
     }
+    playSound(res.golden ? 'star' : 'ok');
     const v = res.targetId !== undefined ? this.views.get(res.targetId) : undefined;
     if (v && res.targetId !== undefined) {
       this.views.delete(res.targetId);

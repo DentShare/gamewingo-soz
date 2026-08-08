@@ -6,7 +6,7 @@ import {
 import { mulberry32 } from '../../core/rng';
 import { levelAt } from '../../core/levels';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, setupCamera, makeGlyph, type GlyphName, makeBackButton, makeKeyCap } from '../ui';
+import { applyTheme, setupCamera, makeGlyph, type GlyphName, makeBackButton, makeKeyCap, playSound } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -329,6 +329,7 @@ export class Game extends Scene {
     if (this.finished || this.locked || this.tutorialActive || this.helping) return;
     const res = this.core.answer(pad.value);
     this.locked = true;
+    playSound(res.correct ? 'ok' : 'wrong');
 
     if (res.correct) {
       this.celebrate();

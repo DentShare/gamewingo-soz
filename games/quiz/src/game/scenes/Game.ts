@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { applyTheme, setupCamera, makeBackButton, makeButton, makeChip } from '../ui';
+import { applyTheme, setupCamera, makeBackButton, makeButton, makeChip, playSound } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { makeOption, OPTION_W, type Option } from '../option';
@@ -200,6 +200,8 @@ export class Game extends Scene {
   private reveal(result: AnswerResult, picked?: number) {
     if (this.answered) return;
     this.answered = true;
+
+    playSound(result.correct ? 'ok' : 'wrong');
 
     this.options.forEach((opt, i) => {
       opt.lock();

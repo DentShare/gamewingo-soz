@@ -7,6 +7,7 @@ import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
 import {
   applyTheme, darken, setupCamera, makeGlyph, type GlyphName, makeBackButton, toast, shakeCamera,
+  playSound,
 } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
@@ -341,6 +342,7 @@ export class Game extends Scene {
     this.movesText.setText(this.movesLabel());
 
     if (result === 'match' || result === 'won') {
+      playSound('ok');
       const pairIdx = before[0];
       this.time.delayedCall(170, () => {
         this.pulseMatch(pairIdx);
@@ -351,6 +353,7 @@ export class Game extends Scene {
         this.time.delayedCall(650, () => this.endGame(true));
       }
     } else if (result === 'miss') {
+      playSound('wrong');
       this.locked = true;
       const other = before[0];
       this.time.delayedCall(750, () => {

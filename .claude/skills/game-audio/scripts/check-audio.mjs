@@ -23,7 +23,9 @@ const AUDIO_BUDGET_KB = 300;
 /** Один эффект: длиннее — почти всегда несжатый или слишком длинный. */
 const ONE_FILE_LIMIT_KB = 120;
 
-const PLAYABLE = new Set(['.m4a', '.aac', '.mp3', '.ogg', '.opus', '.webm']);
+const PLAYABLE = new Set(['.mp3', '.m4a', '.aac', '.ogg', '.opus', '.webm']);
+/** Общая мастер-копия пака: на неё ссылается строка в реестре лицензий. */
+const MASTER_PACK = 'packages/game-ui/audio';
 const UNCOMPRESSED = new Set(['.wav', '.aiff', '.aif', '.flac']);
 
 const args = process.argv.slice(2);
@@ -73,7 +75,7 @@ for (const slug of slugs) {
     .filter((f) => PLAYABLE.has(extname(f).toLowerCase()) || UNCOMPRESSED.has(extname(f).toLowerCase()))
     .map((f) => ({ path: relative(gameDir, f), bytes: statSync(f).size, ext: extname(f).toLowerCase() }));
 
-  const hasSynth = existsSync(synthPath);
+  const hasSynth = existsSync(synthPath) || existsSync(join(ROOT, MASTER_PACK));
   const usesSound = hasSynth || files.length > 0 || /playSound\(|sound\.play\(/.test(src);
   if (!usesSound) {
     report.push({ slug, silent: true, files: [], bytes: 0, errors: [], warnings: [] });
@@ -90,10 +92,12 @@ for (const slug of slugs) {
     } else if (kb(f.bytes) > ONE_FILE_LIMIT_KB) {
       warnings.push(`тяжёлый файл: ${f.path} (${fmt(f.bytes)}) — моно, 64–96 kbps?`);
     }
-    // Реестр лицензий ищем по имени файла: строка про пак обычно называет файлы или папку.
-    const name = basename(f.path);
-    const folder = dirname(f.path).split('/').pop();
-    if (!licenses.includes(name) && !(folder && licenses.includes(folder))) {
+    // Реестр лицензий: строка должна называть либо сам файл, либо папку пака —
+    // общую (`packages/game-ui/audio`) или игровую (`games/<slug>/public/audio`).
+    const covered = licenses.includes(basename(f.path))
+      || licenses.includes(MASTER_PACK)
+      || licenses.includes(`games/${slug}/${dirname(f.path)}`);
+    if (!covered) {
       errors.push(`нет строки в docs/LICENSES.md: ${f.path}`);
     }
   }
@@ -106,11 +110,15 @@ for (const slug of slugs) {
   if (!/installAudioUnlock\(|unlockAudio\(|context\.resume\(|sound\.unlock/.test(wired)) {
     errors.push('нет разблокировки по жесту (installAudioUnlock в main.ts) — в iOS WebView звука не будет');
   }
-  if (!/setMuted\(|toggleMute\(|sound\.mute/.test(wired)) {
-    errors.push('нет выключателя звука в меню игры');
+  // Выключатель — либо виджет дизайн-системы, либо собственный вызов setMuted.
+  if (!/makeSoundToggle\(|setMuted\(|toggleMute\(|sound\.mute/.test(wired)) {
+    errors.push('нет выключателя звука в меню игры (makeSoundToggle из @gamewingo/game-ui)');
   }
-  if (hasSynth && !readFileSync(synthPath, 'utf8').includes('wingo:sound')) {
-    warnings.push('слой синтеза без общего ключа wingo:sound — состояние не разделяется с каталогом');
+  const layer = existsSync(synthPath)
+    ? synthPath
+    : join(ROOT, 'packages/game-ui/src/audio.ts');
+  if (existsSync(layer) && !readFileSync(layer, 'utf8').includes('wingo:sound')) {
+    warnings.push('слой звука без общего ключа wingo:sound — состояние не разделяется с каталогом');
   }
 
   report.push({ slug, silent: false, files, bytes, errors, warnings });

@@ -23,6 +23,8 @@
   "error.network": "Нет соединения",
   "menu.ladder": "Уровень {n} из {total}",
   "menu.play": "Играть · уровень {n}",
+  "sound.on": "Звук: вкл",
+  "sound.off": "Звук: выкл",
   "result.level": "Уровень {n} из {total}",
   "result.nextLevel": "Уровень {n}",
   "result.unlocked": "Открыт уровень {n}!"

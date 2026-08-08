@@ -4,6 +4,7 @@ import { t } from '../../i18n';
 import {
   makeButton, applyTheme, setupCamera, makeTopBar, makeGameIcon, makeLevelGrid, makeLadderSummary,
   type LevelTileState,
+  makeSoundToggle,
 } from '../ui';
 import { COLORS } from '../palette';
 import { LADDER, LADDER_SIZE } from '../../core/levels';
@@ -66,6 +67,12 @@ export class MainMenu extends Scene {
     // Выбор языка — две пилюли под кнопками.
     this.langPill(CX - 92, belowGrid + 108, 'ru', 'Русский');
     this.langPill(CX + 92, belowGrid + 108, 'uz', 'Oʻzbekcha');
+
+    // Звук: беззвучный режим общий для каталога, поэтому виджет из дизайн-системы.
+    makeSoundToggle(this, CX, belowGrid + 108 + 44, {
+      on: t(this.locale, 'sound.on'),
+      off: t(this.locale, 'sound.off'),
+    });
   }
 
   /** Пилюля выбора языка. Выбранная подсвечена; по тапу переключает и перерисовывает меню. */
