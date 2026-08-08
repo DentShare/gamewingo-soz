@@ -13,7 +13,10 @@
     "build:all": "npm run bridge:build && npm run build:games && node scripts/build-catalog.mjs",
     "new-game": "echo \"Скопируйте template-vite-ts-main в games/<name> — или используйте скилл new-game в Claude Code\"",
     "progression:export": "npm run bridge:build && node scripts/export-progression.mjs",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "check:content": "node .claude/skills/content-pack/scripts/check-content.mjs",
+    "check:weight": "node .claude/skills/perf-budget/scripts/perf-budget.mjs",
+    "check:audio": "node .claude/skills/game-audio/scripts/check-audio.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.3"

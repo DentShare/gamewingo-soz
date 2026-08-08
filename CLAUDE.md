@@ -65,6 +65,10 @@ GameWingo/
 - **license-check** — прогнать кандидата по чеклисту и записать в реестр лицензий.
 - **fintech-bridge** — правильно подключить события моста и серверную отправку результата.
 - **webview-qa** — чеклист проверки перед сдачей (вес, fps, тач, офлайн, античит).
+- **perf-budget** — замерить вес билдов игр и хаба против правила №7 (`npm run check:weight`).
+- **content-pack** — контент и словари RU/UZ: паритет ключей, подстановки, хардкод (`npm run check:content`).
+- **game-audio** — звук синтезом на WebAudio (0 байт, 0 лицензий) + проверка аудиофайлов (`npm run check:audio`).
+- **asset-pipeline** — подготовка растровых ассетов: размер, webp, вес, строка в реестре лицензий.
 
 ## Команды
 
@@ -75,6 +79,9 @@ npm run dev  -w @gamewingo/<slug>        # запустить игру в дев
 npm run build -w @gamewingo/<slug>       # прод-билд игры
 npm run typecheck                        # проверка типов по всем пакетам
 npm run progression:export               # выгрузить конфиги прогрессии для Score Engine (backend/)
+npm run check:content                    # словари RU/UZ и хардкод текста в сценах
+npm run check:weight                     # вес прод-билдов против бюджета (после build:all)
+npm run check:audio                      # звук: вес, формат, лицензии, обвязка
 ```
 
 ## Локализация
