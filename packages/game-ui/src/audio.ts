@@ -10,11 +10,15 @@
  *  - беззвучный режим общий для каталога — ключ `wingo:sound` в localStorage;
  *  - файл может не догрузиться (3G, офлайн) — тогда играет синтез, а не тишина.
  *
- * Файлы кладёт `scripts/sync-audio.mjs` в `games/<slug>/public/audio/`. Формат — mp3:
- * единственный, который декодируют и WKWebView на iOS, и Android WebView, и любая
- * сборка Chromium (в AAC открытые сборки Chromium упираются в EncodingError).
+ * Пак зашит в бандл (`audioData.ts`, генерируется `scripts/build-audio.mjs`):
+ * отдельный запрос за звуком внутри WebView — лишний класс молчаливых отказов
+ * (нет сети, чужой базовый путь, строгий CSP). Формат — mp3: единственный, что
+ * декодируют и WKWebView на iOS, и Android WebView, и любая сборка Chromium
+ * (в AAC открытые сборки упираются в EncodingError).
  * Реестр лицензий: строка «Звуки интерфейса» в `docs/LICENSES.md`.
  */
+
+import { AUDIO_DATA } from './audioData.js';
 
 /** Восемь событий, которых хватает любой игре каталога. */
 export type SoundName =
@@ -82,19 +86,11 @@ const MUTE_KEY = 'wingo:sound';
 /** Мастер-громкость: слышно в тишине и не бьёт по ушам в наушниках. */
 const MASTER_GAIN = 0.5;
 
-/** Где лежат файлы относительно корня игры. Меняется через `configureAudio`. */
-let basePath = 'audio/';
-
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let muted = readMuted();
 let loading = false;
 const buffers = new Map<SoundName, AudioBuffer>();
-
-/** Куда смотреть за файлами. Вызывать до `installAudioUnlock`, если путь нестандартный. */
-export function configureAudio(opts: { basePath?: string }): void {
-  if (opts.basePath !== undefined) basePath = opts.basePath;
-}
 
 /** Конструктор AudioContext или null (тесты, SSR, старые движки). */
 function audioCtor(): typeof AudioContext | null {
@@ -143,20 +139,28 @@ function decode(raw: ArrayBuffer): Promise<AudioBuffer> {
   });
 }
 
-/** Догрузить пак. Тихо выходит при любой ошибке — фолбэком останется синтез. */
+/** base64 → байты. Сети здесь нет: пак уже в бандле. */
+function bytes(base64: string): ArrayBuffer {
+  const bin = atob(base64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out.buffer;
+}
+
+/** Расшифровать пак. Тихо выходит при любой ошибке — фолбэком останется синтез. */
 async function loadPack(): Promise<void> {
   if (!ctx || loading || buffers.size === SOUND_NAMES.length) return;
-  if (typeof fetch !== 'function') return;
+  if (typeof atob !== 'function') return;
   loading = true;
   await Promise.all(
     SOUND_NAMES.map(async (name) => {
       if (buffers.has(name)) return;
+      const data = AUDIO_DATA[name];
+      if (!data) return;
       try {
-        const res = await fetch(`${basePath}${name}.mp3`);
-        if (!res.ok) return;
-        buffers.set(name, await decode(await res.arrayBuffer()));
+        buffers.set(name, await decode(bytes(data)));
       } catch {
-        // Нет файла или формат не по зубам движку — останется синтез.
+        // Формат не по зубам движку — останется синтез.
       }
     }),
   );

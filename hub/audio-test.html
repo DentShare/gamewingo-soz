@@ -29,10 +29,11 @@
 <body>
 
 <h1>Проверка звука</h1>
-<p class="sub">Страница для диагностики: показывает, что именно не работает, если игры молчат.</p>
+<p class="sub">Страница для диагностики: показывает, что именно не работает, если игры молчат.
+Звук зашит в страницу — сеть на него не влияет.</p>
 
 <div class="panel">
-  <button id="start" class="primary" style="width:100%">Включить звук и загрузить пак</button>
+  <button id="start" class="primary" style="width:100%">Включить звук</button>
 </div>
 
 <div class="panel" id="state"></div>
@@ -46,6 +47,9 @@
 <script type="module">
   // Страница намеренно не тянет Phaser: проверяем ровно тот же WebAudio-слой,
   // что в играх, но без игрового движка — чтобы отделить звук от всего прочего.
+  // Пак берём из того же источника, что и игры (scripts/build-audio.mjs).
+  import { AUDIO_DATA } from './audio-data.js';
+
   const NAMES = ['tap', 'ok', 'wrong', 'win', 'lose', 'coin', 'star', 'swipe'];
   const MUTE_KEY = 'wingo:sound';
   let ctx = null, master = null;
@@ -61,14 +65,19 @@
     });
   }
 
+  function bytes(b64) {
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out.buffer;
+  }
+
   async function loadPack() {
     await Promise.all(NAMES.map(async (name) => {
       if (buffers.has(name)) return;
       try {
-        const res = await fetch(`quiz/audio/${name}.mp3`);
-        if (!res.ok) { log.push(`${name}.mp3 → HTTP ${res.status}`); return; }
-        buffers.set(name, await decode(await res.arrayBuffer()));
-      } catch (e) { log.push(`${name}.mp3 → ${e && e.message ? e.message : e}`); }
+        buffers.set(name, await decode(bytes(AUDIO_DATA[name])));
+      } catch (e) { log.push(`${name} → ${e && e.message ? e.message : e}`); }
     }));
     render();
   }
@@ -116,7 +125,7 @@
     const rows = [
       ['WebAudio в браузере', Ctor ? 'есть' : 'НЕТ', !!Ctor],
       ['Состояние контекста', ctx ? ctx.state : 'не создан', ctx && ctx.state === 'running'],
-      ['Загружено звуков', `${buffers.size} из ${NAMES.length}`, buffers.size === NAMES.length],
+      ['Расшифровано звуков', `${buffers.size} из ${NAMES.length}`, buffers.size === NAMES.length],
       ['Беззвучный режим каталога', muted ? 'ВКЛЮЧЁН — звука не будет' : 'выключен', !muted],
       ['Громкость мастера', master ? String(master.gain.value) : '—', true],
     ];
