@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { applyTheme, setupCamera, makeBackButton, playSound } from '../ui';
+import { applyTheme, setupCamera, makeBackButton, playSound, sparkle } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { levelAt } from '../../core/levels';
@@ -271,6 +271,7 @@ export class Game extends Scene {
       duration: 160, ease: 'Quad.easeOut',
       onComplete: () => this.afterPlace(),
     });
+    sparkle(this, BOARD_LEFT + center.x, BOARD_TOP + center.y, { count: 10, power: 0.6 });
     this.okFeedback(BOARD_LEFT + center.x, BOARD_TOP + center.y);
   }
 

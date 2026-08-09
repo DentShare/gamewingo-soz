@@ -5,6 +5,7 @@ import { t } from '../../i18n';
 import {
   makeButton, applyTheme, setupCamera, type Button, makeGlyph, makeStarRow, makeBonusChip,
   playSound,
+  makePhoenix,
 } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
@@ -53,6 +54,11 @@ export class GameOver extends Scene {
     const loc = this.last.locale;
     const won = this.last.solved;
     playSound(won ? 'win' : 'lose');
+
+    // Маскот каталога реагирует на итог: радуется победе, никнет при провале.
+    const phoenix = makePhoenix(this, 322, 648, 84, { facing: 'left' });
+    this.time.delayedCall(320, () => (won ? phoenix.celebrate() : phoenix.sink()));
+    this.events.once('shutdown', () => phoenix.destroy());
     const missionsBefore = dailyMissions();
     const record = this.recordLadder(won);
 

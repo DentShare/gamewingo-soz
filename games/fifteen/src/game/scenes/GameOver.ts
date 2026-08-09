@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip, playSound } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip, playSound, makePhoenix } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { computeScore } from '../../core/score';
@@ -86,6 +86,11 @@ export class GameOver extends Scene {
       .setResolution(DPR);
 
     playSound(last.cleared ? 'win' : 'lose');
+
+    // Маскот каталога реагирует на итог: радуется победе, никнет при провале.
+    const phoenix = makePhoenix(this, 322, 648, 84, { facing: 'left' });
+    this.time.delayedCall(320, () => (last.cleared ? phoenix.celebrate() : phoenix.sink()));
+    this.events.once('shutdown', () => phoenix.destroy());
     // Звёзды звенят по очереди — итог читается на слух, не только глазами.
     for (let i = 0; i < starCount; i++) {
       this.time.delayedCall(340 + i * 160, () => playSound('star'));

@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip, playSound } from '../ui';
+import { makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip, playSound, makePhoenix } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { levelAt, LADDER_SIZE } from '../../core/levels';
@@ -98,6 +98,11 @@ export class GameOver extends Scene {
 
     // Проиграть в пазле нельзя: собранная картинка — всегда победа.
     playSound('win');
+
+    // Маскот каталога: в этой игре проиграть нельзя, поэтому он всегда радуется.
+    const phoenix = makePhoenix(this, 322, 648, 84, { facing: 'left' });
+    this.time.delayedCall(320, () => phoenix.celebrate());
+    this.events.once('shutdown', () => phoenix.destroy());
     for (let i = 0; i < stars; i++) {
       this.time.delayedCall(680 + i * 160, () => playSound('star'));
     }

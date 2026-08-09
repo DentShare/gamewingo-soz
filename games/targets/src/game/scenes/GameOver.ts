@@ -4,6 +4,7 @@ import { t } from '../../i18n';
 import {
   makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip,
   playSound,
+  makePhoenix,
 } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
@@ -69,6 +70,11 @@ export class GameOver extends Scene {
     const isRecord = round.records.improved.includes('score');
     // Итог забега на слух: закрытое испытание или рекорд — победа, иначе просто конец.
     playSound(round.closed.length || isRecord ? 'win' : 'lose');
+
+    // Маскот каталога реагирует на итог: радуется победе, никнет при провале.
+    const phoenix = makePhoenix(this, 322, 648, 84, { facing: 'left' });
+    this.time.delayedCall(320, () => (round.closed.length || isRecord ? phoenix.celebrate() : phoenix.sink()));
+    this.events.once('shutdown', () => phoenix.destroy());
     // Звёзды звенят по очереди — итог читается на слух, не только глазами.
     for (let i = 0; i < round.closed.length; i++) {
       this.time.delayedCall(340 + i * 160, () => playSound('star'));

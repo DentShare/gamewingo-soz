@@ -1,6 +1,7 @@
 import type { Scene } from 'phaser';
 import { C, S, FONT, WEIGHT } from './tokens.js';
 import { DPR } from './viewport.js';
+import { sparkle } from './motion.js';
 
 /**
  * Счётчик бонусов в хедере и анимация начисления «+N летит в счётчик».
@@ -132,6 +133,8 @@ export function makeBonusChip(
         ease: 'Cubic.easeIn',
         onComplete: () => {
           fly.destroy();
+          // Искры в момент зачисления: баланс не просто меняет цифру.
+          sparkle(scene, root.x - 24, root.y, { count: 14, power: 0.7, depth: 2400 });
           countUpTo(target);
           scene.tweens.add({
             targets: root, scale: 1.18, duration: 130, yoyo: true, ease: 'Quad.easeOut',

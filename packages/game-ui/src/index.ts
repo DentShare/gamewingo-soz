@@ -5,6 +5,8 @@
  */
 export * from './tokens.js';
 export * from './audio.js';
+export * from './motion.js';
+export * from './phoenix.js';
 export * from './viewport.js';
 export * from './widgets.js';
 export * from './glyphs.js';

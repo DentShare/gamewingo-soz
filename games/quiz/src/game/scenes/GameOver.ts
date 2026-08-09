@@ -1,7 +1,9 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip, playSound } from '../ui';
+import {
+  makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip, playSound, makePhoenix,
+} from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { levelAt, LADDER_SIZE } from '../../core/levels';
@@ -57,6 +59,11 @@ export class GameOver extends Scene {
     }
 
     playSound(last.cleared ? 'win' : 'lose');
+
+    // Маскот каталога реагирует на итог: радуется победе, никнет при провале.
+    const phoenix = makePhoenix(this, 322, 648, 84, { facing: 'left' });
+    this.time.delayedCall(320, () => (last.cleared ? phoenix.celebrate() : phoenix.sink()));
+    this.events.once('shutdown', () => phoenix.destroy());
 
     // Бонусы за партию: первый проход уровня + закрывшиеся задания дня.
     const bonus = grantRoundBonuses({ slug: SLUG, n: last.level, record, missionsBefore });
