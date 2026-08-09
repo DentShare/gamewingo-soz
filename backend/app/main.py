@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .admin.router import router as admin_router
+from .analytics.router import router as analytics_router
 from .progression.router import router as progression_router
 
 app = FastAPI(
@@ -32,6 +33,7 @@ app.add_middleware(
 
 app.include_router(progression_router)
 app.include_router(admin_router)
+app.include_router(analytics_router)
 
 
 @app.get("/health")

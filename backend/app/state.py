@@ -6,9 +6,13 @@ Supabase, вместо словаря override-ов — таблица progressi
 """
 from typing import Any, Optional
 
+from .analytics.store import AnalyticsStore
 from .progression.store import InMemoryStore
 
 store = InMemoryStore()
+
+# Факты продуктовой аналитики: партии, пакеты событий, заходы.
+analytics = AnalyticsStore()
 
 # game_id → конфиг из админки; None в get() означает «работаем по файлу из репо».
 overrides: dict[str, dict[str, Any]] = {}

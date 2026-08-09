@@ -39,6 +39,12 @@ class AuditEntry:
     xp: int
     reason: str
     session_id: Optional[str] = None
+    # Время начисления: без него экономику нельзя посчитать за период.
+    ts: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @property
+    def day(self) -> int:
+        return day_id(self.ts)
 
 
 class InMemoryStore:

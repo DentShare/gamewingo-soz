@@ -26,17 +26,19 @@ GameWingo/
 ├── packages/game-progress/    ← лестница уровней, звёзды, задания дня (@gamewingo/game-progress)
 ├── hub/                       ← хаб каталога (HTML), собирается в корень домена
 ├── games/<slug>/              ← отдельные игры (Vite-проекты) + SPEC.md на каждую
-├── backend/                   ← Score Engine (FastAPI): событийный скоринг, антифрод, админка баланса
+├── backend/                   ← Score Engine (FastAPI): скоринг, антифрод, админка баланса, аналитика
 ├── docs/
 │   ├── SPEC.template.md        ← шаблон спеки игры
 │   ├── DESIGN.md               ← дизайн-система: цвета, типографика, компоненты
 │   ├── PROGRESSION.md          ← лестница уровней, звёзды, задания дня
 │   ├── PROGRESSION-SERVER.md   ← событийный скоринг: конфиги, экспорт, Score Engine
+│   ├── ANALYTICS.md            ← продуктовая аналитика: что считаем и где смотреть
 │   ├── ICONS.md                ← иконки игр: требования и подключение
 │   ├── LICENSES.md             ← реестр лицензий (обязателен)
 │   ├── DEPLOY.md               ← один Vercel-проект на весь каталог
 │   └── ARCHITECTURE.md         ← схема, поток событий, правила
-├── .claude/skills/            ← скиллы: new-game, license-check, fintech-bridge, webview-qa
+├── .claude/skills/            ← скиллы: new-game, license-check, fintech-bridge, webview-qa,
+│                                 perf-budget, content-pack, game-audio, asset-pipeline
 └── <референс-репозитории>/     ← примеры (examples-master, howler.js и др.), НЕ трогать
 ```
 
@@ -67,7 +69,7 @@ GameWingo/
 - **webview-qa** — чеклист проверки перед сдачей (вес, fps, тач, офлайн, античит).
 - **perf-budget** — замерить вес билдов игр и хаба против правила №7 (`npm run check:weight`).
 - **content-pack** — контент и словари RU/UZ: паритет ключей, подстановки, хардкод (`npm run check:content`).
-- **game-audio** — звук синтезом на WebAudio (0 байт, 0 лицензий) + проверка аудиофайлов (`npm run check:audio`).
+- **game-audio** — общий пак звуков в game-ui, подключение к игре, лицензии и вес (`npm run check:audio`).
 - **asset-pipeline** — подготовка растровых ассетов: размер, webp, вес, строка в реестре лицензий.
 
 ## Команды
