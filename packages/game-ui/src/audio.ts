@@ -131,6 +131,18 @@ export function setMuted(value: boolean): void {
   if (!value) void loadPack();
 }
 
+/**
+ * Декодировать буфер. Safari до 14.1 не умеет промис-форму `decodeAudioData`
+ * и возвращает undefined — поэтому зовём колбэчную и промис-форму разом.
+ */
+function decode(raw: ArrayBuffer): Promise<AudioBuffer> {
+  return new Promise((resolve, reject) => {
+    const maybe = ctx!.decodeAudioData(raw, resolve, reject) as unknown as
+      Promise<AudioBuffer> | undefined;
+    if (maybe && typeof maybe.then === 'function') maybe.then(resolve, reject);
+  });
+}
+
 /** Догрузить пак. Тихо выходит при любой ошибке — фолбэком останется синтез. */
 async function loadPack(): Promise<void> {
   if (!ctx || loading || buffers.size === SOUND_NAMES.length) return;
@@ -142,9 +154,7 @@ async function loadPack(): Promise<void> {
       try {
         const res = await fetch(`${basePath}${name}.mp3`);
         if (!res.ok) return;
-        const raw = await res.arrayBuffer();
-        const decoded = await ctx!.decodeAudioData(raw);
-        buffers.set(name, decoded);
+        buffers.set(name, await decode(await res.arrayBuffer()));
       } catch {
         // Нет файла или формат не по зубам движку — останется синтез.
       }
@@ -154,8 +164,11 @@ async function loadPack(): Promise<void> {
 }
 
 /**
- * Создать (или разбудить) аудиоконтекст. Вызывать **только из обработчика жеста**:
- * iOS оставляет контекст в состоянии `suspended`, если тронуть его раньше.
+ * Создать (или разбудить) аудиоконтекст. Вызывать **только из обработчика жеста**.
+ *
+ * На iOS одного `resume()` мало: контекст просыпается, только если внутри жеста
+ * реально что-то прозвучало. Поэтому играем один беззвучный сэмпл — приём
+ * старый, но без него Safari молчит и ни о чём не сообщает.
  */
 export function unlockAudio(): void {
   const Ctor = audioCtor();
@@ -166,23 +179,58 @@ export function unlockAudio(): void {
     master.gain.value = muted ? 0 : MASTER_GAIN;
     master.connect(ctx.destination);
   }
-  if (ctx.state === 'suspended') void ctx.resume();
+  if (ctx.state !== 'running') void ctx.resume();
+  try {
+    const src = ctx.createBufferSource();
+    src.buffer = ctx.createBuffer(1, 1, 22_050);
+    src.connect(ctx.destination);
+    src.start(0);
+  } catch {
+    // Совсем древний движок — дальше просто ничего не прозвучит.
+  }
   if (!muted) void loadPack();
 }
 
 /**
- * Повесить разблокировку на первый жест. Вызывать один раз в `main.ts` игры.
- * Слушатели на документе, поэтому канва Phaser их не перехватывает.
+ * Повесить разблокировку на жесты пользователя. Вызывать один раз в `main.ts`.
+ *
+ * Две вещи, без которых это не работает на iOS:
+ *  - слушатели снимаются не после первого касания, а когда контекст
+ *    действительно заиграл: первая попытка часто оставляет его в `suspended`;
+ *  - контекст сам уходит в `interrupted` после звонка или сворачивания —
+ *    поэтому будим его ещё и при возврате на вкладку.
  */
 export function installAudioUnlock(): void {
-  if (typeof document === 'undefined') return;
-  const once = () => {
+  if (typeof window === 'undefined') return;
+  const events = ['pointerdown', 'touchstart', 'touchend', 'mousedown', 'keydown'];
+
+  const onGesture = () => {
     unlockAudio();
-    document.removeEventListener('pointerdown', once);
-    document.removeEventListener('touchend', once);
+    if (ctx && ctx.state === 'running') {
+      for (const type of events) window.removeEventListener(type, onGesture, true);
+    }
   };
-  document.addEventListener('pointerdown', once);
-  document.addEventListener('touchend', once);
+  // Фаза перехвата: жест доходит до нас раньше любого обработчика на канве.
+  for (const type of events) window.addEventListener(type, onGesture, true);
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && ctx && ctx.state !== 'running') void ctx.resume();
+    });
+  }
+}
+
+/** Состояние звука — для страницы диагностики и отчётов об ошибках. */
+export function audioDiagnostics(): {
+  supported: boolean; state: string; loaded: number; total: number; muted: boolean;
+} {
+  return {
+    supported: audioCtor() !== null,
+    state: ctx ? ctx.state : 'нет контекста',
+    loaded: buffers.size,
+    total: SOUND_NAMES.length,
+    muted,
+  };
 }
 
 /** Проиграть готовый буфер из пака. */
@@ -228,7 +276,13 @@ function playTone(tone: Tone, at: number): void {
 export function playSound(name: SoundName): void {
   if (muted) return;
   if (!ctx) unlockAudio();
-  if (!ctx || !master || ctx.state !== 'running') return;
+  if (!ctx || !master) return;
+  if (ctx.state !== 'running') {
+    // Контекст задремал (iOS делает это после звонка или сворачивания).
+    // Будим и пропускаем этот звук: следующий уже прозвучит.
+    void ctx.resume();
+    return;
+  }
   const buffer = buffers.get(name);
   if (buffer) {
     playBuffer(buffer);
