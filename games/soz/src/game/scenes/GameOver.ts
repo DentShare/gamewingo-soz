@@ -4,6 +4,8 @@ import type { Row } from '../../core/gameState';
 import { t } from '../../i18n';
 import {
   makeButton, applyTheme, setupCamera, type Button, makeGlyph, makeStarRow, makeBonusChip,
+  playSound,
+  makePhoenix,
 } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
@@ -51,6 +53,12 @@ export class GameOver extends Scene {
     this.last = this.registry.get('lastGame') as LastGame;
     const loc = this.last.locale;
     const won = this.last.solved;
+    playSound(won ? 'win' : 'lose');
+
+    // Маскот каталога реагирует на итог: радуется победе, никнет при провале.
+    const phoenix = makePhoenix(this, 322, 648, 84, { facing: 'left' });
+    this.time.delayedCall(320, () => (won ? phoenix.celebrate() : phoenix.sink()));
+    this.events.once('shutdown', () => phoenix.destroy());
     const missionsBefore = dailyMissions();
     const record = this.recordLadder(won);
 
@@ -65,7 +73,10 @@ export class GameOver extends Scene {
       // Чип создан после начисления — откатываем показ на баланс «до»,
       // чтобы прилёт «+N» докрутил его до нового, а не удвоил прибавку.
       bonusChip.setValue(Math.max(0, bonusBalance() - bonusTotal));
-      this.time.delayedCall(900, () => bonusChip.award(bonusTotal, CX, 210));
+      this.time.delayedCall(900, () => {
+        playSound('coin');
+        bonusChip.award(bonusTotal, CX, 210);
+      });
     }
 
     // Заголовок с pop-in (overshoot).
@@ -91,6 +102,10 @@ export class GameOver extends Scene {
         .setOrigin(0.5)
         .setResolution(DPR);
       const stars = won ? starsFor(levelAt(this.last.level).goals, this.last.guessesUsed) : 0;
+      // Звёзды звенят по очереди — итог читается на слух, не только глазами.
+      for (let i = 0; i < stars; i++) {
+        this.time.delayedCall(360 + i * 160, () => playSound('star'));
+      }
       const row = makeStarRow(this, CX, 196, stars, 18).setScale(0);
       this.tweens.add({ targets: row, scale: 1, duration: 380, delay: 320, ease: 'Back.easeOut' });
     }

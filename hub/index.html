@@ -85,6 +85,19 @@
   #sections { display: flex; flex-direction: column; gap: 20px; }
 
   /* ── Переключатель языка ───────────────────────────────────────────── */
+  /* Полоса с маскотом: объясняет механику серии и держит бренд на главной. */
+  .greet {
+    display: flex; align-items: center; gap: 12px; margin: 14px 0 2px;
+    background: var(--card); border: 1px solid var(--divider); border-radius: 14px;
+    padding: 8px 14px 8px 10px;
+  }
+  .greet p { margin: 0; font-size: 14px; line-height: 1.35; color: var(--muted); }
+  .greet .phoenix { flex: none; }
+  .greet .phoenix .wing { transform-origin: 30px 30px; }
+  .greet.flap .phoenix .wing { animation: flap .46s ease-out 2; }
+  @keyframes flap { 0%, 100% { transform: rotate(0) } 50% { transform: rotate(-26deg) } }
+  @media (prefers-reduced-motion: reduce) { .greet.flap .phoenix .wing { animation: none } }
+
   .langs { display: flex; gap: 8px; }
   .lang {
     flex: 1; height: 40px; display: grid; place-items: center; border-radius: 12px;
@@ -156,6 +169,30 @@
       <div class="lang" data-lang="uz">Oʻzbekcha</div>
     </div>
 
+    <div class="greet" id="greet">
+      <svg class="phoenix" viewBox="0 0 64 72" width="52" height="58" aria-hidden="true">
+        <polygon points="28.8,42.32 22.75,47.22 22.05,55.69 22.08,63.01 26.4,57.1 30.82,49.84" fill="#d99a12"/>
+        <polygon points="28.8,42.32 20.01,45.01 15.6,54 12.48,62.05 19.8,57.47 27.8,51.46" fill="#f76624"/>
+        <polygon points="28.8,42.32 21.37,41.4 14.89,46.49 9.69,51.31 16.72,50.38 24.77,48.63" fill="#dc5314"/>
+        <polygon points="33.28,31.44 34.47,23.45 28.07,19.09 21.99,15.91 23.14,22.67 25.32,30.11" fill="#dc5314"/>
+        <ellipse cx="32" cy="35.28" rx="12.16" ry="16" fill="#f76624"/>
+        <ellipse cx="35.84" cy="37.84" rx="7.04" ry="10.24" fill="#ff9a5e"/>
+        <circle cx="37.76" cy="16.72" r="9.92" fill="#f76624"/>
+        <polygon points="45.44,14.8 56.32,18 45.44,20.56" fill="#d99a12"/>
+        <polygon points="37.76,9.68 39.71,6.42 38.81,2.28 37.76,-1.2 36.71,2.28 35.81,6.42" fill="#d99a12"/>
+        <polygon points="33.92,10.32 34.16,5.75 31.08,1.55 28.2,-1.84 28.97,2.55 30.25,7.59" fill="#ff9a5e"/>
+        <polygon points="30.08,12.88 28.87,9.52 25.34,7.69 22.19,6.35 24.09,9.2 26.55,12.32" fill="#d99a12"/>
+        <circle cx="40.96" cy="15.44" r="1.92" fill="#1a1a1a"/>
+        <circle cx="41.73" cy="14.61" r="0.7" fill="#fff"/>
+        <g class="wing">
+        <polygon points="31.36,30.16 27,23.2 19.05,23.85 12.14,25.23 17.54,29.76 24.19,34.16" fill="#dc5314"/>
+        <polygon points="31.36,30.16 28.89,20.08 19.1,17.8 10.29,16.79 14.96,24.33 21.19,32.22" fill="#f76624"/>
+        <polygon points="31.36,30.16 32.06,22.06 25.49,17.21 19.32,13.59 20.85,20.58 23.44,28.32" fill="#ff9a5e"/>
+        </g>
+      </svg>
+      <p id="greetText"></p>
+    </div>
+
     <div id="sections"></div>
   </main>
 
@@ -165,6 +202,7 @@
   const FILE_ICONS = new Set([
     'soz', 'pairs', 'fifteen', '2048', 'sudoku-kids',
     'stack', 'flyer', 'targets', 'snake', 'sorting', 'counting',
+    'quiz', 'jigsaw',
   ]);
 
   // Векторный запасной набор — инлайн-SVG (ноль запросов, чёткие на любом DPR).
@@ -273,6 +311,16 @@
       url: 'counting/',
       tags: ['RU', 'UZ', { ru: '4–7 лет', uz: '4–7 yosh', accent: true }],
     },
+    {
+      id: 'jigsaw',
+      title: { ru: 'Пазл', uz: 'Rasm yigʻish' },
+      desc: {
+        ru: 'Собери картинку и узнай про неё историю',
+        uz: 'Rasmni yigʻ va u haqida hikoya bil',
+      },
+      url: 'jigsaw/',
+      tags: ['RU', 'UZ', { ru: '3–7 лет', uz: '3–7 yosh', accent: true }],
+    },
   ];
   // Аркады: заходишь и играешь — партия на 30–60 секунд, управление одним пальцем.
   const ARCADE = [
@@ -341,6 +389,16 @@
       url: 'sudoku-kids/',
       tags: ['RU', 'UZ', { ru: 'Детям', uz: 'Bolalarga', accent: true }],
     },
+    {
+      id: 'quiz',
+      title: { ru: 'Викторина', uz: 'Viktorina' },
+      desc: {
+        ru: 'Вопросы и интересные факты: космос, животные, деньги',
+        uz: 'Savollar va qiziqarli faktlar: kosmos, hayvonlar, pul',
+      },
+      url: 'quiz/',
+      tags: ['RU', 'UZ', { ru: 'Факты', uz: 'Faktlar', accent: true }],
+    },
   ];
   const SOON = [];
 
@@ -356,11 +414,13 @@
       title: 'Игры', back: 'Назад', play: 'Начать игру',
       kids: 'Малышам • без проигрыша', arcade: 'Аркады • играй сразу',
       puzzles: 'Головоломки', soon: 'Скоро', soonBadge: 'Скоро',
+      greet: 'Заходите каждый день — серия бонусов растёт',
     },
     uz: {
       title: 'Oʻyinlar', back: 'Orqaga', play: 'Oʻynashni boshlash',
       kids: 'Kichkintoylarga • yutqazish yoʻq', arcade: 'Arkada • darrov oʻyna',
       puzzles: 'Boshqotirmalar', soon: 'Tez orada', soonBadge: 'Tez orada',
+      greet: 'Har kuni kiring — bonus seriyasi oʻsadi',
     },
   };
 
@@ -415,6 +475,7 @@
     const s = STR[lang];
     document.documentElement.lang = lang;
     document.getElementById('hTitle').textContent = s.title;
+    document.getElementById('greetText').textContent = s.greet;
     document.getElementById('back').setAttribute('aria-label', s.back);
     document.querySelectorAll('.lang').forEach((el) =>
       el.classList.toggle('active', el.dataset.lang === lang));
@@ -530,6 +591,10 @@
   const checkin = claimCheckin();
   if (checkin) {
     setTimeout(() => flyBonus(checkin.amount, balanceBefore, balanceBefore + checkin.amount), 700);
+    // Феникс машет крылом ровно в тот момент, когда прилетает бонус за вход.
+    const greet = document.getElementById('greet');
+    setTimeout(() => greet.classList.add('flap'), 700);
+    setTimeout(() => greet.classList.remove('flap'), 2400);
   }
 </script>
 </body>

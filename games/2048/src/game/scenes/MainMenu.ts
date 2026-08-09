@@ -4,6 +4,7 @@ import { t } from '../../i18n';
 import {
   makeButton, applyTheme, darken, setupCamera, makeTopBar,
   makeRecordBadge, makeMilestoneBar, makeChallengeList, type ChallengeRowState,
+  makeSoundToggle,
 } from '../ui';
 import { CHALLENGES, CHALLENGES_TOTAL, MILESTONES } from '../../core/challenges';
 import {
@@ -88,6 +89,12 @@ export class MainMenu extends Scene {
     // Выбор языка — две пилюли под кнопками.
     this.langPill(CX - 92, y + 56, 'ru', 'Русский');
     this.langPill(CX + 92, y + 56, 'uz', 'Oʻzbekcha');
+
+    // Звук: беззвучный режим общий для каталога, поэтому виджет из дизайн-системы.
+    makeSoundToggle(this, CX, y + 56 + 44, {
+      on: t(this.locale, 'sound.on'),
+      off: t(this.locale, 'sound.off'),
+    });
   }
 
   /** Выход в каталог: событие мосту (реальный WebView вернётся к списку), а в вебе — переход на хаб. */

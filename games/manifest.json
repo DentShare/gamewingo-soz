@@ -243,6 +243,53 @@
       "buildSizeMb": 1.5,
       "ageHint": "4-7",
       "noFailState": true
+    },
+    {
+      "gameId": "quiz",
+      "title": {
+        "ru": "Викторина",
+        "uz": "Viktorina"
+      },
+      "mechanic": "quiz",
+      "locales": [
+        "ru",
+        "uz"
+      ],
+      "orientation": "portrait",
+      "url": "https://gamewingo-soz.vercel.app/quiz/",
+      "modes": [
+        "practice"
+      ],
+      "ageHint": "12+",
+      "genre": "knowledge",
+      "leaderboard": true,
+      "streak": false,
+      "status": "mvp",
+      "buildSizeMb": 1.4
+    },
+    {
+      "gameId": "jigsaw",
+      "title": {
+        "ru": "Пазл",
+        "uz": "Rasm yigʻish"
+      },
+      "mechanic": "jigsaw",
+      "locales": [
+        "ru",
+        "uz"
+      ],
+      "orientation": "portrait",
+      "url": "https://gamewingo-soz.vercel.app/jigsaw/",
+      "modes": [
+        "practice"
+      ],
+      "ageHint": "3-7",
+      "genre": "kids",
+      "leaderboard": false,
+      "streak": false,
+      "status": "mvp",
+      "buildSizeMb": 1.4,
+      "noFailState": true
     }
   ]
 }

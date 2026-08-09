@@ -4,6 +4,7 @@ import { t } from '../../i18n';
 import {
   makeButton, makeTopBar, applyTheme, setupCamera, type Button, makeLevelGrid, makeLadderSummary,
   type LevelTileState,
+  makeSoundToggle,
 } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
@@ -93,6 +94,12 @@ export class MainMenu extends Scene {
     // Выбор языка — две пилюли.
     this.langPill(CX - 92, belowGrid + 156, 'ru', 'Русский');
     this.langPill(CX + 92, belowGrid + 156, 'uz', 'Oʻzbekcha');
+
+    // Звук: беззвучный режим общий для каталога, поэтому виджет из дизайн-системы.
+    makeSoundToggle(this, CX, belowGrid + 156 + 44, {
+      on: t(this.locale, 'sound.on'),
+      off: t(this.locale, 'sound.off'),
+    });
   }
 
   /** Строка «6 попыток · строгий режим · без подсветки» — что именно ждёт на уровне. */

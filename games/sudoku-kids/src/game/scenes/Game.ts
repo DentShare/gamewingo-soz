@@ -8,6 +8,7 @@ import { levelAt, type SudokuParams } from '../../core/levels';
 import { COLORS, FONT } from '../palette';
 import {
   applyTheme, setupCamera, type Button, makeButton, makeBackButton, makeKeyCap, toast, shakeCamera,
+  playSound,
 } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
@@ -405,6 +406,7 @@ export class Game extends Scene {
     if (this.finished || this.tutorialActive || this.selected === null || this.given[this.selected]) return;
     const cell = this.selected;
     const wrong = v !== this.solution[cell];
+    playSound(wrong ? 'wrong' : 'ok');
     this.grid[cell] = v;
     this.refresh();
 

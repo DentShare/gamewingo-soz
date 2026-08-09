@@ -21,7 +21,9 @@ const GAMES = [
   // аркадные
   'stack', 'flyer', 'targets', 'snake',
   // для малышей
-  'sorting', 'counting',
+  'sorting', 'counting', 'jigsaw',
+  // знания
+  'quiz',
 ];
 
 rmSync(out, { recursive: true, force: true });

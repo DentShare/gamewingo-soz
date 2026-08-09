@@ -4,6 +4,7 @@ import uz from './uz.json';
 import { t } from './index';
 
 const REQUIRED = [
+  'sound.on', 'sound.off',
   'app.title', 'menu.daily', 'menu.practice', 'menu.howto', 'game.invalidWord', 'game.notInList',
   'result.won', 'result.lost', 'result.answerWas', 'result.share', 'result.claim', 'result.streak',
   'result.leaderboard', 'error.network', 'a11y.highContrast',

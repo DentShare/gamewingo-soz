@@ -9,6 +9,8 @@
   "menu.challenges": "Sinovlar · {n} tadan {k}",
   "menu.nextMilestone": "Bosqich: {n} plitka · +{r} bonus",
   "menu.milestonesDone": "Barcha bosqichlar olindi!",
+  "sound.on": "Ovoz: yoqilgan",
+  "sound.off": "Ovoz: oʻchirilgan",
   "game.score": "Hisob: {n}",
   "game.best": "Rekord: {n}",
   "game.challenge": "{text} · {v}/{n}",

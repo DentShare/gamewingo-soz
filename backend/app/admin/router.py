@@ -8,7 +8,6 @@ backend/migrations/001_progression.sql) — интерфейс не меняет
 в заголовке X-Admin-Token. Без переменной админка открыта — только для
 локальной разработки, в проде токен обязателен.
 """
-import os
 from pathlib import Path
 from typing import Any, Optional
 
@@ -18,18 +17,13 @@ from pydantic import ValidationError
 
 from .. import state
 from ..progression import config_loader
+from ..security import check_admin_token as _check_token
 from .schemas import ProgressionConfig
 from .simulator import simulate
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 _STATIC = Path(__file__).parent / "static"
-
-
-def _check_token(token: Optional[str]) -> None:
-    expected = os.environ.get("ADMIN_TOKEN")
-    if expected and token != expected:
-        raise HTTPException(401, "Нужен верный X-Admin-Token")
 
 
 def _known(game_id: str) -> None:

@@ -1,0 +1,266 @@
+{
+  "gameId": "jigsaw",
+  "version": 1,
+  "scoring": [
+    {
+      "event": "piece_placed",
+      "base": 50
+    },
+    {
+      "event": "session_complete",
+      "base": 100
+    },
+    {
+      "event": "flawless_picture",
+      "base": 200
+    }
+  ],
+  "starMetric": "wrongDrops",
+  "starsFallback": [
+    {
+      "stars": 1,
+      "metric": "wrongDrops",
+      "op": "lte",
+      "value": 8
+    },
+    {
+      "stars": 2,
+      "metric": "wrongDrops",
+      "op": "lte",
+      "value": 4
+    },
+    {
+      "stars": 3,
+      "metric": "wrongDrops",
+      "op": "lte",
+      "value": 0
+    }
+  ],
+  "dailyQuests": [
+    {
+      "id": "jigsaw_q_pictures2",
+      "title": {
+        "ru": "Собери 2 картинки",
+        "uz": "2 ta rasm yigʻ"
+      },
+      "metric": "pictures",
+      "target": 2,
+      "reward": 40
+    }
+  ],
+  "achievements": [
+    {
+      "id": "jigsaw_collector",
+      "title": {
+        "ru": "Собиратель картинок",
+        "uz": "Rasm toʻplovchi"
+      },
+      "metric": "pictures",
+      "op": "gte",
+      "value": 30,
+      "reward": 200
+    }
+  ],
+  "antiFraud": {
+    "maxScorePerSession": 1300,
+    "maxSessionMs": 900000,
+    "maxEventsPerMinute": 240
+  },
+  "levels": [
+    {
+      "n": 1,
+      "params": {
+        "cols": 2,
+        "rows": 2,
+        "picture": "sunny-day",
+        "ghost": true
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 2,
+      "params": {
+        "cols": 2,
+        "rows": 3,
+        "picture": "cosy-house",
+        "ghost": true
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 3,
+      "params": {
+        "cols": 3,
+        "rows": 3,
+        "picture": "little-boat",
+        "ghost": true
+      },
+      "goals": {
+        "gold": 1,
+        "silver": 3
+      }
+    },
+    {
+      "n": 4,
+      "params": {
+        "cols": 3,
+        "rows": 3,
+        "picture": "rocket",
+        "ghost": true
+      },
+      "goals": {
+        "gold": 1,
+        "silver": 3
+      }
+    },
+    {
+      "n": 5,
+      "params": {
+        "cols": 3,
+        "rows": 4,
+        "picture": "apple-tree",
+        "ghost": true
+      },
+      "goals": {
+        "gold": 1,
+        "silver": 4
+      }
+    },
+    {
+      "n": 6,
+      "params": {
+        "cols": 3,
+        "rows": 4,
+        "picture": "kitten",
+        "ghost": true
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 4
+      }
+    },
+    {
+      "n": 7,
+      "params": {
+        "cols": 4,
+        "rows": 4,
+        "picture": "aquarium",
+        "ghost": true
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 5
+      }
+    },
+    {
+      "n": 8,
+      "params": {
+        "cols": 4,
+        "rows": 4,
+        "picture": "train",
+        "ghost": true
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 5
+      }
+    },
+    {
+      "n": 9,
+      "params": {
+        "cols": 4,
+        "rows": 4,
+        "picture": "butterfly",
+        "ghost": false
+      },
+      "goals": {
+        "gold": 2,
+        "silver": 5
+      }
+    },
+    {
+      "n": 10,
+      "params": {
+        "cols": 4,
+        "rows": 5,
+        "picture": "snowman",
+        "ghost": false
+      },
+      "goals": {
+        "gold": 3,
+        "silver": 6
+      }
+    },
+    {
+      "n": 11,
+      "params": {
+        "cols": 4,
+        "rows": 5,
+        "picture": "balloon",
+        "ghost": false
+      },
+      "goals": {
+        "gold": 3,
+        "silver": 6
+      }
+    },
+    {
+      "n": 12,
+      "params": {
+        "cols": 4,
+        "rows": 5,
+        "picture": "bee-meadow",
+        "ghost": false
+      },
+      "goals": {
+        "gold": 3,
+        "silver": 7
+      }
+    },
+    {
+      "n": 13,
+      "params": {
+        "cols": 4,
+        "rows": 5,
+        "picture": "little-car",
+        "ghost": false
+      },
+      "goals": {
+        "gold": 4,
+        "silver": 8
+      }
+    },
+    {
+      "n": 14,
+      "params": {
+        "cols": 4,
+        "rows": 5,
+        "picture": "rainbow",
+        "ghost": false
+      },
+      "goals": {
+        "gold": 4,
+        "silver": 8
+      }
+    },
+    {
+      "n": 15,
+      "params": {
+        "cols": 4,
+        "rows": 5,
+        "picture": "good-night",
+        "ghost": false
+      },
+      "goals": {
+        "gold": 4,
+        "silver": 8
+      }
+    }
+  ]
+}

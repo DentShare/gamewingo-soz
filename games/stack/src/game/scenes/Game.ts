@@ -3,7 +3,7 @@ import type { Locale } from '../../core/locale';
 import { createStackGame, type StackGame, type DropResult } from '../../core/stack';
 import { computeScore } from '../../core/score';
 import { COLORS, FONT, blockColor } from '../palette';
-import { applyTheme, darken, setupCamera, shakeCamera, makeBackButton } from '../ui';
+import { applyTheme, darken, setupCamera, shakeCamera, makeBackButton, playSound } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import { CHALLENGES } from '../../core/challenges';
@@ -258,6 +258,8 @@ export class Game extends Scene {
     }
 
     if (!res.placed) {
+      // Короткий удар при промахе; вердикт забега — на экране итогов.
+      playSound('wrong');
       // Мимо: блок улетает вниз, башня рушится.
       this.finished = true;
       this.fall(this.currentView, res.cutX > W / 2 ? 1 : -1);
@@ -265,6 +267,8 @@ export class Game extends Scene {
       this.time.delayedCall(560, () => this.endGame());
       return;
     }
+
+    playSound(res.perfect ? 'star' : 'ok');
 
     const index = this.core.blocks.length - 1;
     // Едущий блок становится уложенным — переиспользуем его прямоугольник.

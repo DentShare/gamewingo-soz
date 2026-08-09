@@ -9,6 +9,8 @@
   "menu.challenges": "Sinovlar · {n} tadan {k}",
   "menu.nextMilestone": "Bosqich: {n} ochko · +{r} bonus",
   "menu.milestonesDone": "Barcha bosqichlar olindi!",
+  "sound.on": "Ovoz: yoqilgan",
+  "sound.off": "Ovoz: oʻchirilgan",
   "game.score": "Ochko: {n}",
   "game.combo": "Seriya ×{n}",
   "game.time": "{n} s",

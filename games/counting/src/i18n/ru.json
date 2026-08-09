@@ -23,6 +23,8 @@
   "result.leaderboard": "Таблица лидеров",
   "error.network": "Нет соединения",
   "menu.ladder": "Уровень {n} из {total}",
+  "sound.on": "Звук: вкл",
+  "sound.off": "Звук: выкл",
   "result.level": "Уровень {n} из {total}",
   "result.nextLevel": "Уровень {n}",
   "result.unlocked": "Открыт уровень {n}!"

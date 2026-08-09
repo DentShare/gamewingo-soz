@@ -9,11 +9,15 @@
   ],
   "scripts": {
     "bridge:build": "npm run build -w @gamewingo/game-bridge -w @gamewingo/game-ui -w @gamewingo/game-progress",
-    "build:games": "npm run build -w @gamewingo/soz -w @gamewingo/pairs -w @gamewingo/fifteen -w @gamewingo/2048 -w @gamewingo/sudoku-kids -w @gamewingo/stack -w @gamewingo/flyer -w @gamewingo/targets -w @gamewingo/snake -w @gamewingo/sorting -w @gamewingo/counting",
+    "audio:build": "node scripts/build-audio.mjs",
+    "build:games": "npm run build -w @gamewingo/soz -w @gamewingo/pairs -w @gamewingo/fifteen -w @gamewingo/2048 -w @gamewingo/sudoku-kids -w @gamewingo/stack -w @gamewingo/flyer -w @gamewingo/targets -w @gamewingo/snake -w @gamewingo/sorting -w @gamewingo/counting -w @gamewingo/quiz -w @gamewingo/jigsaw",
     "build:all": "npm run bridge:build && npm run build:games && node scripts/build-catalog.mjs",
     "new-game": "echo \"Скопируйте template-vite-ts-main в games/<name> — или используйте скилл new-game в Claude Code\"",
     "progression:export": "npm run bridge:build && node scripts/export-progression.mjs",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "check:content": "node .claude/skills/content-pack/scripts/check-content.mjs",
+    "check:weight": "node .claude/skills/perf-budget/scripts/perf-budget.mjs",
+    "check:audio": "node .claude/skills/game-audio/scripts/check-audio.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.3"

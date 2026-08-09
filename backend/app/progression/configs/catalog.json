@@ -94,7 +94,7 @@
     {
       "id": "varietyAll",
       "kind": "variety",
-      "target": 11
+      "target": 13
     },
     {
       "id": "streak3",
@@ -107,5 +107,5 @@
       "target": 7
     }
   ],
-  "catalogSize": 11
+  "catalogSize": 13
 }

@@ -26,17 +26,19 @@ GameWingo/
 ├── packages/game-progress/    ← лестница уровней, звёзды, задания дня (@gamewingo/game-progress)
 ├── hub/                       ← хаб каталога (HTML), собирается в корень домена
 ├── games/<slug>/              ← отдельные игры (Vite-проекты) + SPEC.md на каждую
-├── backend/                   ← Score Engine (FastAPI): событийный скоринг, антифрод, админка баланса
+├── backend/                   ← Score Engine (FastAPI): скоринг, антифрод, админка баланса, аналитика
 ├── docs/
 │   ├── SPEC.template.md        ← шаблон спеки игры
 │   ├── DESIGN.md               ← дизайн-система: цвета, типографика, компоненты
 │   ├── PROGRESSION.md          ← лестница уровней, звёзды, задания дня
 │   ├── PROGRESSION-SERVER.md   ← событийный скоринг: конфиги, экспорт, Score Engine
+│   ├── ANALYTICS.md            ← продуктовая аналитика: что считаем и где смотреть
 │   ├── ICONS.md                ← иконки игр: требования и подключение
 │   ├── LICENSES.md             ← реестр лицензий (обязателен)
 │   ├── DEPLOY.md               ← один Vercel-проект на весь каталог
 │   └── ARCHITECTURE.md         ← схема, поток событий, правила
-├── .claude/skills/            ← скиллы: new-game, license-check, fintech-bridge, webview-qa
+├── .claude/skills/            ← скиллы: new-game, license-check, fintech-bridge, webview-qa,
+│                                 perf-budget, content-pack, game-audio, asset-pipeline
 └── <референс-репозитории>/     ← примеры (examples-master, howler.js и др.), НЕ трогать
 ```
 
@@ -65,6 +67,10 @@ GameWingo/
 - **license-check** — прогнать кандидата по чеклисту и записать в реестр лицензий.
 - **fintech-bridge** — правильно подключить события моста и серверную отправку результата.
 - **webview-qa** — чеклист проверки перед сдачей (вес, fps, тач, офлайн, античит).
+- **perf-budget** — замерить вес билдов игр и хаба против правила №7 (`npm run check:weight`).
+- **content-pack** — контент и словари RU/UZ: паритет ключей, подстановки, хардкод (`npm run check:content`).
+- **game-audio** — общий пак звуков в game-ui, подключение к игре, лицензии и вес (`npm run check:audio`).
+- **asset-pipeline** — подготовка растровых ассетов: размер, webp, вес, строка в реестре лицензий.
 
 ## Команды
 
@@ -75,6 +81,9 @@ npm run dev  -w @gamewingo/<slug>        # запустить игру в дев
 npm run build -w @gamewingo/<slug>       # прод-билд игры
 npm run typecheck                        # проверка типов по всем пакетам
 npm run progression:export               # выгрузить конфиги прогрессии для Score Engine (backend/)
+npm run check:content                    # словари RU/UZ и хардкод текста в сценах
+npm run check:weight                     # вес прод-билдов против бюджета (после build:all)
+npm run check:audio                      # звук: вес, формат, лицензии, обвязка
 ```
 
 ## Локализация

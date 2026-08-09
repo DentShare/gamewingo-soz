@@ -9,6 +9,8 @@
   "menu.nextMilestone": "Веха: {n} проёмов · +{r} бонусов",
   "menu.milestonesDone": "Все вехи взяты!",
   "menu.hint": "Одна кнопка — тап. Партия меньше минуты.",
+  "sound.on": "Звук: вкл",
+  "sound.off": "Звук: выкл",
   "game.tapToStart": "Тапните, чтобы взлететь",
   "game.challenge": "{text} · {v}/{n}",
   "challenge.pass3": "Пройди 3 проёма за полёт",

@@ -46,5 +46,7 @@
   "menu.noHints": "Yoritishsiz",
   "menu.guessesOne": "{n} urinish",
   "menu.guessesFew": "{n} urinish",
-  "menu.guessesMany": "{n} urinish"
+  "menu.guessesMany": "{n} urinish",
+  "sound.on": "Ovoz: yoqilgan",
+  "sound.off": "Ovoz: oʻchirilgan"
 }

@@ -34,10 +34,12 @@ def ingest_events(events: list[RoundEvent], user_id: str = Depends(get_user_id))
     ok, reason = antifraud.validate_session(config, raw, None, state.store.sessions)
     if not ok:
         state.store.grant(user_id, 0, game_id, f"rejected:{reason}", events[0].sessionId)
+        state.analytics.record_events(user_id, game_id, events[0].sessionId, len(events), 0, reason)
         return EventsAccepted(xp=0, rejected=True)
 
     xp = engine.score_events(config, raw)
     balance = state.store.grant(user_id, xp, game_id, "events", events[0].sessionId)
+    state.analytics.record_events(user_id, game_id, events[0].sessionId, len(events), xp)
     return EventsAccepted(xp=xp, balance=balance)
 
 
@@ -49,6 +51,11 @@ def ingest_result(result: GameResult, user_id: str = Depends(get_user_id)) -> Aw
     ok, reason = antifraud.validate_session(config, [], raw, state.store.sessions)
     if not ok:
         state.store.grant(user_id, 0, result.game, f"rejected:{reason}", result.sessionId)
+        state.analytics.record_round(
+            user_id=user_id, game_id=result.game, session_id=result.sessionId,
+            mode=result.mode, level=result.level, score=result.score,
+            duration_ms=result.durationMs, won=False, stars=0, xp=0, rejected=reason,
+        )
         return AwardResult(xp=0, balance=state.store.user(user_id).balance)
 
     balance_before = state.store.user(user_id).balance
@@ -108,6 +115,12 @@ def ingest_result(result: GameResult, user_id: str = Depends(get_user_id)) -> Aw
     ]
 
     balance = state.store.user(user_id).balance
+    state.analytics.record_round(
+        user_id=user_id, game_id=result.game, session_id=result.sessionId,
+        mode=result.mode, level=result.level, score=result.score,
+        duration_ms=result.durationMs, won=result.won, stars=stars,
+        xp=balance - balance_before,
+    )
     return AwardResult(
         xp=balance - balance_before,
         stars=stars,
@@ -123,6 +136,8 @@ def checkin(user_id: str = Depends(get_user_id)) -> AwardResult:
     tariff = config_loader.get_catalog()["tariff"]
     today = day_id()
     user = state.store.user(user_id)
+
+    state.analytics.record_visit(user_id)
 
     last = int(user.stats.get("checkinLast", 0))
     run = int(user.stats.get("checkinRun", 0))

@@ -21,6 +21,8 @@
   "error.network": "Нет соединения",
   "menu.ladder": "Уровень {n} из {total}",
   "menu.play": "Играть · уровень {n}",
+  "sound.on": "Звук: вкл",
+  "sound.off": "Звук: выкл",
   "game.level": "Уровень {n}",
   "game.movesLimit": "Ходы: {n} / {limit}",
   "game.fail.moves": "Ходы кончились",

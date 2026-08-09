@@ -21,6 +21,8 @@
   "error.network": "Aloqa yoʻq",
   "menu.ladder": "{total} dan {n}-daraja",
   "menu.play": "Oʻynash · {n}-daraja",
+  "sound.on": "Ovoz: yoqilgan",
+  "sound.off": "Ovoz: oʻchirilgan",
   "game.level": "{n}-daraja",
   "game.movesLimit": "Yurishlar: {n} / {limit}",
   "game.fail.moves": "Yurishlar tugadi",
