@@ -290,6 +290,27 @@
       "status": "mvp",
       "buildSizeMb": 1.4,
       "noFailState": true
+    },
+    {
+      "gameId": "sums",
+      "title": {
+        "ru": "Суммы",
+        "uz": "Yigʻindilar"
+      },
+      "mechanic": "number-crossing",
+      "locales": [
+        "ru",
+        "uz"
+      ],
+      "orientation": "portrait",
+      "url": "https://gamewingo-soz.vercel.app/sums/",
+      "modes": [
+        "practice"
+      ],
+      "leaderboard": true,
+      "streak": false,
+      "status": "mvp",
+      "buildSizeMb": 1.4
     }
   ]
 }

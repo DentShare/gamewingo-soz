@@ -17,7 +17,7 @@ const out = join(root, 'dist-all');
 
 const GAMES = [
   // логические / детские
-  'soz', 'pairs', 'fifteen', '2048', 'sudoku-kids',
+  'soz', 'pairs', 'fifteen', '2048', 'sudoku-kids', 'sums',
   // аркадные
   'stack', 'flyer', 'targets', 'snake',
   // для малышей

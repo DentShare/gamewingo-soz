@@ -47,7 +47,7 @@ describe('GAME_CONFIGS: целостность', () => {
       soz: 'guessesUsed', pairs: 'moves', fifteen: 'moves', '2048': 'score',
       'sudoku-kids': 'timeSec', stack: 'score', flyer: 'score', targets: 'score',
       snake: 'score', sorting: 'mistakes', counting: 'mistakes',
-      quiz: 'mistakes', jigsaw: 'wrongDrops',
+      quiz: 'mistakes', jigsaw: 'wrongDrops', sums: 'extraMoves',
     };
     for (const cfg of Object.values(GAME_CONFIGS)) {
       expect(cfg.starMetric, cfg.gameId).toBe(expected[cfg.gameId]);
