@@ -5,7 +5,7 @@ import { createSession } from '../../bridge/session';
 import { createDemoApi, installDemoApp, DEMO_API_BASE } from '../../bridge/demo';
 import { computeDayId } from '../../core/dailyWord';
 import { getHighContrast } from '../../core/persistence';
-import { loadGameIcon } from '../ui';
+import { loadGameIcon, preferredLocale } from '../ui';
 
 /**
  * Boot: поднимает мост, ждёт INIT от приложения. Если INIT не пришёл (веб/дев вне
@@ -56,7 +56,9 @@ export class Boot extends Scene {
         installDemoApp(); // живёт весь сеанс (single-page); чистить не нужно
         this.registry.set('demo', true);
         session.applyInit({
-          type: 'INIT', authToken: 'demo', apiBaseUrl: DEMO_API_BASE, locale: 'ru', sessionId: 'demo',
+          type: 'INIT', authToken: 'demo', apiBaseUrl: DEMO_API_BASE,
+          // Вне приложения язык берём из каталога: хаб и игры — один выбор.
+          locale: preferredLocale(), sessionId: 'demo',
         });
       }
       proceed();

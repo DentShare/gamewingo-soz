@@ -2,9 +2,16 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import {
-  makeButton, makeTopBar, applyTheme, setupCamera, type Button, makeLevelGrid, makeLadderSummary,
+  makeButton,
+  makeTopBar,
+  applyTheme,
+  setupCamera,
+  type Button,
+  makeLevelGrid,
+  makeLadderSummary,
   type LevelTileState,
   makeSoundToggle,
+  rememberLocale,
 } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
@@ -126,6 +133,7 @@ export class MainMenu extends Scene {
     const selected = this.locale === loc;
     return makeButton(this, x, y, label, () => {
       if (this.locale === loc) return;
+      rememberLocale(loc); // общий выбор каталога: хаб и другие игры
       this.registry.set('locale', loc);
       this.scene.restart();
     }, { width: 176, height: 40, primary: selected });

@@ -4,6 +4,7 @@
  * Спека и правила — `docs/DESIGN.md`. Локальные хексы в сценах запрещены.
  */
 export * from './tokens.js';
+export * from './locale.js';
 export * from './audio.js';
 export * from './motion.js';
 export * from './phoenix.js';
