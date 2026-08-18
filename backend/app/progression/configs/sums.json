@@ -1,0 +1,274 @@
+{
+  "gameId": "sums",
+  "version": 1,
+  "scoring": [
+    {
+      "event": "line_solved",
+      "base": 30
+    },
+    {
+      "event": "session_complete",
+      "base": 200,
+      "modifiers": [
+        {
+          "source": "accuracy",
+          "type": "linear",
+          "factor": 1,
+          "cap": 2
+        }
+      ]
+    },
+    {
+      "event": "no_extra_moves",
+      "base": 150
+    }
+  ],
+  "starMetric": "extraMoves",
+  "starsFallback": [
+    {
+      "stars": 1,
+      "metric": "extraMoves",
+      "op": "lte",
+      "value": 8
+    },
+    {
+      "stars": 2,
+      "metric": "extraMoves",
+      "op": "lte",
+      "value": 4
+    },
+    {
+      "stars": 3,
+      "metric": "extraMoves",
+      "op": "lte",
+      "value": 0
+    }
+  ],
+  "dailyQuests": [
+    {
+      "id": "sums_q_solve3",
+      "title": {
+        "ru": "Реши 3 доски",
+        "uz": "3 ta doskani yech"
+      },
+      "metric": "solved",
+      "target": 3,
+      "reward": 40
+    }
+  ],
+  "achievements": [
+    {
+      "id": "sums_clean",
+      "title": {
+        "ru": "Чистый расчёт",
+        "uz": "Toza hisob"
+      },
+      "metric": "flawlessRounds",
+      "op": "gte",
+      "value": 10,
+      "reward": 200
+    }
+  ],
+  "antiFraud": {
+    "maxScorePerSession": 7290,
+    "maxSessionMs": 2400000,
+    "maxEventsPerMinute": 240
+  },
+  "levels": [
+    {
+      "n": 1,
+      "params": {
+        "size": 3,
+        "keep": 5,
+        "maxValue": 9,
+        "negative": false
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 2,
+      "params": {
+        "size": 3,
+        "keep": 4,
+        "maxValue": 9,
+        "negative": false
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 3,
+      "params": {
+        "size": 4,
+        "keep": 9,
+        "maxValue": 9,
+        "negative": false
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 3
+      }
+    },
+    {
+      "n": 4,
+      "params": {
+        "size": 4,
+        "keep": 8,
+        "maxValue": 9,
+        "negative": false
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 3
+      }
+    },
+    {
+      "n": 5,
+      "params": {
+        "size": 4,
+        "keep": 7,
+        "maxValue": 12,
+        "negative": false
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 4
+      }
+    },
+    {
+      "n": 6,
+      "params": {
+        "size": 5,
+        "keep": 14,
+        "maxValue": 9,
+        "negative": false
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 4
+      }
+    },
+    {
+      "n": 7,
+      "params": {
+        "size": 5,
+        "keep": 12,
+        "maxValue": 12,
+        "negative": false
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 5
+      }
+    },
+    {
+      "n": 8,
+      "params": {
+        "size": 5,
+        "keep": 11,
+        "maxValue": 15,
+        "negative": false
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 5
+      }
+    },
+    {
+      "n": 9,
+      "params": {
+        "size": 6,
+        "keep": 20,
+        "maxValue": 12,
+        "negative": false
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 6
+      }
+    },
+    {
+      "n": 10,
+      "params": {
+        "size": 6,
+        "keep": 18,
+        "maxValue": 15,
+        "negative": false
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 7
+      }
+    },
+    {
+      "n": 11,
+      "params": {
+        "size": 6,
+        "keep": 16,
+        "maxValue": 12,
+        "negative": true
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 7
+      }
+    },
+    {
+      "n": 12,
+      "params": {
+        "size": 7,
+        "keep": 26,
+        "maxValue": 12,
+        "negative": true
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 9
+      }
+    },
+    {
+      "n": 13,
+      "params": {
+        "size": 7,
+        "keep": 24,
+        "maxValue": 15,
+        "negative": true
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 9
+      }
+    },
+    {
+      "n": 14,
+      "params": {
+        "size": 8,
+        "keep": 34,
+        "maxValue": 15,
+        "negative": true
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 11
+      }
+    },
+    {
+      "n": 15,
+      "params": {
+        "size": 9,
+        "keep": 42,
+        "maxValue": 15,
+        "negative": true
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 14
+      }
+    }
+  ]
+}

@@ -11,7 +11,7 @@ export const BRIDGE_PROTOCOL_VERSION = 1 as const;
 export const GAME_IDS = [
   'soz', 'pairs', 'fifteen', '2048', 'sudoku-kids',
   'stack', 'flyer', 'targets', 'snake', 'sorting', 'counting',
-  'quiz', 'jigsaw',
+  'quiz', 'jigsaw', 'sums',
 ] as const;
 
 export type GameId = (typeof GAME_IDS)[number];

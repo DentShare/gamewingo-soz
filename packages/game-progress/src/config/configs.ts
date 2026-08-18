@@ -307,6 +307,34 @@ export const GAME_CONFIGS: Record<GameId, ProgressionConfig> = {
     antiFraud: { ...AF, maxScorePerSession: 5_000 },
   },
 
+  /* ── «Суммы» — вычёркивание лишних чисел, проигрыша нет ─────────────── */
+  sums: {
+    gameId: 'sums', version: 1,
+    scoring: [
+      // Единица прогресса — сошедшаяся строка или столбец: это видно на доске
+      // и не отменяется случайным тапом, в отличие от отдельного вычёркивания.
+      { event: 'line_solved', base: 30 },
+      { event: 'session_complete', base: 200,
+        modifiers: [{ source: 'accuracy', type: 'linear', factor: 1, cap: 2 }] },
+      // Решил без единого лишнего касания — отдельная награда за чистый расчёт.
+      { event: 'no_extra_moves', base: 150 },
+    ],
+    starMetric: 'extraMoves',
+    starsFallback: starsLte('extraMoves', 8, 4, 0),
+    dailyQuests: [
+      { id: 'sums_q_solve3', title: { ru: 'Реши 3 доски', uz: '3 ta doskani yech' },
+        metric: 'solved', target: 3, reward: 40 },
+    ],
+    achievements: [
+      { id: 'sums_clean', title: { ru: 'Чистый расчёт', uz: 'Toza hisob' },
+        metric: 'flawlessRounds', op: 'gte', value: 10, reward: 200 },
+    ],
+    // Потолок очков экспорт подставит из MAX_SCORE игры (7290). Лимит длительности
+    // здесь свой: над девяткой можно честно думать дольше общих пятнадцати минут,
+    // а таймера, который бы это оборвал, в игре нет.
+    antiFraud: { ...AF, maxScorePerSession: 10_000, maxSessionMs: 40 * 60_000 },
+  },
+
   /* ── «Счёт» — детская, проигрыша нет, звёзды за аккуратность ────────── */
   counting: {
     gameId: 'counting', version: 1,

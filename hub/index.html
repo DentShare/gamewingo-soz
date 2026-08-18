@@ -202,7 +202,7 @@
   const FILE_ICONS = new Set([
     'soz', 'pairs', 'fifteen', '2048', 'sudoku-kids',
     'stack', 'flyer', 'targets', 'snake', 'sorting', 'counting',
-    'quiz', 'jigsaw',
+    'quiz', 'jigsaw', 'sums',
   ]);
 
   // Векторный запасной набор — инлайн-SVG (ноль запросов, чёткие на любом DPR).
@@ -398,6 +398,16 @@
       },
       url: 'quiz/',
       tags: ['RU', 'UZ', { ru: 'Факты', uz: 'Faktlar', accent: true }],
+    },
+    {
+      id: 'sums',
+      title: { ru: 'Суммы', uz: 'Yigʻindilar' },
+      desc: {
+        ru: 'Вычеркни лишние числа, чтобы сошлись суммы',
+        uz: 'Yigʻindilar toʻgʻri kelishi uchun ortiqcha sonlarni oʻchir',
+      },
+      url: 'sums/',
+      tags: ['RU', 'UZ', { ru: 'Логика', uz: 'Mantiq', accent: true }],
     },
   ];
   const SOON = [];
