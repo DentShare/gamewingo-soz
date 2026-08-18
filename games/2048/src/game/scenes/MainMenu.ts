@@ -2,9 +2,17 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import {
-  makeButton, applyTheme, darken, setupCamera, makeTopBar,
-  makeRecordBadge, makeMilestoneBar, makeChallengeList, type ChallengeRowState,
+  makeButton,
+  applyTheme,
+  darken,
+  setupCamera,
+  makeTopBar,
+  makeRecordBadge,
+  makeMilestoneBar,
+  makeChallengeList,
+  type ChallengeRowState,
   makeSoundToggle,
+  rememberLocale,
 } from '../ui';
 import { CHALLENGES, CHALLENGES_TOTAL, MILESTONES } from '../../core/challenges';
 import {
@@ -134,6 +142,7 @@ export class MainMenu extends Scene {
   private langPill(x: number, y: number, loc: Locale, label: string) {
     return makeButton(this, x, y, label, () => {
       if (this.locale === loc) return;
+      rememberLocale(loc); // общий выбор каталога: хаб и другие игры
       this.registry.set('locale', loc);
       this.scene.restart();
     }, { width: 176, height: 40, primary: this.locale === loc });

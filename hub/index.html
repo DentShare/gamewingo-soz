@@ -503,7 +503,9 @@
 
   document.getElementById('sections').addEventListener('click', (e) => {
     const item = e.target.closest('.item[data-url]');
-    if (item) window.location.href = item.dataset.url;
+    // Язык уезжает в игру параметром: ключ wingoHubLang игра тоже читает, но по
+    // ссылке с ?lang= игру можно переслать, и она откроется на нужном языке.
+    if (item) window.location.href = `${item.dataset.url}?lang=${lang}`;
   });
 
   // Назад: просим приложение закрыть раздел игр; вне WebView — обычная история браузера.

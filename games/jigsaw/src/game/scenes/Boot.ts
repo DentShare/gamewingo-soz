@@ -3,7 +3,7 @@ import { createBridge, createApiClient } from '@gamewingo/game-bridge';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createSession } from '../../bridge/session';
 import { createDemoApi, DEMO_API_BASE } from '../../bridge/demo';
-import { setupCamera, loadGameIcon } from '../ui';
+import { setupCamera, loadGameIcon, preferredLocale } from '../ui';
 import { preloadPictures } from '../picture';
 import { PICTURES } from '../../core/pictures';
 
@@ -55,7 +55,9 @@ export class Boot extends Scene {
       if (!started) {
         this.registry.set('demo', true);
         session.applyInit({
-          type: 'INIT', authToken: 'demo', apiBaseUrl: DEMO_API_BASE, locale: 'ru', sessionId: 'demo',
+          type: 'INIT', authToken: 'demo', apiBaseUrl: DEMO_API_BASE,
+          // Вне приложения язык берём из каталога: хаб и игры — один выбор.
+          locale: preferredLocale(), sessionId: 'demo',
         });
       }
       proceed();

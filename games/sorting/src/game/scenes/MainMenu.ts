@@ -2,9 +2,16 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import {
-  makeButton, applyTheme, setupCamera, makeTopBar, makeGameIcon, makeLevelGrid, makeLadderSummary,
+  makeButton,
+  applyTheme,
+  setupCamera,
+  makeTopBar,
+  makeGameIcon,
+  makeLevelGrid,
+  makeLadderSummary,
   type LevelTileState,
   makeSoundToggle,
+  rememberLocale,
 } from '../ui';
 import { COLORS } from '../palette';
 import { LADDER, LADDER_SIZE } from '../../core/levels';
@@ -79,6 +86,7 @@ export class MainMenu extends Scene {
   private langPill(x: number, y: number, loc: Locale, label: string) {
     return makeButton(this, x, y, label, () => {
       if (this.locale === loc) return;
+      rememberLocale(loc); // общий выбор каталога: хаб и другие игры
       this.registry.set('locale', loc);
       this.scene.restart();
     }, { width: 176, height: 40, primary: this.locale === loc });
