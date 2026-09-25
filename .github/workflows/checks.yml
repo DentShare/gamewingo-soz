@@ -1,0 +1,40 @@
+name: Проверки
+
+# Гейт на каждый PR и на main: типы, юнит-тесты ядра и дымовой тест сцен.
+# Последний ловит то, чего не видят юнит-тесты, — падение внутри сцены Phaser,
+# от которого игра замирает и перестаёт отвечать на нажатия.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # На раннерах GitHub уже стоит Chrome — playwright-core берёт его и ничего не качает.
+      CHROMIUM_PATH: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run bridge:build
+
+      - name: Типы
+        run: npm run typecheck
+
+      - name: Юнит-тесты
+        run: npm test --workspaces --if-present
+
+      - name: Словари RU/UZ
+        run: npm run check:content
+
+      - name: Дымовой тест сцен
+        run: npm run check:smoke
