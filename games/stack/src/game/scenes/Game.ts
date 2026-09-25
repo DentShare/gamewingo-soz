@@ -81,8 +81,10 @@ export class Game extends Scene {
     this.streakMax = 0;
     this.session = this.registry.get('session') as Session;
 
-    this.buildHud();
+    // Сначала поле: строка испытания в HUD читает this.core. При обратном порядке
+    // первая партия падала на undefined, а при повторной показывала прошлую башню.
     this.buildField();
+    this.buildHud();
     this.bindInput();
 
     // «Как играть» из меню: обучение поверх настоящего поля, без сессии и таймера.
@@ -449,6 +451,7 @@ export class Game extends Scene {
     this.perfectText.destroy();
     this.buildField();
     this.scoreText.setText(t(this.locale, 'game.score', { n: 0 })).setScale(1);
+    this.updateChallengeLine(); // новая башня — прогресс испытания с нуля
     this.hintText.setVisible(true).setAlpha(1);
   }
 
