@@ -201,10 +201,13 @@ async function runFlow(browser, url, target, seed, steps = STEPS) {
 // ── Одна игра ─────────────────────────────────────────────────────────────────
 
 async function checkGame(browser, slug, port) {
+  // detached: npm запускает vite отдельным процессом, и убивать нужно всю группу —
+  // иначе после прогона на машине остаются висеть четырнадцать dev-серверов.
   const server = spawn('npm', ['run', 'dev', '-w', packageName(slug)], {
     cwd: ROOT,
     env: { ...process.env, PORT: String(port) },
     stdio: 'ignore',
+    detached: true,
   });
   const url = `http://localhost:${port}/`;
   try {
@@ -243,7 +246,11 @@ async function checkGame(browser, slug, port) {
     }
     return failures.length ? failures : { ok: true, buttons: targets.length, scenes: [...scenes] };
   } finally {
-    server.kill('SIGTERM');
+    try {
+      process.kill(-server.pid, 'SIGTERM');
+    } catch {
+      server.kill('SIGTERM');
+    }
   }
 }
 
