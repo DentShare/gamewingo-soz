@@ -1,10 +1,10 @@
 /**
- * Язык каталога: один выбор на хаб и на все игры.
+ * Язык каталога: выбор один и делается в хабе.
  *
- * Хаб — статический HTML и держит выбор в localStorage под ключом `wingoHubLang`.
- * Игры лежат на том же домене (`/<slug>/`), поэтому читают тот же ключ: переключил
- * язык в хабе — игра открылась на нём же, а не по-русски. Внутри приложения язык
- * приходит в INIT от хоста, и этот запасной путь не используется вовсе.
+ * Хаб — статический HTML и держит выбор в localStorage под ключом `wingoHubLang`,
+ * а в ссылку игры кладёт `?lang=`. Игры язык только читают: своего переключателя
+ * у них нет, чтобы выбор не расходился между хабом и играми. Внутри приложения
+ * язык приходит в INIT от хоста, и этот запасной путь не используется вовсе.
  */
 
 export type CatalogLocale = 'ru' | 'uz';
@@ -40,26 +40,3 @@ export function preferredLocale(fallback: CatalogLocale = 'ru'): CatalogLocale {
   return fallback;
 }
 
-/**
- * Запомнить выбор игрока: хаб и остальные игры откроются на этом же языке.
- *
- * Заодно чиним адрес: если игру открыли по ссылке с `?lang=`, а игрок переключил
- * язык руками, старый параметр обновляется. Иначе после перезагрузки страницы
- * вернулся бы язык из ссылки, и переключатель выглядел бы сломанным.
- */
-export function rememberLocale(locale: CatalogLocale): void {
-  try {
-    localStorage.setItem(LANG_KEY, locale);
-  } catch {
-    /* квота / приватный режим — просто не запомним */
-  }
-  try {
-    const url = new URL(window.location.href);
-    if (url.searchParams.has('lang') && url.searchParams.get('lang') !== locale) {
-      url.searchParams.set('lang', locale);
-      window.history.replaceState({}, '', url.toString());
-    }
-  } catch {
-    /* нет window — адрес править нечему */
-  }
-}

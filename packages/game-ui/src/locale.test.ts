@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { preferredLocale, rememberLocale, LANG_KEY } from './locale';
+import { preferredLocale, LANG_KEY } from './locale';
 
 function setSearch(search: string): void {
   window.history.replaceState({}, '', `/sums/${search}`);
@@ -38,22 +38,4 @@ describe('язык каталога', () => {
     expect(preferredLocale()).toBe('uz');
   });
 
-  it('выбор внутри игры запоминается для хаба и остальных игр', () => {
-    rememberLocale('uz');
-    expect(localStorage.getItem(LANG_KEY)).toBe('uz');
-    expect(preferredLocale()).toBe('uz');
-  });
-
-  it('ручное переключение обновляет ?lang в адресе — иначе перезагрузка вернёт старый язык', () => {
-    setSearch('?lang=uz');
-    rememberLocale('ru');
-    expect(window.location.search).toBe('?lang=ru');
-    expect(preferredLocale()).toBe('ru');
-  });
-
-  it('без ?lang в адресе параметр не появляется', () => {
-    setSearch('');
-    rememberLocale('uz');
-    expect(window.location.search).toBe('');
-  });
 });

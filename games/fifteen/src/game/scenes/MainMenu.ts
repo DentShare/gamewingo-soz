@@ -11,7 +11,6 @@ import {
   makeLadderSummary,
   type LevelTileState,
   makeSoundToggle,
-  rememberLocale,
 } from '../ui';
 import { COLORS } from '../palette';
 import { LADDER, LADDER_SIZE } from '../../core/levels';
@@ -71,25 +70,11 @@ export class MainMenu extends Scene {
     });
     makeButton(this, CX, belowGrid + 52, t(this.locale, 'menu.howto'), () => this.showHowto());
 
-    // Выбор языка — две пилюли под кнопками.
-    this.langPill(CX - 92, belowGrid + 108, 'ru', 'Русский');
-    this.langPill(CX + 92, belowGrid + 108, 'uz', 'Oʻzbekcha');
-
     // Звук: беззвучный режим общий для каталога, поэтому виджет из дизайн-системы.
-    makeSoundToggle(this, CX, belowGrid + 108 + 44, {
+    makeSoundToggle(this, CX, belowGrid + 108, {
       on: t(this.locale, 'sound.on'),
       off: t(this.locale, 'sound.off'),
     });
-  }
-
-  /** Пилюля выбора языка. Выбранная подсвечена; по тапу переключает и перерисовывает меню. */
-  private langPill(x: number, y: number, loc: Locale, label: string) {
-    return makeButton(this, x, y, label, () => {
-      if (this.locale === loc) return;
-      rememberLocale(loc); // общий выбор каталога: хаб и другие игры
-      this.registry.set('locale', loc);
-      this.scene.restart();
-    }, { width: 176, height: 40, primary: this.locale === loc });
   }
 
   private startLevel(n: number) {

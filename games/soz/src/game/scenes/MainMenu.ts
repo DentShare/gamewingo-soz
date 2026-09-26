@@ -11,7 +11,6 @@ import {
   makeLadderSummary,
   type LevelTileState,
   makeSoundToggle,
-  rememberLocale,
 } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
@@ -98,12 +97,8 @@ export class MainMenu extends Scene {
       btn.setLabel(label());
     });
 
-    // Выбор языка — две пилюли.
-    this.langPill(CX - 92, belowGrid + 156, 'ru', 'Русский');
-    this.langPill(CX + 92, belowGrid + 156, 'uz', 'Oʻzbekcha');
-
     // Звук: беззвучный режим общий для каталога, поэтому виджет из дизайн-системы.
-    makeSoundToggle(this, CX, belowGrid + 156 + 44, {
+    makeSoundToggle(this, CX, belowGrid + 156, {
       on: t(this.locale, 'sound.on'),
       off: t(this.locale, 'sound.off'),
     });
@@ -126,17 +121,6 @@ export class MainMenu extends Scene {
     if (mod10 === 1 && mod100 !== 11) key = 'menu.guessesOne';
     else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) key = 'menu.guessesFew';
     return t(this.locale, key, { n });
-  }
-
-  /** Пилюля выбора языка. Выбранная подсвечена; по тапу переключает и перерисовывает меню. */
-  private langPill(x: number, y: number, loc: Locale, label: string) {
-    const selected = this.locale === loc;
-    return makeButton(this, x, y, label, () => {
-      if (this.locale === loc) return;
-      rememberLocale(loc); // общий выбор каталога: хаб и другие игры
-      this.registry.set('locale', loc);
-      this.scene.restart();
-    }, { width: 176, height: 40, primary: selected });
   }
 
   private startDaily() {
