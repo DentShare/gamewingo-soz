@@ -12,7 +12,6 @@ import {
   makeChallengeList,
   type ChallengeRowState,
   makeSoundToggle,
-  rememberLocale,
 } from '../ui';
 import { CHALLENGES, CHALLENGES_TOTAL, MILESTONES } from '../../core/challenges';
 import {
@@ -94,12 +93,8 @@ export class MainMenu extends Scene {
     y += 52;
     makeButton(this, CX, y, t(this.locale, 'menu.howto'), () => this.showHowto());
 
-    // Выбор языка — две пилюли под кнопками.
-    this.langPill(CX - 92, y + 56, 'ru', 'Русский');
-    this.langPill(CX + 92, y + 56, 'uz', 'Oʻzbekcha');
-
     // Звук: беззвучный режим общий для каталога, поэтому виджет из дизайн-системы.
-    makeSoundToggle(this, CX, y + 56 + 44, {
+    makeSoundToggle(this, CX, y + 56, {
       on: t(this.locale, 'sound.on'),
       off: t(this.locale, 'sound.off'),
     });
@@ -136,16 +131,6 @@ export class MainMenu extends Scene {
       cont.add([g, txt]);
       this.tweens.add({ targets: cont, scale: 1, duration: 300, delay: 80 + i * 90, ease: 'Back.easeOut' });
     });
-  }
-
-  /** Пилюля выбора языка. Выбранная подсвечена; по тапу переключает и перерисовывает меню. */
-  private langPill(x: number, y: number, loc: Locale, label: string) {
-    return makeButton(this, x, y, label, () => {
-      if (this.locale === loc) return;
-      rememberLocale(loc); // общий выбор каталога: хаб и другие игры
-      this.registry.set('locale', loc);
-      this.scene.restart();
-    }, { width: 176, height: 40, primary: this.locale === loc });
   }
 
   /** `resume` — продолжить сохранённую партию; иначе стартует новая (сохранение стирается). */
