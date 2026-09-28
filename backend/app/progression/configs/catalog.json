@@ -6,7 +6,12 @@
     "checkinBase": 5,
     "checkinCap": 25,
     "levelBase": 20,
-    "levelStep": 2
+    "levelStep": 2,
+    "levelOfDay": 10,
+    "levelOfDayPerDay": 3,
+    "recordWeek": 20,
+    "chapterClear": 50,
+    "chapterSize": 5
   },
   "missions": {
     "perDay": 3,

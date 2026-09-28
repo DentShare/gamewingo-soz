@@ -1,6 +1,6 @@
 import { readJson, writeJson } from './storage.js';
-import { computeDayId } from './day.js';
-import { dailyMissions, type Mission } from './missions.js';
+import { computeDayId, computeWeekId } from './day.js';
+import { dailyMissions, MISSIONS_PER_DAY, type Mission } from './missions.js';
 import type { RecordResult } from './progress.js';
 
 /**
@@ -60,6 +60,17 @@ export const TARIFF = {
   checkinCap: 25,
   /** Первое прохождение уровня n: поздние ступени дороже. */
   level: (n: number) => 20 + 2 * (Math.max(1, n) - 1),
+  /**
+   * Первое прохождение «уровня дня» в игре. Игр четырнадцать, но оплачиваются
+   * только первые `levelOfDayPerDay` за день: иначе обход каталога ради уровней
+   * дня стоил бы 140 и ломал дневной потолок.
+   */
+  levelOfDay: 10,
+  levelOfDayPerDay: 3,
+  /** Побитый личный рекорд в любой аркаде — раз в календарную неделю. */
+  recordWeek: 20,
+  /** Пройдена глава целиком (все её уровни хотя бы на одну звезду). */
+  chapterClear: 50,
 };
 
 /** Разовая выдача по ключу. true — начислено, false — уже выдавалось. */
@@ -92,6 +103,123 @@ export function claimCheckin(dayId: number = computeDayId()): CheckinResult | nu
   w.balance += amount;
   save(w);
   return { amount, run };
+}
+
+export interface CheckinPreview {
+  /** Чек-ин сегодня уже получен. */
+  claimedToday: boolean;
+  /** Сколько даст (или дал) сегодняшний чек-ин. */
+  today: number;
+  /** Сколько даст завтрашний, если не пропустить день. */
+  tomorrow: number;
+  /** С чего начнётся серия после пропуска — «Пропустите день — серия начнётся с +5». */
+  afterGap: number;
+  /** День серии: сегодняшний, если чек-ин уже был, иначе тот, что наступит при заходе. */
+  run: number;
+}
+
+/** Что даст серия чек-инов — для полосы недели и предупреждения о сбросе, без начисления. */
+export function checkinPreview(dayId: number = computeDayId()): CheckinPreview {
+  const { checkin } = load();
+  const amountFor = (run: number) => Math.min(TARIFF.checkinBase * run, TARIFF.checkinCap);
+  const claimedToday = checkin.last === dayId;
+  const run = claimedToday ? checkin.run : checkin.last === dayId - 1 ? checkin.run + 1 : 1;
+  return {
+    claimedToday,
+    today: amountFor(run),
+    tomorrow: amountFor(run + 1),
+    afterGap: amountFor(1),
+    run,
+  };
+}
+
+/** Ключи наград, в которые зашит день: по ним считается «начислено сегодня». */
+const lodKey = (slug: string, dayId: number) => `lod-${slug}-${dayId}`;
+const recordWeekKey = (weekId: number) => `record-week-${weekId}`;
+const missionKey = (dayId: number, i: number) => `mission-${dayId}-${i}`;
+const wordKey = (dayId: number) => `soz-daily-${dayId}`;
+
+function levelsOfDayClaimed(keys: string[], dayId: number): number {
+  const tail = `-${dayId}`;
+  return keys.filter((k) => k.startsWith('lod-') && k.endsWith(tail)).length;
+}
+
+/**
+ * Первое прохождение уровня дня в игре. Сверх дневного лимита — не платится:
+ * возвращает null, как и повтор в той же игре.
+ */
+export function grantLevelOfDay(slug: string, dayId: number = computeDayId()): GrantedBonus | null {
+  if (levelsOfDayClaimed(load().keys, dayId) >= TARIFF.levelOfDayPerDay) return null;
+  const key = lodKey(slug, dayId);
+  return awardOnce(key, TARIFF.levelOfDay) ? { key, amount: TARIFF.levelOfDay } : null;
+}
+
+/**
+ * Неделя рекордов: побил личный рекорд в любой аркаде — награда, но одна на
+ * календарную неделю. Вызывать только на побитом (не первом) рекорде.
+ */
+export function grantRecordWeek(dayId: number = computeDayId()): GrantedBonus | null {
+  const key = recordWeekKey(computeWeekId(dayId));
+  return awardOnce(key, TARIFF.recordWeek) ? { key, amount: TARIFF.recordWeek } : null;
+}
+
+/**
+ * Бонус за главы, которые закрылись целиком. Главы описывает игра (T7), здесь —
+ * только правило: все уровни главы пройдены. Ключ по номеру главы (с 1).
+ */
+export function grantChapterClears(
+  slug: string,
+  chapters: ReadonlyArray<{ levels: readonly number[] }>,
+  isCleared: (n: number) => boolean,
+): GrantedBonus[] {
+  const granted: GrantedBonus[] = [];
+  chapters.forEach((ch, i) => {
+    if (!ch.levels.length || !ch.levels.every(isCleared)) return;
+    const key = `chapter-${slug}-${i + 1}`;
+    if (awardOnce(key, TARIFF.chapterClear)) granted.push({ key, amount: TARIFF.chapterClear });
+  });
+  return granted;
+}
+
+export interface DailyOutlook {
+  /** Сколько за день можно получить из ежедневных источников. */
+  ceiling: number;
+  /** Сколько из них уже получено сегодня. */
+  earned: number;
+  /** «Ещё сегодня до +N». */
+  remaining: number;
+}
+
+/**
+ * Потолок дня и остаток: чек-ин + задания дня + слово дня + уровни дня, плюс
+ * неделя рекордов, пока она не выплачена на этой неделе. Разовые награды
+ * (первое прохождение уровня, главы, достижения) в потолок не входят — это не
+ * ежедневный доход, а прогресс.
+ *
+ * Считается из ключей кошелька, а не отдельным счётчиком: кошелёк пишет и хаб
+ * (своей копией кода), и лишнее поле он бы при сохранении потерял.
+ */
+export function dailyOutlook(dayId: number = computeDayId()): DailyOutlook {
+  const { keys } = load();
+  const has = (k: string) => keys.includes(k);
+  const checkin = checkinPreview(dayId);
+  const missionsDone = Array.from({ length: MISSIONS_PER_DAY }, (_, i) => missionKey(dayId, i)).filter(has).length;
+  const lod = Math.min(levelsOfDayClaimed(keys, dayId), TARIFF.levelOfDayPerDay);
+  const weekPaid = has(recordWeekKey(computeWeekId(dayId)));
+
+  const ceiling =
+    checkin.today
+    + MISSIONS_PER_DAY * TARIFF.mission
+    + TARIFF.daily
+    + TARIFF.levelOfDayPerDay * TARIFF.levelOfDay
+    // Неделя рекордов входит в потолок того дня, когда её ещё можно взять.
+    + (weekPaid ? 0 : TARIFF.recordWeek);
+  const earned =
+    (checkin.claimedToday ? checkin.today : 0)
+    + missionsDone * TARIFF.mission
+    + (has(wordKey(dayId)) ? TARIFF.daily : 0)
+    + lod * TARIFF.levelOfDay;
+  return { ceiling, earned, remaining: Math.max(0, ceiling - earned) };
 }
 
 export interface GrantedBonus {
@@ -144,7 +272,7 @@ function grantClosedMissions(
 ): void {
   dailyMissions(dayId).forEach((m, i) => {
     if (m.done && !missionsBefore[i]?.done) {
-      tryAward(`mission-${dayId}-${i}`, TARIFF.mission);
+      tryAward(missionKey(dayId, i), TARIFF.mission);
     }
   });
 }

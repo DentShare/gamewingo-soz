@@ -1,4 +1,5 @@
 import { TARIFF } from '../bonus.js';
+import { CHAPTER_SIZE } from '../ladder.js';
 import { MISSION_POOL, MISSIONS_PER_DAY } from '../missions.js';
 import { ACHIEVEMENTS, CATALOG_SIZE } from '../achievements.js';
 
@@ -21,6 +22,14 @@ export const CATALOG_ECONOMY = {
     /** Первое прохождение уровня n: levelBase + levelStep × (n − 1). */
     levelBase: TARIFF.level(1),
     levelStep: TARIFF.level(2) - TARIFF.level(1),
+    /** Уровень дня: оплачиваются первые levelOfDayPerDay игр за день. */
+    levelOfDay: TARIFF.levelOfDay,
+    levelOfDayPerDay: TARIFF.levelOfDayPerDay,
+    /** Побитый личный рекорд в аркаде — раз в календарную неделю. */
+    recordWeek: TARIFF.recordWeek,
+    /** Закрытая глава: все её уровни пройдены. Главы по chapterSize уровней подряд. */
+    chapterClear: TARIFF.chapterClear,
+    chapterSize: CHAPTER_SIZE,
   },
   missions: {
     perDay: MISSIONS_PER_DAY,
