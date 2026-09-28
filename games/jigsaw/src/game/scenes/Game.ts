@@ -4,7 +4,7 @@ import { t } from '../../i18n';
 import { applyTheme, setupCamera, makeBackButton, playSound, sparkle } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
-import { levelAt } from '../../core/levels';
+import { GHOST_ALPHA, levelAt } from '../../core/levels';
 import { createJigsawGame, nearestSlot, slotCenter, type JigsawGame } from '../../core/jigsaw';
 import { mulberry32 } from '../../core/rng';
 import { computeScore } from '../../core/score';
@@ -24,14 +24,18 @@ const BOARD_TOP = 96;
 /** Лоток с кусочками под полем. */
 const TRAY_TOP = BOARD_TOP + BOARD + 24;
 const TRAY_H = 104;
-/** Сколько кусочков лежит в лотке одновременно — детской руке хватает трёх. */
-const TRAY_SLOTS = 3;
-/** Кусочек в лотке не крупнее этого, иначе три штуки не помещаются в ряд. */
+/** Кусочек в лотке не крупнее этого — крупно, но с зазором между соседями. */
 const TRAY_PIECE_MAX = 78;
+/** Зазор между кусочками в лотке, когда их там четыре. */
+const TRAY_GAP = 8;
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
   private level = 1;
+  /** Партия — уровень дня: параметры уровня лестницы, расклад по зерну от даты. */
+  private daily = false;
+  /** Сколько кусочков лежит в лотке одновременно — рычаг уровня (3 или 4). */
+  private traySlots = 3;
   private session!: Session;
   private core!: JigsawGame;
   private timer?: RoundTimer;
@@ -66,19 +70,22 @@ export class Game extends Scene {
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.level = (this.registry.get('level') as number) ?? 1;
+    // Уровень дня: параметры уровня лестницы, но порядок кусочков по зерну от даты — один на всех.
+    this.daily = this.registry.get('mode') === 'dailyLevel';
     this.session = this.registry.get('session') as Session;
 
     const params = levelAt(this.level).params;
-    this.core = createJigsawGame(
-      { cols: params.cols, rows: params.rows },
-      mulberry32(Math.floor(Math.random() * 2 ** 31)),
-    );
+    this.traySlots = params.tray;
+    const seed = this.daily
+      ? (this.registry.get('dailySeed') as number)
+      : Math.floor(Math.random() * 2 ** 31);
+    this.core = createJigsawGame({ cols: params.cols, rows: params.rows }, mulberry32(seed));
     this.pieceW = BOARD / this.core.cols;
     this.pieceH = BOARD / this.core.rows;
     this.textureKey = buildPictureTexture(this, params.picture, this.core.cols, this.core.rows);
 
     this.buildHud();
-    this.buildBoard(params.ghost);
+    this.buildBoard(GHOST_ALPHA[params.hint] ?? 0);
     this.buildTray();
     this.refillTray();
     this.bindDrag();
@@ -113,6 +120,16 @@ export class Game extends Scene {
       .setOrigin(1, 0.5)
       .setResolution(DPR);
 
+    // Уровень дня подписан по центру шапки: ребёнок и родитель видят, что это не картинка лестницы.
+    if (this.daily) {
+      this.add
+        .text(CX, 34, t(this.locale, 'game.dailyLevel'), {
+          fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
+        })
+        .setOrigin(0.5)
+        .setResolution(DPR);
+    }
+
     this.hintText = this.add
       .text(CX, TRAY_TOP + TRAY_H + 22, t(this.locale, 'game.take'), {
         fontFamily: FONT, fontSize: 14, color: COLORS.headMuted, align: 'center',
@@ -122,17 +139,17 @@ export class Game extends Scene {
       .setResolution(DPR);
   }
 
-  /** Поле: сетка пустых клеток и (на ранних уровнях) бледная картинка-подсказка. */
-  private buildBoard(withGhost: boolean) {
+  /** Поле: сетка пустых клеток и бледная картинка-подсказка; `ghostAlpha` 0 — без неё. */
+  private buildBoard(ghostAlpha: number) {
     this.board = this.add.graphics();
     this.board.fillStyle(COLORS.slot, 1)
       .fillRoundedRect(BOARD_LEFT, BOARD_TOP, BOARD, BOARD, 14);
 
-    if (withGhost) {
+    if (ghostAlpha > 0) {
       this.ghost = this.add
         .image(BOARD_LEFT + BOARD / 2, BOARD_TOP + BOARD / 2, this.textureKey, BASE_FRAME)
         .setDisplaySize(BOARD, BOARD)
-        .setAlpha(0.32);
+        .setAlpha(ghostAlpha);
     }
 
     // Линии сетки — чтобы ребёнок видел, куда именно класть кусочек.
@@ -157,13 +174,14 @@ export class Game extends Scene {
 
   /** Позиция i-го места в лотке. */
   private trayPos(i: number): { x: number; y: number } {
-    const step = BOARD / TRAY_SLOTS;
+    const step = BOARD / this.traySlots;
     return { x: BOARD_LEFT + step * (i + 0.5), y: TRAY_TOP + TRAY_H / 2 };
   }
 
-  /** Масштаб кусочка в лотке: крупный, но чтобы три штуки помещались в ряд. */
+  /** Масштаб кусочка в лотке: крупный, но чтобы все места лотка помещались в ряд. */
   private trayScale(): number {
-    const fit = Math.min(TRAY_PIECE_MAX / this.pieceW, (TRAY_H - 18) / this.pieceH);
+    const maxW = Math.min(TRAY_PIECE_MAX, BOARD / this.traySlots - TRAY_GAP);
+    const fit = Math.min(maxW / this.pieceW, (TRAY_H - 18) / this.pieceH);
     return Math.min(1, fit);
   }
 
@@ -176,9 +194,9 @@ export class Game extends Scene {
     for (const [, view] of this.trayViews) taken.add(view.getData('trayIndex') as number);
 
     for (const piece of queue) {
-      if (this.trayViews.size >= TRAY_SLOTS) break;
+      if (this.trayViews.size >= this.traySlots) break;
       while (taken.has(slotIndex)) slotIndex++;
-      if (slotIndex >= TRAY_SLOTS) break;
+      if (slotIndex >= this.traySlots) break;
       taken.add(slotIndex);
       this.spawnTrayPiece(piece, slotIndex);
       slotIndex++;
@@ -329,11 +347,11 @@ export class Game extends Scene {
     const score = computeScore({ pieces, wrongDrops });
 
     void this.session
-      .finish({ level: this.level, pieces, wrongDrops, durationMs })
+      .finish({ level: this.level, mode: this.daily ? 'dailyLevel' : 'level', pieces, wrongDrops, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
-      locale: this.locale, level: this.level, pieces, wrongDrops, durationMs, score,
+      locale: this.locale, level: this.level, daily: this.daily, pieces, wrongDrops, durationMs, score,
       picture: levelAt(this.level).params.picture,
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);

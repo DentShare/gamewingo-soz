@@ -1,4 +1,5 @@
 import { readJson, writeJson } from './storage.js';
+import { recordLastPlayed } from './hub.js';
 import { computeDayId, hashIndex } from './day.js';
 
 /**
@@ -93,6 +94,8 @@ export function recordRound(outcome: RoundOutcome, dayId: number = computeDayId(
   c.score += Math.max(0, outcome.score);
   if (!c.slugs.includes(outcome.slug)) c.slugs.push(outcome.slug);
   writeJson(COUNTERS_KEY, c);
+  // Для карточки «Продолжить» в хабе: последняя игра — та, где был последний итог.
+  recordLastPlayed(outcome.slug);
   return c;
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { starsFor } from '@gamewingo/game-progress';
-import { LADDER, LADDER_SIZE, levelAt } from './levels';
+import { chapterLevels, harderLevers, starsFor } from '@gamewingo/game-progress';
+import { CHAPTER_TITLES, LADDER, LADDER_SIZE, LEVERS, levelAt, levelInfo } from './levels';
 import { SYMBOLS } from './deck';
 
 describe('лестница «Найди пару»', () => {
@@ -58,4 +58,40 @@ describe('лестница «Найди пару»', () => {
     expect(levelAt(99).n).toBe(LADDER_SIZE);
     expect(levelAt(7).n).toBe(7);
   });
+
+  it('на каждом уровне жёстче становится ровно один рычаг', () => {
+    for (let i = 1; i < LADDER.length; i++) {
+      const harder = harderLevers(LADDER[i - 1].params, LADDER[i].params, LEVERS);
+      expect(harder, `уровень ${i + 1}`).toHaveLength(1);
+    }
+  });
+
+  it('новое ограничение появляется на знакомом поле, а не вместе с его ростом', () => {
+    for (let i = 1; i < LADDER.length; i++) {
+      const [a, b] = [LADDER[i - 1].params, LADDER[i].params];
+      const introduced = (!a.moveLimit && b.moveLimit) || (!a.timeLimitSec && b.timeLimitSec);
+      if (introduced) expect(b.pairs, `уровень ${i + 1}`).toBe(a.pairs);
+    }
+  });
+
+  it('главы соответствуют названиям: знакомство → лимит ходов → на время', () => {
+    const [c1, c2, c3] = chapterLevels(LADDER_SIZE).map((ns) => ns.map((n) => levelAt(n).params));
+    expect(CHAPTER_TITLES).toHaveLength(3);
+    expect(c1.every((p) => !p.moveLimit && !p.timeLimitSec)).toBe(true);
+    expect(c2.every((p) => p.moveLimit > 0 && !p.timeLimitSec)).toBe(true);
+    expect(c3.every((p) => p.moveLimit > 0 && p.timeLimitSec > 0)).toBe(true);
+  });
+
+  it('карточка уровня называет ровно то, что изменилось', () => {
+    expect(levelInfo(1).intro).toBeNull();
+    expect(levelInfo(2).intro).toEqual({ key: 'intro.field', vars: { n: 5 } });
+    expect(levelInfo(6).intro).toEqual({ key: 'intro.moveLimit', vars: { n: 22 } });
+    expect(levelInfo(7).intro).toEqual({ key: 'intro.moveLimitTighter', vars: { n: 20 } });
+    expect(levelInfo(11).intro).toEqual({ key: 'intro.timer', vars: { t: '1:50' } });
+    expect(levelInfo(12).intro).toEqual({ key: 'intro.timerTighter', vars: { t: '1:35' } });
+    // Рост поля с мягким лимитом называется ростом поля.
+    expect(levelInfo(8).intro).toEqual({ key: 'intro.field', vars: { n: 10 } });
+    expect(levelInfo(7).goldHint.vars).toEqual({ n: LADDER[6].goals.gold });
+  });
 });
+

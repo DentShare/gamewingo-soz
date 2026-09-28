@@ -1,10 +1,8 @@
 {
   "app.title": "Viktorina",
-  "menu.play": "Oʻynash · {n}-daraja",
   "menu.howto": "Qanday oʻynash",
   "menu.back": "Orqaga",
   "menu.catalog": "Oʻyinlarga",
-  "menu.ladder": "{total} dan {n}-daraja",
   "menu.topics": "Mavzular: kosmos, hayvonlar, Oʻzbekiston, fan, tana, pul",
   "sound.on": "Ovoz: yoqilgan",
   "sound.off": "Ovoz: oʻchirilgan",
@@ -40,5 +38,20 @@
   "result.playAgain": "Yana",
   "result.menu": "Menyuga",
   "result.leaderboard": "Reyting",
-  "error.network": "Aloqa yoʻq"
+  "error.network": "Aloqa yoʻq",
+  "chapter.1": "Tanishuv",
+  "chapter.2": "Aniqlik",
+  "chapter.3": "Vaqtga qarshi",
+  "level.field.one": "{n} ta savol",
+  "level.field.few": "{n} ta savol",
+  "level.field.many": "{n} ta savol",
+  "intro.questions": "savollar koʻproq",
+  "intro.options": "variantlar koʻproq",
+  "intro.mistakes": "xato limiti {n}",
+  "intro.timer": "savolga {n} s",
+  "intro.timerTighter": "kamroq vaqt: {n} s",
+  "level.goldHint": "3 yulduz — koʻpi bilan {n} ta xato",
+  "level.goldHintPerfect": "3 yulduz — xatosiz",
+  "game.dailyLevel": "Kun darajasi",
+  "result.dailyLevel": "Kun darajasi"
 }

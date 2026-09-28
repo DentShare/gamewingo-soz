@@ -4,7 +4,13 @@ import type {
 import { computeScore } from '../core/score';
 import type { Locale } from '../core/locale';
 
-export interface FinishInput { level: number; moves: number; durationMs: number; }
+export interface FinishInput {
+  level: number;
+  /** level — ступень лестницы; dailyLevel — уровень дня (свой тариф на сервере). */
+  mode?: 'level' | 'dailyLevel';
+  moves: number;
+  durationMs: number;
+}
 
 export interface Session {
   locale: Locale; theme?: BrandTheme; sessionId: string; ready(): void;
@@ -48,7 +54,7 @@ export function createSession(
       try {
         return await api.submitScore({
           sessionId, gameId: 'fifteen', score, durationMs: input.durationMs,
-          meta: { level: input.level, moves: input.moves },
+          meta: { level: input.level, mode: input.mode ?? 'level', moves: input.moves },
         });
       } catch (err) {
         bridge.error(String(err));

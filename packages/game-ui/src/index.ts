@@ -14,3 +14,6 @@ export * from './glyphs.js';
 export * from './levels.js';
 export * from './arcadeMeta.js';
 export * from './bonus.js';
+export * from './strings.js';
+export * from './chapters.js';
+export * from './pause.js';

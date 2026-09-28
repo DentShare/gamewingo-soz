@@ -54,7 +54,7 @@ export function makeButton(
   y: number,
   label: string,
   onClick: () => void,
-  opts: { width?: number; height?: number; primary?: boolean } = {},
+  opts: { width?: number; height?: number; primary?: boolean; danger?: boolean } = {},
 ): Button {
   // Размеры по умолчанию совпадают с кнопкой хаба (338×40 на ширине 402).
   const w = opts.width ?? 336;
@@ -80,7 +80,8 @@ export function makeButton(
       fontFamily: FONT,
       fontSize: TYPE.body,
       fontStyle: WEIGHT.semibold,
-      color: isPrimary ? S.white : S.ink,
+      // `danger` — необратимое действие («выйти, прогресс не сохранится»): красный текст на белом.
+      color: isPrimary ? S.white : opts.danger ? S.danger : S.ink,
     })
     .setOrigin(0.5)
     .setResolution(DPR);
@@ -166,6 +167,8 @@ export function makeCard(
 
 export interface Chip {
   root: Phaser.GameObjects.Container;
+  /** Ширина плашки — чтобы ставить чипы в ряд. */
+  readonly width: number;
   setText(s: string): void;
   destroy(): void;
 }
@@ -174,7 +177,14 @@ export interface Chip {
  * Чип: персиковая плашка с оранжевым текстом. В играх — метрики HUD
  * (счёт, время, ходы), в хабе — метки языка и возраста.
  */
-export function makeChip(scene: Scene, x: number, y: number, text: string, minWidth = 0): Chip {
+export function makeChip(
+  scene: Scene,
+  x: number,
+  y: number,
+  text: string,
+  minWidth = 0,
+  tone: 'default' | 'success' = 'default',
+): Chip {
   const root = scene.add.container(x, y);
   const g = scene.add.graphics();
   const txt = scene.add
@@ -182,22 +192,26 @@ export function makeChip(scene: Scene, x: number, y: number, text: string, minWi
       fontFamily: FONT,
       fontSize: TYPE.caption,
       fontStyle: WEIGHT.bold,
-      color: S.chipInk,
+      color: tone === 'success' ? S.success : S.chipInk,
     })
     .setOrigin(0.5)
     .setResolution(DPR);
 
+  // `success` — «новое/сошлось»: зелёный на мягкой подложке, пара к обычному персиковому.
+  const bg = tone === 'success' ? C.successBg : C.chipBg;
+  const widthNow = () => Math.max(minWidth, txt.width + 16);
   const paint = () => {
-    const w = Math.max(minWidth, txt.width + 16);
+    const w = widthNow();
     const h = 26;
     g.clear();
-    g.fillStyle(C.chipBg, 1).fillRoundedRect(-w / 2, -h / 2, w, h, RADIUS.chip);
+    g.fillStyle(bg, 1).fillRoundedRect(-w / 2, -h / 2, w, h, RADIUS.chip);
   };
   paint();
 
   root.add([g, txt]);
   return {
     root,
+    get width() { return widthNow(); },
     setText: (s: string) => { txt.setText(s); paint(); },
     destroy: () => root.destroy(),
   };

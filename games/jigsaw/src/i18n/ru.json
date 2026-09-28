@@ -1,10 +1,8 @@
 {
   "app.title": "Пазл",
-  "menu.play": "Играть · картинка {n}",
   "menu.howto": "Как играть",
   "menu.back": "Назад",
   "menu.catalog": "К играм",
-  "menu.ladder": "Картинка {n} из {total}",
   "menu.hint": "Собери картинку — и узнаешь про неё историю",
   "sound.on": "Звук: вкл",
   "sound.off": "Звук: выкл",
@@ -27,5 +25,19 @@
   "result.playAgain": "Собрать ещё раз",
   "result.menu": "В меню",
   "result.leaderboard": "Таблица лидеров",
-  "error.network": "Нет соединения"
+  "error.network": "Нет соединения",
+  "chapter.1": "Знакомство",
+  "chapter.2": "По памяти",
+  "chapter.3": "Выбирай сам",
+  "level.field.one": "{n} кусочек",
+  "level.field.few": "{n} кусочка",
+  "level.field.many": "{n} кусочков",
+  "intro.field": "больше кусочков",
+  "intro.hintFainter": "подсказка бледнее",
+  "intro.noHint": "без подсказки",
+  "intro.tray": "в лотке по {n}",
+  "level.goldHint": "3 звезды — промахов не больше {n}",
+  "level.goldHintFlawless": "3 звезды — собрать без промахов",
+  "game.dailyLevel": "Уровень дня",
+  "result.dailyLevel": "Уровень дня"
 }

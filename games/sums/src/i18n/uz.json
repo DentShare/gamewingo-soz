@@ -2,8 +2,6 @@
   "app.title": "Yigʻindilar",
   "menu.howto": "Qanday oʻynash",
   "menu.back": "Orqaga",
-  "menu.ladder": "{total} dan {n}-daraja",
-  "menu.play": "Oʻynash · {n}-daraja",
   "sound.on": "Ovoz: yoqilgan",
   "sound.off": "Ovoz: oʻchirilgan",
   "game.level": "{n}-daraja",
@@ -28,5 +26,18 @@
   "result.playAgain": "Yana",
   "result.menu": "Menyuga",
   "result.leaderboard": "Reyting",
-  "error.network": "Aloqa yoʻq"
+  "error.network": "Aloqa yoʻq",
+  "chapter.1": "Tanishuv",
+  "chapter.2": "Ikki xonali",
+  "chapter.3": "Manfiy sonlar",
+  "level.field.one": "{n}×{n}",
+  "level.field.few": "{n}×{n}",
+  "level.field.many": "{n}×{n}",
+  "intro.field": "maydon kattaroq",
+  "intro.crosses": "ortiqcha koʻproq: {n}",
+  "intro.maxValue": "{n} gacha sonlar",
+  "intro.negative": "manfiy sonlar",
+  "level.goldHint": "3 yulduz — {n} yurishdan koʻp emas",
+  "game.dailyLevel": "Kun darajasi",
+  "result.dailyLevel": "Kun darajasi"
 }

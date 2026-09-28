@@ -29,6 +29,7 @@ const MAX_HINTS = 3;
 export class Game extends Scene {
   private locale: Locale = 'ru';
   private level = 1;
+  private daily = false;
   private params!: SudokuParams;
   /** Ошибочных вводов за партию: считается лимитом уровня, а не подсказками. */
   private mistakes = 0;
@@ -81,6 +82,8 @@ export class Game extends Scene {
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.level = (this.registry.get('level') as number) ?? 1;
+    // Уровень дня: параметры уровня лестницы, но расклад по зерну от даты — один на всех.
+    this.daily = this.registry.get('mode') === 'dailyLevel';
     this.params = levelAt(this.level).params;
     this.mistakes = 0;
     this.session = this.registry.get('session') as Session;
@@ -137,7 +140,10 @@ export class Game extends Scene {
   private buildPuzzle() {
     const spec = this.params;
     this.size = spec.size;
-    const { puzzle, solution } = makePuzzle(spec.size, spec.clues, mulberry32(Math.floor(Math.random() * 2 ** 31)));
+    const seed = this.daily
+      ? (this.registry.get('dailySeed') as number)
+      : Math.floor(Math.random() * 2 ** 31);
+    const { puzzle, solution } = makePuzzle(spec.size, spec.clues, mulberry32(seed));
     this.grid = puzzle.slice();
     this.solution = solution;
     this.given = puzzle.map((v) => v !== 0);
@@ -160,6 +166,7 @@ export class Game extends Scene {
     this.tutorialActive = true;
     // На 4×4 правила нагляднее — обучение всегда идёт на первом уровне лестницы.
     this.level = 1;
+    this.daily = false;
     this.params = levelAt(1).params;
     this.buildPuzzle();
     this.buildScreen();
@@ -261,7 +268,7 @@ export class Game extends Scene {
   private buildHud() {
     this.buildBackButton();
     this.add
-      .text(W / 2 + 26, 20, t(this.locale, 'game.level', { n: this.level }), {
+      .text(W / 2 + 26, 20, this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }), {
         fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
       })
       .setOrigin(0.5)
@@ -514,11 +521,11 @@ export class Game extends Scene {
     const hints = MAX_HINTS - this.hintsLeft;
 
     void this.session
-      .finish({ level: this.level, hints, durationMs })
+      .finish({ level: this.level, mode: this.daily ? 'dailyLevel' : 'level', hints, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
-      level: this.level, locale: this.locale, hints, durationMs, mistakes: this.mistakes, cleared,
+      level: this.level, daily: this.daily, locale: this.locale, hints, durationMs, mistakes: this.mistakes, cleared,
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));

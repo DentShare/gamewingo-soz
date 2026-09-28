@@ -7,14 +7,15 @@ import { DPR } from '../dpr';
 import { computeScore } from '../../core/score';
 import { levelAt, LADDER_SIZE, perfectCrosses } from '../../core/levels';
 import {
-  recordLevelResult, starsFor, loadProgress, isUnlocked,
-  dailyMissions, grantRoundBonuses, type RecordResult,
+  settleLadderRound, starsFor, loadProgress, isUnlocked, type RecordResult,
 } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 import confetti from 'canvas-confetti';
 
 interface LastGame {
   level: number;
+  /** Партия была уровнем дня. */
+  daily?: boolean;
   locale: Locale;
   /** Касаний по клеткам за партию — по ним считаются и очки, и звёзды. */
   moves: number;
@@ -47,12 +48,15 @@ export class GameOver extends Scene {
     // Звёзды меряются лишними касаниями: цель — вычеркнуть точно, а не быстро.
     const extraMoves = Math.max(0, last.moves - perfect);
     const starCount = starsFor(levelAt(last.level).goals, extraMoves);
-    const record = recordLevelResult({ slug: SLUG, n: last.level, stars: starCount, score });
+    // Итог одним вызовом: лестница, счётчики дня и бонусы — уровень, глава, уровень дня, задания.
+    // Проигрыша в «Суммах» нет: сюда попадают только с сошедшейся доской.
+    const { record, bonus } = settleLadderRound({
+      slug: SLUG, n: last.level, total: LADDER_SIZE,
+      mode: last.daily ? 'dailyLevel' : 'level',
+      cleared: true, stars: starCount, score,
+    });
     confetti({ disableForReducedMotion: true, particleCount: 90, spread: 70, origin: { y: 0.4 } });
 
-    // Бонусы за партию: первый проход уровня + закрывшиеся задания дня.
-    const missionsBefore = dailyMissions();
-    const bonus = grantRoundBonuses({ slug: SLUG, n: last.level, record, missionsBefore });
     const bonusChip = makeBonusChip(this, 386, 30);
     if (bonus.total > 0) {
       // Чип создан после начисления — откатываем показ на баланс «до»,
@@ -75,7 +79,7 @@ export class GameOver extends Scene {
     this.tweens.add({ targets: title, scale: 1, alpha: 1, duration: 380, delay: 120, ease: 'Back.easeOut' });
 
     this.add
-      .text(CX, 138, t(loc, 'result.level', { n: last.level, total: LADDER_SIZE }), {
+      .text(CX, 138, last.daily ? t(loc, 'result.dailyLevel') : t(loc, 'result.level', { n: last.level, total: LADDER_SIZE }), {
         fontFamily: FONT, fontSize: 15, color: COLORS.headMuted,
       })
       .setOrigin(0.5)
@@ -131,7 +135,7 @@ export class GameOver extends Scene {
   /** Кнопки итога: следующий уровень (если открылся), повтор, меню. */
   private buildButtons(loc: Locale, last: LastGame) {
     const nextN = last.level + 1;
-    const hasNext = nextN <= LADDER_SIZE && isUnlocked(loadProgress(SLUG), nextN);
+    const hasNext = !last.daily && nextN <= LADDER_SIZE && isUnlocked(loadProgress(SLUG), nextN);
     let y = 366;
 
     if (hasNext) {
@@ -142,7 +146,7 @@ export class GameOver extends Scene {
       y += 50;
     }
 
-    const again = makeButton(this, CX, y, t(loc, 'result.playAgain'), () => this.play(last.level), {
+    const again = makeButton(this, CX, y, t(loc, 'result.playAgain'), () => this.play(last.level, last.daily), {
       primary: !hasNext,
     });
     this.appear(again.root, hasNext ? 680 : 620);
@@ -152,8 +156,10 @@ export class GameOver extends Scene {
     this.appear(menu.root, hasNext ? 740 : 690);
   }
 
-  private play(n: number) {
+  private play(n: number, daily = false) {
     this.registry.set('level', n);
+    // Уровень дня переигрывается тем же раскладом: зерно в реестре осталось с меню.
+    this.registry.set('mode', daily ? 'dailyLevel' : 'level');
     this.scene.start('Game');
   }
 

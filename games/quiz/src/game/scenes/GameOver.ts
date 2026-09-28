@@ -8,8 +8,7 @@ import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { levelAt, LADDER_SIZE } from '../../core/levels';
 import {
-  recordLevelResult, recordEndlessResult, starsFor, loadProgress, isUnlocked,
-  dailyMissions, grantRoundBonuses, type RecordResult,
+  settleLadderRound, starsFor, loadProgress, isUnlocked, type RecordResult, type Stars,
 } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 import confetti from 'canvas-confetti';
@@ -17,6 +16,8 @@ import confetti from 'canvas-confetti';
 interface LastGame {
   locale: Locale;
   level: number;
+  /** Партия была уровнем дня. */
+  daily?: boolean;
   correct: number;
   mistakes: number;
   total: number;
@@ -43,20 +44,19 @@ export class GameOver extends Scene {
     const loc = last.locale;
 
     const level = levelAt(last.level);
-    const missionsBefore = dailyMissions();
     let starCount = 0;
-    let record: RecordResult | null = null;
 
     if (last.cleared) {
       // Звёзды меряются ошибками: пройти без единой — три звезды.
-      const stars = starsFor(level.goals, last.mistakes);
-      starCount = stars;
-      record = recordLevelResult({ slug: SLUG, n: last.level, stars, score: last.score });
+      starCount = starsFor(level.goals, last.mistakes);
       confetti({ disableForReducedMotion: true, particleCount: 90, spread: 70, origin: { y: 0.4 } });
-    } else {
-      // Проваленный уровень в лестницу не пишется, но идёт в счётчики дня.
-      recordEndlessResult(SLUG, last.score);
     }
+    // Итог одним вызовом: лестница, счётчики дня и бонусы — уровень, глава, уровень дня, задания.
+    const { record, bonus } = settleLadderRound({
+      slug: SLUG, n: last.level, total: LADDER_SIZE,
+      mode: last.daily ? 'dailyLevel' : 'level',
+      cleared: last.cleared, stars: (starCount || 1) as Stars, score: last.score,
+    });
 
     playSound(last.cleared ? 'win' : 'lose');
 
@@ -65,8 +65,6 @@ export class GameOver extends Scene {
     this.time.delayedCall(320, () => (last.cleared ? phoenix.celebrate() : phoenix.sink()));
     this.events.once('shutdown', () => phoenix.destroy());
 
-    // Бонусы за партию: первый проход уровня + закрывшиеся задания дня.
-    const bonus = grantRoundBonuses({ slug: SLUG, n: last.level, record, missionsBefore });
     const bonusChip = makeBonusChip(this, 386, 30);
     if (bonus.total > 0) {
       // Чип создан после начисления — откатываем показ на баланс «до»,
@@ -89,7 +87,7 @@ export class GameOver extends Scene {
     this.tweens.add({ targets: title, scale: 1, alpha: 1, duration: 380, delay: 120, ease: 'Back.easeOut' });
 
     this.add
-      .text(CX, 138, t(loc, 'result.level', { n: last.level, total: LADDER_SIZE }), {
+      .text(CX, 138, last.daily ? t(loc, 'result.dailyLevel') : t(loc, 'result.level', { n: last.level, total: LADDER_SIZE }), {
         fontFamily: FONT, fontSize: 15, color: COLORS.headMuted,
       })
       .setOrigin(0.5)
@@ -141,7 +139,7 @@ export class GameOver extends Scene {
   /** Кнопки итога: следующий уровень (если открылся), повтор, меню. */
   private buildButtons(loc: Locale, last: LastGame) {
     const nextN = last.level + 1;
-    const hasNext = last.cleared && nextN <= LADDER_SIZE && isUnlocked(loadProgress(SLUG), nextN);
+    const hasNext = !last.daily && last.cleared && nextN <= LADDER_SIZE && isUnlocked(loadProgress(SLUG), nextN);
     let y = 366;
 
     if (hasNext) {
@@ -152,7 +150,7 @@ export class GameOver extends Scene {
       y += 52;
     }
 
-    const again = makeButton(this, CX, y, t(loc, 'result.playAgain'), () => this.play(last.level), {
+    const again = makeButton(this, CX, y, t(loc, 'result.playAgain'), () => this.play(last.level, last.daily), {
       primary: !hasNext,
     });
     this.appear(again.root, hasNext ? 680 : 620);
@@ -162,8 +160,10 @@ export class GameOver extends Scene {
     this.appear(menu.root, hasNext ? 740 : 690);
   }
 
-  private play(n: number) {
+  private play(n: number, daily = false) {
     this.registry.set('level', n);
+    // Уровень дня переигрывается тем же раскладом: зерно в реестре осталось с меню.
+    this.registry.set('mode', daily ? 'dailyLevel' : 'level');
     this.scene.start('Game');
   }
 

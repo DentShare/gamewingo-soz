@@ -4,7 +4,14 @@ import type {
 import { computeScore } from '../core/score';
 import type { Locale } from '../core/locale';
 
-export interface FinishInput { level: number; correct: number; mistakes: number; durationMs: number; }
+export interface FinishInput {
+  level: number;
+  /** level — ступень лестницы; dailyLevel — уровень дня (свой тариф на сервере). */
+  mode?: 'level' | 'dailyLevel';
+  correct: number;
+  mistakes: number;
+  durationMs: number;
+}
 
 export interface Session {
   locale: Locale; theme?: BrandTheme; sessionId: string; ready(): void;
@@ -48,7 +55,7 @@ export function createSession(
       try {
         return await api.submitScore({
           sessionId, gameId: 'quiz', score, durationMs: input.durationMs,
-          meta: { correct: input.correct, mistakes: input.mistakes },
+          meta: { mode: input.mode ?? 'level', correct: input.correct, mistakes: input.mistakes },
         });
       } catch (err) {
         bridge.error(String(err));

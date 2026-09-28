@@ -26,6 +26,8 @@ const TIMER_W = 336;
 export class Game extends Scene {
   private locale: Locale = 'ru';
   private level = 1;
+  /** Уровень дня: параметры уровня лестницы, но колода по зерну от даты. */
+  private daily = false;
   private session!: Session;
   private core!: QuizGame;
   private timer?: RoundTimer;
@@ -65,10 +67,17 @@ export class Game extends Scene {
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.level = (this.registry.get('level') as number) ?? 1;
+    // Уровень дня: параметры уровня лестницы, но вопросы и порядок вариантов
+    // по зерну от даты — один расклад на всех.
+    this.daily = this.registry.get('mode') === 'dailyLevel';
     this.session = this.registry.get('session') as Session;
 
     const params = levelAt(this.level).params;
     this.timeLimitSec = params.timeLimitSec;
+    // Всё случайное в партии — выбор вопросов и порядок вариантов — идёт от этого зерна.
+    const seed = this.daily
+      ? (this.registry.get('dailySeed') as number)
+      : Math.floor(Math.random() * 2 ** 31);
     this.core = createQuizGame(
       {
         questions: params.questions,
@@ -76,7 +85,7 @@ export class Game extends Scene {
         maxMistakes: params.maxMistakes,
         topics: params.topics,
       },
-      mulberry32(Math.floor(Math.random() * 2 ** 31)),
+      mulberry32(seed),
     );
 
     this.buildHud();
@@ -112,6 +121,16 @@ export class Game extends Scene {
 
   private buildHud() {
     makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+
+    // Номер уровня в шапке викторины не пишется; уровень дня подписываем — это другой расклад.
+    if (this.daily) {
+      this.add
+        .text(CX, 34, t(this.locale, 'game.dailyLevel'), {
+          fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
+        })
+        .setOrigin(0.5)
+        .setResolution(DPR);
+    }
 
     this.progressText = this.add
       .text(W - 20, 34, this.progressLabel(), {
@@ -284,11 +303,11 @@ export class Game extends Scene {
     const { correct, mistakes, failed, total } = this.core;
 
     void this.session
-      .finish({ level: this.level, correct, mistakes, durationMs })
+      .finish({ level: this.level, mode: this.daily ? 'dailyLevel' : 'level', correct, mistakes, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
-      locale: this.locale, level: this.level, correct, mistakes, total, durationMs,
+      locale: this.locale, level: this.level, daily: this.daily, correct, mistakes, total, durationMs,
       score: computeScore({ correct, mistakes, level: this.level }),
       cleared: !failed,
     });
