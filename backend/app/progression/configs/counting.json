@@ -78,7 +78,7 @@
     {
       "n": 1,
       "params": {
-        "questions": 5,
+        "questions": 6,
         "maxCount": 5,
         "options": 3
       },
@@ -91,7 +91,7 @@
       "n": 2,
       "params": {
         "questions": 6,
-        "maxCount": 5,
+        "maxCount": 6,
         "options": 3
       },
       "goals": {
@@ -102,8 +102,8 @@
     {
       "n": 3,
       "params": {
-        "questions": 8,
-        "maxCount": 6,
+        "questions": 6,
+        "maxCount": 8,
         "options": 3
       },
       "goals": {
@@ -114,9 +114,9 @@
     {
       "n": 4,
       "params": {
-        "questions": 8,
-        "maxCount": 8,
-        "options": 4
+        "questions": 6,
+        "maxCount": 10,
+        "options": 3
       },
       "goals": {
         "gold": 0,
@@ -126,9 +126,9 @@
     {
       "n": 5,
       "params": {
-        "questions": 10,
-        "maxCount": 10,
-        "options": 4
+        "questions": 6,
+        "maxCount": 12,
+        "options": 3
       },
       "goals": {
         "gold": 0,
@@ -138,79 +138,79 @@
     {
       "n": 6,
       "params": {
-        "questions": 10,
-        "maxCount": 10,
+        "questions": 6,
+        "maxCount": 12,
         "options": 4
       },
       "goals": {
-        "gold": 1,
-        "silver": 3
+        "gold": 0,
+        "silver": 2
       }
     },
     {
       "n": 7,
       "params": {
-        "questions": 10,
-        "maxCount": 12,
+        "questions": 6,
+        "maxCount": 14,
         "options": 4
       },
       "goals": {
         "gold": 1,
-        "silver": 3
+        "silver": 2
       }
     },
     {
       "n": 8,
       "params": {
-        "questions": 12,
-        "maxCount": 12,
-        "options": 5
-      },
-      "goals": {
-        "gold": 1,
-        "silver": 3
-      }
-    },
-    {
-      "n": 9,
-      "params": {
-        "questions": 12,
+        "questions": 6,
         "maxCount": 14,
         "options": 5
       },
       "goals": {
         "gold": 1,
-        "silver": 3
+        "silver": 2
+      }
+    },
+    {
+      "n": 9,
+      "params": {
+        "questions": 6,
+        "maxCount": 18,
+        "options": 5
+      },
+      "goals": {
+        "gold": 1,
+        "silver": 2
       }
     },
     {
       "n": 10,
       "params": {
-        "questions": 12,
-        "maxCount": 15,
-        "options": 5
+        "questions": 6,
+        "maxCount": 18,
+        "options": 6
       },
       "goals": {
-        "gold": 2,
-        "silver": 4
+        "gold": 1,
+        "silver": 2
       }
     },
     {
       "n": 11,
       "params": {
-        "questions": 14,
-        "maxCount": 16,
-        "options": 5
+        "questions": 9,
+        "maxCount": 18,
+        "options": 6
       },
       "goals": {
-        "gold": 2,
-        "silver": 4
+        "gold": 1,
+        "silver": 3
       }
     },
     {
       "n": 12,
       "params": {
-        "questions": 14,
+        "questions": 12,
         "maxCount": 18,
         "options": 6
       },
@@ -222,25 +222,25 @@
     {
       "n": 13,
       "params": {
-        "questions": 15,
-        "maxCount": 18,
+        "questions": 9,
+        "maxCount": 20,
         "options": 6
       },
       "goals": {
-        "gold": 2,
-        "silver": 5
+        "gold": 1,
+        "silver": 3
       }
     },
     {
       "n": 14,
       "params": {
-        "questions": 15,
+        "questions": 12,
         "maxCount": 20,
         "options": 6
       },
       "goals": {
         "gold": 2,
-        "silver": 5
+        "silver": 4
       }
     },
     {
