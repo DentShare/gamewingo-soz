@@ -35,6 +35,19 @@ export const DUR = {
   breath: 1800,
 } as const;
 
+/**
+ * Можно ли двигать декор. Игрок с `prefers-reduced-motion` получает только
+ * то, без чего интерфейс непонятен: дыхание и моргание маскота, отклик кнопок.
+ * Вне браузера (тесты) считаем, что можно.
+ */
+export function motionAllowed(): boolean {
+  try {
+    return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return true;
+  }
+}
+
 /** Ключ текстуры-точки для искр. Одна на игру, создаётся лениво. */
 export const DOT_KEY = 'wingo-dot';
 
