@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.progression import config_loader
 
 client = TestClient(app)
 
@@ -28,7 +29,7 @@ def test_health():
 
 def test_games_list_covers_catalog():
     games = client.get("/progression/games").json()
-    assert len(games) == 13
+    assert len(games) == config_loader.get_catalog()["catalogSize"]
     for slug in ("soz", "2048", "quiz", "jigsaw"):
         assert slug in games
 

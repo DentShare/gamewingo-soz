@@ -4,12 +4,14 @@
 X-User-Id (демо), в проде здесь будет проверка JWT финтех-приложения,
 прокинутого игре через INIT (см. game-bridge).
 """
+from typing import Any
+
 from fastapi import APIRouter, Depends, Header
 
 from .. import state
 from . import antifraud, config_loader, engine
 from .models import AwardResult, EventsAccepted, GameResult, RoundEvent
-from .store import day_id
+from .store import day_id, week_id
 
 router = APIRouter(prefix="/progression", tags=["progression"])
 
@@ -89,11 +91,27 @@ def ingest_result(result: GameResult, user_id: str = Depends(get_user_id)) -> Aw
             tariff["levelBase"] + tariff["levelStep"] * (result.level - 1),
             result.game, result.sessionId,
         )
+    if result.won and result.mode == "level" and result.level:
+        _grant_chapter_if_closed(user_id, result, tariff)
     if result.won and result.mode == "daily":
         state.store.grant_once(
             user_id, f"{result.game}-daily-{today}", tariff["daily"],
             result.game, result.sessionId,
         )
+    if result.won and result.mode == "dailyLevel":
+        # Уровень дня платится в первых levelOfDayPerDay играх за день: иначе обход
+        # всех четырнадцати игр ради него ломал бы дневной потолок.
+        paid_today = sum(
+            1 for key in state.store.user(user_id).keys
+            if key.startswith("lod-") and key.endswith(f"-{today}")
+        )
+        if paid_today < tariff["levelOfDayPerDay"]:
+            state.store.grant_once(
+                user_id, f"lod-{result.game}-{today}", tariff["levelOfDay"],
+                result.game, result.sessionId,
+            )
+    if result.mode == "endless":
+        _grant_record_week(user_id, result, tariff, today)
 
     # 5. Задания дня игры: закрылись — награда, повторно в тот же день не выдаётся.
     counters = state.store.day_counters(user_id, today)
@@ -127,6 +145,40 @@ def ingest_result(result: GameResult, user_id: str = Depends(get_user_id)) -> Aw
         unlockedAchievements=fresh,
         balance=balance,
     )
+
+
+def _grant_chapter_if_closed(user_id: str, result: GameResult, tariff: dict[str, Any]) -> None:
+    """Глава закрыта, когда пройдены все её уровни (ключи level-* уже в кошельке).
+
+    Главы — по chapterSize уровней подряд, как chapterLevels() клиента.
+    """
+    size = int(tariff["chapterSize"])
+    chapter = (result.level - 1) // size  # с нуля
+    first = chapter * size + 1
+    keys = state.store.user(user_id).keys
+    if all(f"level-{result.game}-{n}" in keys for n in range(first, first + size)):
+        state.store.grant_once(
+            user_id, f"chapter-{result.game}-{chapter + 1}", tariff["chapterClear"],
+            result.game, result.sessionId,
+        )
+
+
+def _grant_record_week(user_id: str, result: GameResult, tariff: dict[str, Any], today: int) -> None:
+    """Неделя рекордов: побил свой рекорд очков в аркаде — награда раз в неделю.
+
+    Первый забег в игре рекордом не считается: побивать было нечего.
+    """
+    stats = state.store.user(user_id).stats
+    best_key = f"bestScore:{result.game}"
+    previous = float(stats.get(best_key, 0))
+    if result.score <= previous:
+        return
+    stats[best_key] = float(result.score)
+    if previous > 0:
+        state.store.grant_once(
+            user_id, f"record-week-{week_id(today)}", tariff["recordWeek"],
+            result.game, result.sessionId,
+        )
 
 
 @router.post("/checkin", response_model=AwardResult)

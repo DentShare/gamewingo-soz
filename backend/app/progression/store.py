@@ -2,7 +2,8 @@
 
 Ключи наград зеркалят клиентский демо-кошелёк (packages/game-progress/src/bonus.ts):
 `level-<slug>-<n>`, `soz-daily-<dayId>`, `quest-<id>-<dayId>`, `ach-<id>`,
-`checkin-<dayId>`. Совпадающие ключи — гарантия, что при переезде с витрины
+`checkin-<dayId>`, `lod-<slug>-<dayId>` (уровень дня), `chapter-<slug>-<k>` (глава),
+`record-week-<weekId>` (неделя рекордов). Совпадающие ключи — гарантия, что при переезде с витрины
 на сервер игрок увидит те же начисления.
 
 InMemoryStore — демо и тесты. Для продакшена реализуется тот же интерфейс
@@ -20,6 +21,14 @@ def day_id(now: Optional[datetime] = None) -> int:
     """Номер дня в таймзоне Ташкента — тот же расчёт, что computeDayId клиента."""
     moment = now or datetime.now(timezone.utc)
     return int((moment.timestamp() * 1000 + TASHKENT_OFFSET_MS) // 86_400_000)
+
+
+def week_id(day: int) -> int:
+    """Календарная неделя с понедельника — тот же счёт, что computeWeekId клиента.
+
+    День 0 (1970-01-01) — четверг, поэтому сдвиг на 3.
+    """
+    return (day + 3) // 7
 
 
 @dataclass

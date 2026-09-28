@@ -66,3 +66,19 @@ export function ramp(n: number, count: number, from: number, to: number): number
   const t = (n - 1) / (count - 1);
   return Math.round(from + (to - from) * t);
 }
+
+/**
+ * Уровней в главе. Пятнадцать ступеней — три главы по пять: названия глав игра
+ * даёт сама (по рычагу сложности), а границы общие — их знает и сервер, когда
+ * решает, закрылась ли глава.
+ */
+export const CHAPTER_SIZE = 5;
+
+/** Номера уровней по главам: [[1..5], [6..10], [11..15]] для лестницы из пятнадцати. */
+export function chapterLevels(total: number, size: number = CHAPTER_SIZE): number[][] {
+  const out: number[][] = [];
+  for (let start = 1; start <= total; start += size) {
+    out.push(Array.from({ length: Math.min(size, total - start + 1) }, (_, i) => start + i));
+  }
+  return out;
+}
