@@ -53,6 +53,24 @@ export const C = {
   // ломали бы `let bg = a ? COLORS.x : COLORS.y`.
 };
 
+/**
+ * Оттенки перьев феникса. Живут только внутри маскота: в интерфейсе ими не
+ * красят — там хватает `primary`/`primarySoft`/`primaryPressed`/`gold`.
+ * Отдельная таблица, чтобы девять почти одинаковых оранжевых не расползлись
+ * по сценам под видом «ещё одного акцента».
+ */
+export const PHOENIX_SHADES = {
+  deep: 0xb9440f,
+  headEdge: 0xe25a1b,
+  tailMid: 0xf0733a,
+  wingLight: 0xff8a47,
+  peach: 0xffb27a,
+  peachLight: 0xffc39b,
+  goldLight: 0xf2c14e,
+  goldPale: 0xffd36b,
+  beakDark: 0xb07a0a,
+} as const;
+
 /** Те же цвета строками — для Phaser.Text, где нужен CSS-цвет. */
 export const S = {
   primary: '#f76624',
