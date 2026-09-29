@@ -101,7 +101,7 @@
       "params": {
         "guesses": 6,
         "strict": false,
-        "keyboardHints": true,
+        "rare": false,
         "timeLimitSec": 0
       },
       "goals": {
@@ -113,8 +113,8 @@
       "n": 2,
       "params": {
         "guesses": 6,
-        "strict": false,
-        "keyboardHints": true,
+        "strict": true,
+        "rare": false,
         "timeLimitSec": 0
       },
       "goals": {
@@ -127,12 +127,12 @@
       "params": {
         "guesses": 6,
         "strict": false,
-        "keyboardHints": true,
+        "rare": true,
         "timeLimitSec": 0
       },
       "goals": {
         "gold": 3,
-        "silver": 4
+        "silver": 5
       }
     },
     {
@@ -140,7 +140,7 @@
       "params": {
         "guesses": 6,
         "strict": true,
-        "keyboardHints": true,
+        "rare": true,
         "timeLimitSec": 0
       },
       "goals": {
@@ -151,9 +151,9 @@
     {
       "n": 5,
       "params": {
-        "guesses": 6,
-        "strict": true,
-        "keyboardHints": true,
+        "guesses": 5,
+        "strict": false,
+        "rare": false,
         "timeLimitSec": 0
       },
       "goals": {
@@ -165,8 +165,8 @@
       "n": 6,
       "params": {
         "guesses": 5,
-        "strict": false,
-        "keyboardHints": true,
+        "strict": true,
+        "rare": false,
         "timeLimitSec": 0
       },
       "goals": {
@@ -178,8 +178,8 @@
       "n": 7,
       "params": {
         "guesses": 5,
-        "strict": true,
-        "keyboardHints": true,
+        "strict": false,
+        "rare": true,
         "timeLimitSec": 0
       },
       "goals": {
@@ -192,8 +192,8 @@
       "params": {
         "guesses": 5,
         "strict": true,
-        "keyboardHints": true,
-        "timeLimitSec": 240
+        "rare": true,
+        "timeLimitSec": 0
       },
       "goals": {
         "gold": 3,
@@ -204,9 +204,9 @@
       "n": 9,
       "params": {
         "guesses": 5,
-        "strict": true,
-        "keyboardHints": false,
-        "timeLimitSec": 0
+        "strict": false,
+        "rare": false,
+        "timeLimitSec": 300
       },
       "goals": {
         "gold": 3,
@@ -218,8 +218,8 @@
       "params": {
         "guesses": 5,
         "strict": true,
-        "keyboardHints": false,
-        "timeLimitSec": 210
+        "rare": false,
+        "timeLimitSec": 300
       },
       "goals": {
         "gold": 3,
@@ -229,66 +229,66 @@
     {
       "n": 11,
       "params": {
-        "guesses": 4,
+        "guesses": 5,
         "strict": false,
-        "keyboardHints": true,
-        "timeLimitSec": 0
+        "rare": true,
+        "timeLimitSec": 300
       },
       "goals": {
-        "gold": 2,
-        "silver": 3
+        "gold": 3,
+        "silver": 4
       }
     },
     {
       "n": 12,
       "params": {
-        "guesses": 4,
+        "guesses": 5,
         "strict": true,
-        "keyboardHints": true,
-        "timeLimitSec": 0
+        "rare": true,
+        "timeLimitSec": 300
       },
       "goals": {
-        "gold": 2,
-        "silver": 3
+        "gold": 3,
+        "silver": 4
       }
     },
     {
       "n": 13,
       "params": {
-        "guesses": 4,
+        "guesses": 5,
         "strict": true,
-        "keyboardHints": true,
-        "timeLimitSec": 180
+        "rare": true,
+        "timeLimitSec": 240
       },
       "goals": {
-        "gold": 2,
-        "silver": 3
+        "gold": 3,
+        "silver": 4
       }
     },
     {
       "n": 14,
       "params": {
-        "guesses": 4,
+        "guesses": 5,
         "strict": true,
-        "keyboardHints": false,
-        "timeLimitSec": 0
+        "rare": true,
+        "timeLimitSec": 210
       },
       "goals": {
-        "gold": 2,
-        "silver": 3
+        "gold": 3,
+        "silver": 4
       }
     },
     {
       "n": 15,
       "params": {
-        "guesses": 4,
+        "guesses": 5,
         "strict": true,
-        "keyboardHints": false,
-        "timeLimitSec": 150
+        "rare": true,
+        "timeLimitSec": 180
       },
       "goals": {
-        "gold": 2,
-        "silver": 3
+        "gold": 3,
+        "silver": 4
       }
     }
   ]

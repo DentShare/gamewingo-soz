@@ -6,15 +6,18 @@ import {
   makeTopBar,
   applyTheme,
   setupCamera,
-  type Button,
   makeLevelGrid,
   makeLadderSummary,
   type LevelTileState,
   setBackHandler,
+  readBonusBalance,
+  playSound,
+  C, S, TYPE, WEIGHT, RADIUS, BUTTON_H, TOP_BAR_H, LOGICAL_W, VIEW_TOP, VIEW_BOTTOM,
 } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { loadDaily, setHighContrast } from '../../core/persistence';
+import { formatClock } from '../roundTimer';
 import { LADDER, LADDER_SIZE } from '../../core/levels';
 import { isUnlocked, loadProgress, nextLevel, totalStars } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
@@ -87,25 +90,134 @@ export class MainMenu extends Scene {
     makeButton(this, CX, belowGrid, t(this.locale, 'menu.play', { n: next }), () => this.startLevel(next), {
       primary: dailyDone,
     });
-    // «Как играть» и звук живут в паузе партии; высокий контраст пока здесь (отдельная задача).
+    // «Как играть» и звук живут в паузе партии, высокий контраст — под шестерёнкой.
+    this.makeGear();
+  }
 
-    const label = () =>
-      `${t(this.locale, 'a11y.highContrast')}: ${this.registry.get('highContrast') ? '✓' : '×'}`;
-    let btn: Button;
-    btn = makeButton(this, CX, belowGrid + 52, label(), () => {
+  /* ── Настройки ─────────────────────────────────────────────────────────── */
+
+  /**
+   * Шестерёнка в шапке, слева от счётчика бонусов. Раньше «Высокий контраст: ×»
+   * был полноразмерной кнопкой меню — настройка на один раз не должна спорить
+   * с «Играть» за первый экран.
+   */
+  private makeGear() {
+    // Чип бонусов рисует шапка (`makeTopBar`); его ширина — от баланса: тот же расчёт.
+    const probe = this.add.text(0, 0, String(readBonusBalance()), { fontFamily: FONT, fontSize: 14, fontStyle: WEIGHT.semibold });
+    const chipW = 10 + 16 + 5 + probe.width + 11;
+    probe.destroy();
+    const x = LOGICAL_W - 14 - chipW - 26;
+    const y = TOP_BAR_H / 2;
+    const g = this.add.graphics();
+    const pts: Array<{ x: number; y: number }> = [];
+    const TEETH = 8;
+    for (let i = 0; i < TEETH * 4; i++) {
+      // Зубец: две точки на внешнем радиусе, две — на внутреннем.
+      const r = Math.floor(i / 2) % 2 === 0 ? 10 : 7.5;
+      const a = ((i - 0.5) / (TEETH * 4)) * Math.PI * 2;
+      pts.push({ x: x + Math.cos(a) * r, y: y + Math.sin(a) * r });
+    }
+    g.lineStyle(2, C.white, 1).beginPath();
+    pts.forEach((p, i) => (i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)));
+    g.closePath();
+    g.strokePath();
+    g.strokeCircle(x, y, 3.5);
+    const hit = this.add.rectangle(x, y, 44, 44, 0x000000, 0).setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', () => playSound('tap'));
+    hit.on('pointerup', () => this.openSettings());
+  }
+
+  /** Шит настроек: пока одна строка — высокий контраст с переключателем. */
+  private openSettings() {
+    const loc = this.locale;
+    const root = this.add.container(0, 0).setDepth(1000);
+    const W = LOGICAL_W;
+    const dim = this.add
+      .rectangle(W / 2, (VIEW_TOP + VIEW_BOTTOM) / 2, W, VIEW_BOTTOM - VIEW_TOP, C.ink, 0.5)
+      .setInteractive();
+    const PAD = 20;
+    const SW_W = 44;
+    const SW_H = 26;
+    const swX = W - PAD - 16 - SW_W;
+    const textW = swX - (PAD + 16) - 12;
+    // Тексты строки создаются первыми: высота шита — по пояснению (узбекское длиннее).
+    const label = this.add
+      .text(PAD + 16, 0, t(loc, 'a11y.highContrast'), {
+        fontFamily: FONT, fontSize: TYPE.body, fontStyle: WEIGHT.semibold, color: S.ink,
+      })
+      .setResolution(DPR);
+    const hint = this.add
+      .text(PAD + 16, 0, t(loc, 'settings.contrastHint'), {
+        fontFamily: FONT, fontSize: TYPE.caption, color: S.muted,
+      })
+      .setWordWrapWidth(textW, true)
+      .setResolution(DPR);
+    const ROW_H = Math.max(72, 14 + label.height + 4 + hint.height + 14);
+    const H = 20 + 26 + 20 + ROW_H + 20 + BUTTON_H.lg + 28;
+    const top = VIEW_BOTTOM - H;
+    const sheet = this.add.graphics();
+    sheet.fillStyle(C.bg, 1).fillRoundedRect(0, top, W, H + 20, { tl: 20, tr: 20, bl: 0, br: 0 });
+    sheet.fillStyle(C.divider, 1).fillRoundedRect(W / 2 - 18, top + 8, 36, 4, 2);
+    const sheetHit = this.add.rectangle(W / 2, top + H / 2, W, H, 0x000000, 0).setInteractive();
+    const title = this.add
+      .text(W / 2, top + 33, t(loc, 'settings.title'), {
+        fontFamily: FONT, fontSize: TYPE.title, fontStyle: WEIGHT.bold, color: S.ink,
+      })
+      .setOrigin(0.5)
+      .setResolution(DPR);
+
+    // Строка настройки — вся тап-цель: подпись, пояснение и переключатель справа.
+    const rowY = top + 66;
+    const card = this.add.graphics();
+    card.fillStyle(C.surface, 1).fillRoundedRect(PAD, rowY, W - PAD * 2, ROW_H, RADIUS.card);
+    card.lineStyle(1, C.divider, 1).strokeRoundedRect(PAD, rowY, W - PAD * 2, ROW_H, RADIUS.card);
+    label.setY(rowY + 14);
+    hint.setY(rowY + 14 + label.height + 4);
+    const swY = rowY + ROW_H / 2 - SW_H / 2;
+    const sw = this.add.graphics();
+    const paintSwitch = () => {
+      const on = !!this.registry.get('highContrast');
+      sw.clear();
+      sw.fillStyle(on ? C.primary : C.divider, 1).fillRoundedRect(swX, swY, SW_W, SW_H, SW_H / 2);
+      sw.fillStyle(C.white, 1).fillCircle(on ? swX + SW_W - SW_H / 2 : swX + SW_H / 2, swY + SW_H / 2, SW_H / 2 - 3);
+    };
+    paintSwitch();
+    const rowHit = this.add
+      .rectangle(W / 2, rowY + ROW_H / 2, W - PAD * 2, ROW_H, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    rowHit.on('pointerdown', () => playSound('tap'));
+    rowHit.on('pointerup', () => {
       const on = !this.registry.get('highContrast');
       this.registry.set('highContrast', on);
       setHighContrast(on);
-      btn.setLabel(label());
+      paintSwitch();
     });
+
+    const close = () => {
+      if (!root.active) return;
+      root.destroy();
+      setBackHandler(() => this.exitToCatalog());
+    };
+    const done = makeButton(this, W / 2, rowY + ROW_H + 20 + BUTTON_H.lg / 2, t(loc, 'settings.done'), close, {
+      primary: true, width: W - PAD * 2, height: BUTTON_H.lg,
+    });
+    const panel = this.add.container(0, H, [sheet, sheetHit, title, card, label, hint, sw, rowHit, done.root]);
+    root.add([dim, panel]);
+    // Тап мимо шита и системный «назад» — закрыть шит, а не выйти из игры.
+    dim.on('pointerup', close);
+    setBackHandler(close);
+    dim.setAlpha(0);
+    this.tweens.add({ targets: dim, alpha: 1, duration: 160 });
+    this.tweens.add({ targets: panel, y: 0, duration: 220, ease: 'Cubic.easeOut' });
   }
 
-  /** Строка «6 попыток · строгий режим · без подсветки» — что именно ждёт на уровне. */
+  /** Строка «5 попыток · строгий режим · редкие слова · 5:00» — что именно ждёт на уровне. */
   private levelRules(n: number): string {
     const p = LADDER[n - 1].params;
     const parts = [this.guessesLabel(p.guesses)];
     if (p.strict) parts.push(t(this.locale, 'menu.strict'));
-    if (!p.keyboardHints) parts.push(t(this.locale, 'menu.noHints'));
+    if (p.rare) parts.push(t(this.locale, 'menu.rare'));
+    if (p.timeLimitSec) parts.push(t(this.locale, 'menu.timer', { t: formatClock(p.timeLimitSec) }));
     return parts.join(' · ');
   }
 
