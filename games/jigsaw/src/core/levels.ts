@@ -1,4 +1,4 @@
-import { harderLevers, type LevelDef, type StarGoals } from '@gamewingo/game-progress';
+import type { LevelDef, StarGoals } from '@gamewingo/game-progress';
 import { PICTURES } from './pictures';
 
 /**
@@ -99,49 +99,7 @@ export const LADDER: readonly JigsawLevel[] = TABLE.map(([pieces, hint, tray, go
 
 export const LADDER_SIZE = LADDER.length;
 
-/** Названия глав — ключи словаря; глава n — уровни 5(n−1)+1 … 5n. */
-export const CHAPTER_TITLES = ['chapter.1', 'chapter.2', 'chapter.3'] as const;
-
 /** Уровень по номеру. Номер вне лестницы зажимается — реестр мог сохранить старое значение. */
 export function levelAt(n: number): JigsawLevel {
   return LADDER[Math.min(LADDER_SIZE, Math.max(1, Math.round(n))) - 1];
-}
-
-/** Ключ словаря с подстановками — core не знает языков, только что сказать. */
-export interface Phrase {
-  key: string;
-  vars: Record<string, number | string>;
-}
-
-export interface LevelInfo {
-  /** Чип поля: «12 кусочков». Ключ с формой числа — `level.field.<one|few|many>`. */
-  field: Phrase;
-  /** Что нового по сравнению с предыдущим уровнем; на первом — ничего. */
-  intro: Phrase | null;
-  /** Порог трёх звёзд — по промахам. */
-  goldHint: Phrase;
-}
-
-/**
- * Что показать о картинке до старта: поле, новый рычаг, порог золота. Новый рычаг
- * вычисляется сравнением с предыдущим уровнем — так подпись не разойдётся с
- * таблицей, сколько её ни правь.
- */
-export function levelInfo(n: number): LevelInfo {
-  const { params: p, goals } = levelAt(n);
-  const prev = n > 1 ? levelAt(n - 1).params : null;
-  let intro: Phrase | null = null;
-  // Называем тот рычаг, что стал жёстче: смягчения при росте поля игрок не ищет.
-  const harder = prev ? harderLevers(prev, p, LEVERS)[0] : undefined;
-  if (harder === 'pieces') intro = { key: 'intro.field', vars: {} };
-  if (harder === 'hint') intro = { key: p.hint ? 'intro.hintFainter' : 'intro.noHint', vars: {} };
-  if (harder === 'tray') intro = { key: 'intro.tray', vars: { n: p.tray } };
-  return {
-    field: { key: 'level.field', vars: { n: p.pieces } },
-    intro,
-    // Золото «без промахов» — своя фраза: «не больше 0» ребёнку и родителю не читается.
-    goldHint: goals.gold > 0
-      ? { key: 'level.goldHint', vars: { n: goals.gold } }
-      : { key: 'level.goldHintFlawless', vars: {} },
-  };
 }

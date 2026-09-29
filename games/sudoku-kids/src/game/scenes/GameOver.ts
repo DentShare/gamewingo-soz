@@ -1,15 +1,10 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
-import { t } from '../../i18n';
-import {
-  setBackHandler, applyTheme, setupCamera, makeBonusChip, playSound, makeLadderResult, uiText, pluralForm,
-} from '../ui';
+import { setBackHandler, applyTheme, setupCamera, makeBonusChip, playSound, makeKidsResult } from '../ui';
 import { COLORS } from '../palette';
 import { computeScore } from '../../core/score';
-import { levelAt, levelInfo, formatSec, LADDER_SIZE, type Phrase } from '../../core/levels';
-import {
-  settleLadderRound, starsFor, starGap, chapterOf, loadProgress, isUnlocked, type Stars,
-} from '@gamewingo/game-progress';
+import { levelAt, LADDER_SIZE } from '../../core/levels';
+import { settleLadderRound, starsFor, loadProgress, isUnlocked, type Stars } from '@gamewingo/game-progress';
 import confetti from 'canvas-confetti';
 
 interface LastGame {
@@ -31,9 +26,10 @@ interface LastGame {
 const SLUG = 'sudoku-kids';
 
 /**
- * Итог уровня (T4, раздел 1d аудита): звёзды, «почти» до третьей звезды,
- * расшифровка бонусов и кнопка, которая называет, что дальше. Очков и
- * лидерборда нет: звёзды считаются по времени, а топ по уровню ничего не значит.
+ * Итог детской партии (T8, раздел 1g аудита): звёзды крупно, феникс и одна
+ * большая кнопка «дальше» — без очков, лидерборда и текста: ребёнок 3–6 лет
+ * не читает. На поздних уровнях есть лимит ошибок и таймер, поэтому провал
+ * возможен: тогда звёзд нет, феникс грустит, а «дальше» переигрывает тот же уровень.
  */
 export class GameOver extends Scene {
   constructor() {
@@ -47,15 +43,15 @@ export class GameOver extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(220, ...COLORS.fade);
     const last = this.registry.get('lastGame') as LastGame;
-    const loc = last.locale;
 
     const level = levelAt(last.level);
     // Звёзды судоку меряются временем: цель — решить быстро, а не просто решить.
     const sec = Math.floor(last.durationMs / 1000);
     const score = last.cleared ? computeScore({ level: last.level, durationMs: last.durationMs, hints: last.hints }) : 0;
     const starCount = last.cleared ? starsFor(level.goals, sec) : 0;
-    // Итог одним вызовом: лестница, счётчики дня и бонусы с разбивкой.
-    const { bonus, lines } = settleLadderRound({
+    // Итог одним вызовом: лестница, счётчики дня и бонусы. Бонусы — как раньше:
+    // это доход родителя, ребёнок видит только прилёт на чип баланса.
+    const { bonus } = settleLadderRound({
       slug: SLUG, n: last.level, total: LADDER_SIZE,
       mode: last.daily ? 'dailyLevel' : 'level',
       cleared: last.cleared, stars: (starCount || 1) as Stars, score,
@@ -66,46 +62,16 @@ export class GameOver extends Scene {
       confetti({ disableForReducedMotion: true, particleCount: 90, spread: 70, origin: { y: 0.4 } });
     }
 
-    // «Почти»: сколько секунд не хватило до третьей звезды — повод решить ещё раз.
-    const gap = last.cleared ? starGap(level.goals, sec) : null;
-
+    // «Дальше»: пройден — следующий уровень, если открыт, иначе в меню;
+    // провал — тот же уровень ещё раз.
     const nextN = last.level + 1;
     const hasNext = !last.daily && last.cleared && nextN <= LADDER_SIZE && isUnlocked(loadProgress(SLUG), nextN);
-    const intro = hasNext ? levelInfo(nextN).intro : null;
-
-    const screen = makeLadderResult(this, {
-      locale: loc,
-      caption: last.daily
-        ? uiText(loc, 'result.dailyLevel')
-        : uiText(loc, 'result.levelChapter', { n: last.level, k: chapterOf(last.level) }),
-      title: t(loc, last.cleared ? 'result.title' : 'result.failed'),
-      stars: starCount,
-      // Провал — докуда дошли: «Заполнено клеток: 7 из 9».
-      note: last.cleared || last.toFill === undefined
-        ? undefined
-        : t(loc, 'result.filledOf', { k: last.filled ?? 0, n: last.toFill }),
-      almost: gap && {
-        title: uiText(loc, 'result.almostStar', {
-          gap: t(loc, `result.gapSeconds.${pluralForm(gap.missing)}`, { n: gap.missing }),
-        }),
-        detail: t(loc, 'result.almostDetail', { time: formatSec(sec), need: formatSec(gap.threshold) }),
-        againLabel: uiText(loc, 'result.again'),
-        onAgain: () => this.play(last.level, last.daily),
-      },
-      lines,
-      total: bonus.total,
-      primary: hasNext
-        ? {
-          label: intro
-            ? uiText(loc, 'result.nextIntro', { n: nextN, intro: this.phrase(loc, intro) })
-            : uiText(loc, 'result.next', { n: nextN }),
-          onClick: () => this.play(nextN),
-        }
-        : { label: uiText(loc, 'result.again'), onClick: () => this.play(last.level, last.daily) },
-      onMenu: () => this.scene.start('MainMenu'),
-      mood: last.cleared ? 'happy' : 'sad',
-    });
-
+    const onNext = () => {
+      if (!last.cleared) this.play(last.level, last.daily);
+      else if (hasNext) this.play(nextN);
+      else this.scene.start('MainMenu');
+    };
+    makeKidsResult(this, { stars: starCount, onNext, mood: last.cleared ? 'happy' : 'sad' });
     const bonusChip = makeBonusChip(this, 386, 30);
     if (bonus.total > 0) {
       // Чип создан после начисления — откатываем показ на баланс «до»,
@@ -113,14 +79,10 @@ export class GameOver extends Scene {
       bonusChip.setValue(bonus.balance - bonus.total);
       this.time.delayedCall(1100, () => {
         playSound('coin');
-        bonusChip.award(bonus.total, screen.awardFrom.x, screen.awardFrom.y);
+        // «+N» вылетает от звёзд.
+        bonusChip.award(bonus.total, 200, 360);
       });
     }
-  }
-
-  /** Фраза из core → строка на языке игрока. */
-  private phrase(loc: Locale, p: Phrase): string {
-    return t(loc, p.key, p.vars);
   }
 
   private play(n: number, daily = false) {

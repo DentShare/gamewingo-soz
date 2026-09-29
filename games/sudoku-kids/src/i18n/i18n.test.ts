@@ -4,18 +4,10 @@ import uz from './uz.json';
 import { t } from './index';
 
 const REQUIRED = [
-  'sound.on', 'sound.off',
-  'app.title', 'menu.howto', 'menu.back',
-  'chapter.1', 'chapter.2', 'chapter.3',
-  'level.field.one', 'level.field.few', 'level.field.many', 'level.goldHint',
-  'intro.field', 'intro.clues', 'intro.mistakes', 'intro.mistakesTighter', 'intro.timer', 'intro.timerTighter',
-  'game.dailyLevel',
-  'menu.catalog', 'game.hints', 'game.level', 'game.mistakes',
-  'game.fail.mistakes', 'game.fail.time',
-  'result.failed', 'result.filledOf',
+  'app.title', 'sound.on', 'sound.off',
+  'game.hints', 'game.fail.mistakes', 'game.fail.time',
+  'pause.mistakes', 'pause.time',
   'tutorial.firstMove', 'rule.mistake', 'rule.mistakeLimit', 'rule.timer',
-  'result.title', 'result.gapSeconds.one', 'result.gapSeconds.few', 'result.gapSeconds.many',
-  'result.almostDetail',
 ];
 
 describe('i18n (sudoku-kids)', () => {
@@ -29,8 +21,8 @@ describe('i18n (sudoku-kids)', () => {
     }
   });
   it('t() подставляет параметры', () => {
-    expect(t('ru', 'result.almostDetail', { time: '1:15', need: '1:10' })).toContain('1:10');
-    expect(t('uz', 'result.filledOf', { k: 7, n: 9 })).toBe('Toʻldirilgan kataklar: 9 dan 7');
+    expect(t('ru', 'rule.mistakeLimit', { n: 3 })).toContain('3');
+    expect(t('uz', 'pause.time', { t: '1:10' })).toBe('vaqt 1:10');
     expect(t('uz', 'game.hints', { n: 2 })).toContain('2');
   });
 });

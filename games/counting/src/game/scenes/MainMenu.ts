@@ -1,32 +1,24 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
-import { t } from '../../i18n';
 import {
   applyTheme,
   setupCamera,
-  makeTopBar,
   setBackHandler,
-  makeNextLevelCard,
-  makeChapterSection,
-  makeDailyLevelCard,
-  pluralForm,
+  makeGameIcon,
+  makeKidsTopBar,
+  makeKidsPathPager,
+  makeKidsPlayButton,
   TOP_BAR_H,
-  type LevelTileState,
+  type KidsStop,
 } from '../ui';
 import { COLORS } from '../palette';
-import { CHAPTER_TITLES, LADDER, LADDER_SIZE, levelInfo, type Phrase } from '../../core/levels';
+import { LADDER, LADDER_SIZE } from '../../core/levels';
 import {
+  chapterLevels,
   chapterOf,
-  chapterStates,
-  dailyLevelFor,
-  DAILY_LEVEL,
-  isDailyLevelDone,
-  isDailyLevelUnlocked,
   isLadderComplete,
   loadProgress,
   nextLevel,
-  totalStars,
-  TARIFF,
 } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 
@@ -40,116 +32,54 @@ const SLUG = 'counting';
 const HUB_URL = '../';
 
 /**
- * Меню по главам (макет 1c аудита): сверху «Следующий» — номер, новый рычаг и
- * порог трёх звёзд; под ним развёрнутая глава, остальные свёрнуты в строку;
- * внизу «Уровень дня».
+ * Детское меню (T8, раздел 1g аудита): игрок 3–6 лет не читает. Иконка игры,
+ * дорожка из пяти кружков (глава) и одна большая кнопка «играть». Ни «Уровень
+ * 3 из 15», ни замков: будущий кружок просто покачивается. Выход и звук — у
+ * «Родителям» (удержание 2 с). Режима картинкой нет: рычаги «Счёта» — до
+ * скольки считаем, сколько кнопок и вопросов — ребёнок увидит в самой партии.
  */
 export class MainMenu extends Scene {
   private locale: Locale = 'ru';
-  /** Какая глава развёрнута; по умолчанию — та, где следующий уровень. */
-  private shownChapter = 0;
 
   constructor() {
     super('MainMenu');
-  }
-
-  init(data: { chapter?: number }) {
-    this.shownChapter = data?.chapter ?? 0;
   }
 
   create() {
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     applyTheme(this);
     setupCamera(this);
-    // Переключение главы перерисовывает меню — без затемнения, иначе экран мигает.
-    if (!this.shownChapter) this.cameras.main.fadeIn(200, ...COLORS.fade);
+    this.cameras.main.fadeIn(200, ...COLORS.fade);
 
-    makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
-    // Системный «назад» из меню — тот же выход в каталог, что и стрелка.
-    setBackHandler(() => this.exitToCatalog());
+    makeKidsTopBar(this, { locale: this.locale, onExit: () => this.exitToCatalog() });
+    // Системный «назад» в меню ничего не делает: выход — только через «Родителям».
+    setBackHandler(() => {});
 
     const progress = loadProgress(SLUG);
     const complete = isLadderComplete(progress, LADDER_SIZE);
-    // Вся лестница пройдена — предлагаем первый уровень, где не хватает звёзд.
-    const improveAt = LADDER.find((lv) => (progress.stars[lv.n - 1] ?? 0) < 3)?.n;
-    const next = complete ? improveAt ?? LADDER_SIZE : nextLevel(progress, LADDER_SIZE);
-    const info = levelInfo(next);
+    // Всё пройдено — играем первый уровень, где не хватает звёзд, иначе первый.
+    const next = complete
+      ? LADDER.find((lv) => (progress.stars[lv.n - 1] ?? 0) < 3)?.n ?? 1
+      : nextLevel(progress, LADDER_SIZE);
 
-    let y = TOP_BAR_H + 16;
-    const card = makeNextLevelCard(this, CX, y, {
-      locale: this.locale,
-      n: next,
-      stars: totalStars(progress),
-      maxStars: LADDER_SIZE * 3,
-      field: this.phrase(info.field, true),
-      intro: info.intro ? this.phrase(info.intro) : undefined,
-      goldHint: this.phrase(info.goldHint),
-      improve: complete,
-      onPlay: () => this.startLevel(next),
+    makeGameIcon(this, CX, TOP_BAR_H + 84, 120);
+
+    const chapters: KidsStop[][] = chapterLevels(LADDER_SIZE).map((levels) => levels.map((n) => {
+      const stars = progress.stars[n - 1] ?? 0;
+      return { n, stars, state: n === next ? 'current' : stars > 0 ? 'done' : 'future' };
+    }));
+    const pager = makeKidsPathPager(this, CX, TOP_BAR_H + 172, {
+      chapters,
+      initial: chapterOf(next) - 1,
+      onPick: (n) => this.startLevel(n),
     });
-    y += card.height + 20;
 
-    // Главы: развёрнутая первой, остальные строкой — по порядку.
-    const chapters = chapterStates(progress, LADDER_SIZE);
-    const shown = this.shownChapter || chapterOf(next);
-    const ordered = [chapters[shown - 1], ...chapters.filter((c) => c.n !== shown)];
-    for (const ch of ordered) {
-      const expanded = ch.n === shown;
-      const tiles: LevelTileState[] = ch.levels.map((n) => ({
-        n,
-        unlocked: n <= next || (progress.stars[n - 1] ?? 0) > 0,
-        stars: progress.stars[n - 1] ?? 0,
-        current: n === next && !complete,
-      }));
-      const section = makeChapterSection(this, CX, y, {
-        locale: this.locale,
-        n: ch.n,
-        title: t(this.locale, CHAPTER_TITLES[ch.n - 1]),
-        levels: tiles,
-        cleared: ch.cleared,
-        done: ch.done,
-        unlocked: ch.unlocked,
-        stars: ch.stars,
-        maxStars: ch.maxStars,
-        bonus: TARIFF.chapterClear,
-        expanded,
-        onPick: (n) => this.startLevel(n),
-        onToggle: () => this.scene.restart({ chapter: ch.n }),
-      });
-      y += section.height + (expanded ? 20 : 14);
-    }
-
-    // Уровень дня: тот же генератор, расклад по дате — один на всех игроков.
-    y += 2;
-    const dailyState = !isDailyLevelUnlocked(progress) ? 'locked' : isDailyLevelDone(SLUG) ? 'done' : 'ready';
-    makeDailyLevelCard(this, CX, y, {
-      locale: this.locale,
-      state: dailyState,
-      bonus: TARIFF.levelOfDay,
-      unlockAfter: DAILY_LEVEL.unlockAfter,
-      onPlay: () => this.startDaily(),
-    });
-    // «Как играть» и звук живут в паузе партии — меню короче на два ряда.
-  }
-
-  /** Фраза из core → строка на языке игрока; `counted` — ключ с формой числа. */
-  private phrase(p: Phrase, counted = false): string {
-    const key = counted ? `${p.key}.${pluralForm(Number(p.vars.n))}` : p.key;
-    return t(this.locale, key, p.vars);
+    makeKidsPlayButton(this, CX, TOP_BAR_H + 172 + pager.height + 90, () => this.startLevel(next));
   }
 
   private startLevel(n: number) {
     this.registry.set('level', n);
     this.registry.set('mode', 'level');
-    this.registry.set('locale', this.locale);
-    this.scene.start('Game');
-  }
-
-  private startDaily() {
-    const daily = dailyLevelFor(SLUG);
-    this.registry.set('level', daily.n);
-    this.registry.set('mode', 'dailyLevel');
-    this.registry.set('dailySeed', daily.seed);
     this.registry.set('locale', this.locale);
     this.scene.start('Game');
   }

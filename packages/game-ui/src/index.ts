@@ -19,3 +19,4 @@ export * from './chapters.js';
 export * from './pause.js';
 export * from './results.js';
 export * from './tutorial.js';
+export * from './kids.js';

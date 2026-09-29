@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { chapterLevels, harderLevers, starsFor } from '@gamewingo/game-progress';
-import { CHAPTER_TITLES, GHOST_ALPHA, LADDER, LADDER_SIZE, LEVERS, levelAt, levelInfo } from './levels';
+import { GHOST_ALPHA, LADDER, LADDER_SIZE, LEVERS, levelAt } from './levels';
 
 describe('лестница «Пазл»', () => {
   it('сетка совпадает с числом кусочков, подсказка — с яркостью', () => {
@@ -43,7 +43,6 @@ describe('лестница «Пазл»', () => {
 
   it('главы соответствуют названиям: знакомство → по памяти → выбирай сам', () => {
     const [c1, c2, c3] = chapterLevels(LADDER_SIZE).map((ns) => ns.map((n) => levelAt(n).params));
-    expect(CHAPTER_TITLES).toHaveLength(3);
     expect(c1.every((p) => p.hint === 3 && p.tray === 3)).toBe(true);
     expect(c2.every((p) => p.hint < 3 && p.tray === 3)).toBe(true);
     expect(c3.every((p) => p.hint < 3 && p.tray === 4)).toBe(true);
@@ -53,18 +52,5 @@ describe('лестница «Пазл»', () => {
     const last = LADDER[LADDER_SIZE - 1].params;
     expect([last.cols, last.rows]).toEqual([4, 5]);
     expect(last.ghost).toBe(false);
-  });
-
-  it('карточка уровня называет ровно то, что изменилось', () => {
-    expect(levelInfo(1).intro).toBeNull();
-    expect(levelInfo(2).intro).toEqual({ key: 'intro.field', vars: {} });
-    expect(levelInfo(6).intro).toEqual({ key: 'intro.hintFainter', vars: {} });
-    expect(levelInfo(10).intro).toEqual({ key: 'intro.noHint', vars: {} });
-    expect(levelInfo(11).intro).toEqual({ key: 'intro.tray', vars: { n: 4 } });
-    // Рост поля с подсказкой поярче называется ростом поля.
-    expect(levelInfo(8).intro).toEqual({ key: 'intro.field', vars: {} });
-    expect(levelInfo(8).field).toEqual({ key: 'level.field', vars: { n: 15 } });
-    expect(levelInfo(7).goldHint).toEqual({ key: 'level.goldHint', vars: { n: LADDER[6].goals.gold } });
-    expect(levelInfo(1).goldHint).toEqual({ key: 'level.goldHintFlawless', vars: {} });
   });
 });

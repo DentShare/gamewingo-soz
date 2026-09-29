@@ -1,16 +1,15 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
-import { t } from '../../i18n';
 import {
-  setBackHandler, applyTheme, setupCamera, makeBonusChip, playSound, makeLadderResult, uiText, pluralForm, motionAllowed,
+  setBackHandler, applyTheme, setupCamera, makeBonusChip, playSound, motionAllowed,
+  makePhoenix, makeStarRow, makeKidsPlayButton, C, TYPE,
 } from '../ui';
-import { COLORS } from '../palette';
-import { levelAt, levelInfo, LADDER_SIZE, type Phrase } from '../../core/levels';
+import { COLORS, FONT } from '../palette';
+import { DPR } from '../dpr';
+import { levelAt, LADDER_SIZE } from '../../core/levels';
 import { pictureById } from '../../core/pictures';
 import { BASE_FRAME, ensurePictureTexture } from '../picture';
-import {
-  settleLadderRound, starsFor, starGap, chapterOf, loadProgress, isUnlocked,
-} from '@gamewingo/game-progress';
+import { settleLadderRound, starsFor, loadProgress, isUnlocked } from '@gamewingo/game-progress';
 import confetti from 'canvas-confetti';
 
 interface LastGame {
@@ -26,16 +25,25 @@ interface LastGame {
 }
 
 const SLUG = 'jigsaw';
-/** Собранная картинка над итогом — то, чем ребёнок только что гордится. */
-const PIC = 76;
-const PIC_Y = 50;
-/** Верх колонки итога — под картинкой. */
-const TOP = PIC_Y + PIC / 2 + 12;
+const CX = 200;
+/** Собранная картинка — главная награда пазла, поэтому крупно, во всю колонку. */
+const PIC = 240;
+const PIC_Y = 64 + PIC / 2;
+/**
+ * Феникс поменьше — радуется рядом с кнопкой «дальше» и смотрит на неё.
+ * Не на картинке: закрывать награду нельзя.
+ */
+const PHOENIX = 96;
 
 /**
- * Итог картинки (T4, раздел 1d аудита): собранная картинка, звёзды, «почти»
- * до третьей звезды, история про картинку, расшифровка бонусов и кнопка,
- * которая называет следующую картинку. Очков и лидерборда нет.
+ * Итог детского пазла (T8, раздел 1g аудита): собранная картинка крупно,
+ * под ней одной строкой её история — для родителя, который читает вслух;
+ * три звезды и одна большая кнопка «дальше», рядом с ней радуется феникс. Очков,
+ * лидерборда, «почти» и заголовков нет — ребёнок 3–6 лет не читает.
+ *
+ * Общий `makeKidsResult` здесь не подходит: его феникс на 150 занимает место,
+ * где у пазла должна быть картинка, а картинка и история — то, что меню обещает
+ * за сборку. Итог собран из тех же деталей game-ui: звёзды, феникс, кнопка.
  *
  * Проиграть в пазле нельзя: собрал — значит прошёл. Звёзды меряются промахами.
  */
@@ -56,8 +64,8 @@ export class GameOver extends Scene {
 
     const level = levelAt(last.level);
     const stars = starsFor(level.goals, last.wrongDrops);
-    // Итог одним вызовом: лестница, счётчики дня и бонусы с разбивкой.
-    const { bonus, lines } = settleLadderRound({
+    // Итог одним вызовом: лестница, счётчики дня и бонусы. Бонусы — доход родителя.
+    const { bonus } = settleLadderRound({
       slug: SLUG, n: last.level, total: LADDER_SIZE,
       mode: last.daily ? 'dailyLevel' : 'level',
       cleared: true, stars, score: last.score,
@@ -66,57 +74,47 @@ export class GameOver extends Scene {
     playSound('win');
     confetti({ disableForReducedMotion: true, particleCount: 90, spread: 70, origin: { y: 0.35 } });
 
-    // Картинка целиком — награда за сборку; под ней весь итог.
+    // Картинка целиком — награда за сборку.
     const key = ensurePictureTexture(this, last.picture);
-    const image = this.add.image(200, PIC_Y, key, BASE_FRAME).setDisplaySize(PIC, PIC);
+    const frame = this.add.graphics();
+    const half = PIC / 2 + 6;
+    frame.fillStyle(C.surface, 1).fillRoundedRect(CX - half, PIC_Y - half, half * 2, half * 2, 18);
+    frame.lineStyle(1, C.divider, 1).strokeRoundedRect(CX - half, PIC_Y - half, half * 2, half * 2, 18);
+    const image = this.add.image(CX, PIC_Y, key, BASE_FRAME).setDisplaySize(PIC, PIC);
     if (motionAllowed()) {
       const sx = image.scaleX;
       const sy = image.scaleY;
       image.setScale(0);
+      frame.setAlpha(0);
       this.tweens.add({ targets: image, scaleX: sx, scaleY: sy, duration: 420, ease: 'Back.easeOut' });
+      this.tweens.add({ targets: frame, alpha: 1, duration: 300 });
     }
 
-    // «Почти»: сколько промахов лишние до третьей звезды — повод собрать ещё раз.
-    const gap = starGap(level.goals, last.wrongDrops);
+    // История — единственный текст на экране: её читает вслух взрослый.
+    const story = this.add
+      .text(CX, PIC_Y + half + 14, picture.story[loc], {
+        fontFamily: FONT, fontSize: 14, color: COLORS.storyInk,
+        align: 'center', wordWrap: { width: 344 }, lineSpacing: 3,
+      })
+      .setOrigin(0.5, 0)
+      .setResolution(DPR);
 
+    const starsY = story.y + story.height + 46;
+    const row = makeStarRow(this, CX, starsY, stars, TYPE.display - 4);
+    if (motionAllowed()) {
+      row.setScale(0);
+      this.tweens.add({ targets: row, scale: 1, duration: 420, delay: 380, ease: 'Back.easeOut' });
+    }
+    for (let i = 0; i < stars; i++) this.time.delayedCall(420 + i * 170, () => playSound('star'));
+
+    // Одна кнопка «дальше»: следующая картинка, если открыта; иначе — в меню.
     const nextN = last.level + 1;
     const hasNext = !last.daily && nextN <= LADDER_SIZE && isUnlocked(loadProgress(SLUG), nextN);
-    const intro = hasNext ? levelInfo(nextN).intro : null;
-
-    const screen = makeLadderResult(this, {
-      locale: loc,
-      caption: last.daily
-        ? uiText(loc, 'result.dailyLevel')
-        : t(loc, 'result.pictureChapter', { n: last.level, k: chapterOf(last.level) }),
-      title: t(loc, 'result.title'),
-      stars,
-      // Провала в пазле не бывает, поэтому под звёздами — название и история картинки.
-      // Короткое название первой строкой ещё и держит длинную историю подальше от маскота.
-      note: `${picture.title[loc]}\n${picture.story[loc]}`,
-      almost: gap && {
-        title: uiText(loc, 'result.almostStar', {
-          gap: t(loc, `result.gapMisses.${pluralForm(gap.missing)}`, { n: gap.missing }),
-        }),
-        detail: gap.threshold > 0
-          ? t(loc, 'result.almostDetail', { misses: last.wrongDrops, need: gap.threshold })
-          : t(loc, 'result.almostDetailFlawless', { misses: last.wrongDrops }),
-        againLabel: uiText(loc, 'result.again'),
-        onAgain: () => this.play(last.level, last.daily),
-      },
-      lines,
-      total: bonus.total,
-      primary: hasNext
-        ? {
-          label: intro
-            ? t(loc, 'result.nextPictureIntro', { n: nextN, intro: this.phrase(loc, intro) })
-            : t(loc, 'game.level', { n: nextN }),
-          onClick: () => this.play(nextN),
-        }
-        : { label: uiText(loc, 'result.again'), onClick: () => this.play(last.level, last.daily) },
-      onMenu: () => this.scene.start('MainMenu'),
-      // Маскот в этой игре всегда радуется: проиграть нельзя.
-      mood: 'happy',
-    }, TOP);
+    const nextY = starsY + 110;
+    makeKidsPlayButton(this, CX, nextY, () => (hasNext ? this.play(nextN) : this.scene.start('MainMenu')), 'next');
+    const phoenix = makePhoenix(this, CX + 118, nextY + 8, PHOENIX, { facing: 'left' });
+    this.time.delayedCall(300, () => phoenix.celebrate());
+    this.events.once('shutdown', () => phoenix.destroy());
 
     const bonusChip = makeBonusChip(this, 386, 30);
     if (bonus.total > 0) {
@@ -125,20 +123,14 @@ export class GameOver extends Scene {
       bonusChip.setValue(bonus.balance - bonus.total);
       this.time.delayedCall(1100, () => {
         playSound('coin');
-        bonusChip.award(bonus.total, screen.awardFrom.x, screen.awardFrom.y);
+        bonusChip.award(bonus.total, CX, starsY);
       });
     }
   }
 
-  /** Фраза из core → строка на языке игрока. */
-  private phrase(loc: Locale, p: Phrase): string {
-    return t(loc, p.key, p.vars);
-  }
-
-  private play(n: number, daily = false) {
+  private play(n: number) {
     this.registry.set('level', n);
-    // Уровень дня переигрывается тем же раскладом: зерно в реестре осталось с меню.
-    this.registry.set('mode', daily ? 'dailyLevel' : 'level');
+    this.registry.set('mode', 'level');
     this.scene.start('Game');
   }
 }

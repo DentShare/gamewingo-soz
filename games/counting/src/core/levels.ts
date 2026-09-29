@@ -1,4 +1,4 @@
-import { harderLevers, type LevelDef, type StarGoals } from '@gamewingo/game-progress';
+import type { LevelDef, StarGoals } from '@gamewingo/game-progress';
 
 /**
  * Лестница «Счёта»: пятнадцать уровней в трёх главах по рычагу сложности.
@@ -61,49 +61,7 @@ export const LADDER: readonly CountingLevel[] = TABLE.map(([questions, maxCount,
 
 export const LADDER_SIZE = LADDER.length;
 
-/** Названия глав — ключи словаря; глава n — уровни 5(n−1)+1 … 5n. */
-export const CHAPTER_TITLES = ['chapter.1', 'chapter.2', 'chapter.3'] as const;
-
 /** Уровень по номеру. Номер вне лестницы зажимается — реестр мог сохранить старое значение. */
 export function levelAt(n: number): CountingLevel {
   return LADDER[Math.min(LADDER_SIZE, Math.max(1, Math.round(n))) - 1];
-}
-
-/** Ключ словаря с подстановками — core не знает языков, только что сказать. */
-export interface Phrase {
-  key: string;
-  vars: Record<string, number | string>;
-}
-
-export interface LevelInfo {
-  /** Чип поля: «до 12 предметов». Ключ с формой числа — `level.field.<one|few|many>`. */
-  field: Phrase;
-  /** Что нового по сравнению с предыдущим уровнем; на первом — ничего. */
-  intro: Phrase | null;
-  /** Порог трёх звёзд (по ошибкам). */
-  goldHint: Phrase;
-}
-
-/**
- * Что показать об уровне до старта: поле, рычаг, ставший жёстче, порог золота.
- * Рычаг вычисляется сравнением с предыдущим уровнем — так подпись не разойдётся
- * с таблицей, сколько её ни правь.
- */
-export function levelInfo(n: number): LevelInfo {
-  const { params: p, goals } = levelAt(n);
-  const prev = n > 1 ? levelAt(n - 1).params : null;
-  // Называем тот рычаг, что стал жёстче: смягчения при росте счёта игрок не ищет.
-  const harder = prev ? harderLevers(prev, p, LEVERS)[0] : undefined;
-  let intro: Phrase | null = null;
-  if (harder === 'maxCount') intro = { key: 'intro.field', vars: { n: p.maxCount } };
-  if (harder === 'options') intro = { key: 'intro.options', vars: { n: p.options } };
-  if (harder === 'questions') intro = { key: 'intro.questions', vars: { n: p.questions } };
-  return {
-    field: { key: 'level.field', vars: { n: p.maxCount } },
-    intro,
-    // «Ошибок не больше 0» звучит странно — для нуля своя фраза.
-    goldHint: goals.gold > 0
-      ? { key: 'level.goldHint', vars: { n: goals.gold } }
-      : { key: 'level.goldHintClean', vars: {} },
-  };
 }

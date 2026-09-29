@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { chapterLevels, harderLevers, starsFor } from '@gamewingo/game-progress';
-import { CHAPTER_TITLES, LADDER, LADDER_SIZE, LEVERS, levelAt, levelInfo } from './levels';
+import { LADDER, LADDER_SIZE, LEVERS, levelAt } from './levels';
 
 describe('лестница «Счёта»', () => {
   it('пятнадцать уровней, пронумерованных подряд', () => {
@@ -69,7 +69,6 @@ describe('лестница «Счёта»', () => {
   it('главы соответствуют названиям: знакомство → шире выбор → марафон', () => {
     const [c1, c2, c3] = chapterLevels(LADDER_SIZE).map((ns) => ns.map((n) => levelAt(n).params));
     const [first] = c1;
-    expect(CHAPTER_TITLES).toHaveLength(3);
     expect(c1.every((p) => p.options === first.options && p.questions === first.questions)).toBe(true);
     expect(c2.every((p) => p.options > first.options && p.questions === first.questions)).toBe(true);
     expect(c3.every((p) => p.questions > first.questions)).toBe(true);
@@ -77,17 +76,5 @@ describe('лестница «Счёта»', () => {
 
   it('финал не легче прежнего: 15 вопросов, счёт до 20, шесть кнопок', () => {
     expect(LADDER[LADDER_SIZE - 1].params).toEqual({ questions: 15, maxCount: 20, options: 6 });
-  });
-
-  it('карточка уровня называет ровно то, что изменилось', () => {
-    expect(levelInfo(1).intro).toBeNull();
-    expect(levelInfo(2).intro).toEqual({ key: 'intro.field', vars: { n: 6 } });
-    expect(levelInfo(6).intro).toEqual({ key: 'intro.options', vars: { n: 4 } });
-    expect(levelInfo(11).intro).toEqual({ key: 'intro.questions', vars: { n: 9 } });
-    // Рост счёта с короткой партией называется ростом счёта.
-    expect(levelInfo(13).intro).toEqual({ key: 'intro.field', vars: { n: 20 } });
-    expect(levelInfo(5).field).toEqual({ key: 'level.field', vars: { n: 12 } });
-    expect(levelInfo(1).goldHint).toEqual({ key: 'level.goldHintClean', vars: {} });
-    expect(levelInfo(15).goldHint).toEqual({ key: 'level.goldHint', vars: { n: LADDER[14].goals.gold } });
   });
 });
