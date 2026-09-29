@@ -19,17 +19,6 @@
   "result.streak": "Ketma-ket: {n}",
   "result.leaderboard": "Reyting",
   "a11y.highContrast": "Yuqori kontrast",
-  "onboarding.board": "Soʻzni topish uchun sizda 6 ta urinish bor.",
-  "onboarding.keyboard": "Bu yerda qaysi harflar topilgani, qaysilari soʻzda yoʻqligi koʻrinadi.",
-  "onboarding.enter": "Soʻzni terib, tekshirish uchun shu tugmani bosing.",
-  "onboarding.legendTitle": "Ranglar nimani bildiradi",
-  "onboarding.correct": "Harf oʻz oʻrnida",
-  "onboarding.present": "Soʻzda bor, lekin bu yerda emas",
-  "onboarding.absent": "Bunday harf soʻzda yoʻq",
-  "onboarding.win": "Hammasi yashil — soʻz topildi!",
-  "onboarding.next": "Keyingi",
-  "onboarding.done": "Tushunarli",
-  "onboarding.skip": "Oʻtkazib yuborish",
   "menu.ladder": "{total} dan {n}-daraja",
   "menu.play": "Mashq · {n}-daraja",
   "game.level": "{n}-daraja",
@@ -49,5 +38,8 @@
   "result.gapGuesses.one": "{n} ta urinish kamroq",
   "result.gapGuesses.few": "{n} ta urinish kamroq",
   "result.gapGuesses.many": "{n} ta urinish kamroq",
-  "result.almostDetail": "Urinishlar: {used} · koʻpi bilan {need} ta"
+  "result.almostDetail": "Urinishlar: {used} · koʻpi bilan {need} ta",
+  "tutorial.firstMove": "5 harfli soʻz yozing va belgini bosing",
+  "rule.colors": "Yashil — harf oʻz joyida, toʻq sariq — bor, lekin bu yerda emas, kulrang — soʻzda yoʻq",
+  "rule.colorsContrast": "Toʻq sariq — harf oʻz joyida, koʻk — bor, lekin bu yerda emas, kulrang — soʻzda yoʻq"
 }

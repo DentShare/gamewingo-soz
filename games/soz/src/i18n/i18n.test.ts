@@ -9,6 +9,7 @@ const REQUIRED = [
   'result.won', 'result.lost', 'result.answerWas', 'result.share', 'result.claim', 'result.streak',
   'result.claimed', 'result.leaderboard', 'result.guesses', 'result.almostDetail',
   'result.gapGuesses.one', 'result.gapGuesses.few', 'result.gapGuesses.many', 'a11y.highContrast',
+  'tutorial.firstMove', 'rule.colors', 'rule.colorsContrast',
 ];
 
 describe('i18n', () => {

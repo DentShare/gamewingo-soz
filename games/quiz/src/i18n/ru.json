@@ -20,12 +20,6 @@
   "topic.science": "Наука",
   "topic.body": "Тело человека",
   "topic.money": "Деньги",
-  "onboarding.question": "Читайте вопрос и выбирайте один из вариантов.",
-  "onboarding.fact": "После ответа откроется интересный факт — ради него всё и затевалось.",
-  "onboarding.mistakes": "Ошибаться можно, но лимит есть: следите за счётчиком ошибок.",
-  "onboarding.next": "Далее",
-  "onboarding.done": "Понятно",
-  "onboarding.skip": "Пропустить",
   "result.title": "Уровень пройден",
   "result.failed": "Уровень не пройден",
   "chapter.1": "Знакомство",
@@ -51,5 +45,9 @@
   "result.gapMistakes.few": "на {n} ошибки меньше",
   "result.gapMistakes.many": "на {n} ошибок меньше",
   "result.almostDetail": "Ошибок: {mistakes} · нужно не больше {need}",
-  "result.almostDetailPerfect": "Ошибок: {mistakes} · нужно без ошибок"
+  "result.almostDetailPerfect": "Ошибок: {mistakes} · нужно без ошибок",
+  "tutorial.firstMove": "Прочитай вопрос и нажми ответ, который кажется верным",
+  "tutorial.note": "Таймер включится после первого ответа",
+  "rule.mistakes": "Ошибаться можно, но лимит — {max}: следи за счётчиком ошибок",
+  "rule.timer": "Теперь на вопрос {n} с — следи за полосой времени"
 }
