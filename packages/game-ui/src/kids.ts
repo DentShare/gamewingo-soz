@@ -342,11 +342,20 @@ export function makeKidsPlayButton(scene: Scene, x: number, y: number, onPlay: (
  * Итог детского уровня: три звезды крупно, феникс радуется, одна кнопка
  * «дальше». Проиграть нельзя, очков и лидерборда нет.
  */
-export function makeKidsResult(scene: Scene, o: { stars: number; onNext(): void; top?: number }): void {
+export function makeKidsResult(
+  scene: Scene,
+  o: {
+    stars: number;
+    onNext(): void;
+    top?: number;
+    /** Провал (судоку с лимитами): феникс грустит, «дальше» переигрывает. По умолчанию — радость. */
+    mood?: 'happy' | 'sad';
+  },
+): void {
   const cx = LOGICAL_W / 2;
   const top = o.top ?? TOP_BAR_H + 40;
   const phoenix = makePhoenix(scene, cx, top + 150, 150);
-  scene.time.delayedCall(300, () => phoenix.celebrate());
+  scene.time.delayedCall(300, () => (o.mood === 'sad' ? phoenix.sink() : phoenix.celebrate()));
   scene.events.once('shutdown', () => phoenix.destroy());
 
   const stars = makeStarRow(scene, cx, top + 290, o.stars, 34);
