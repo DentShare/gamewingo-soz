@@ -46,5 +46,7 @@
   "intro.timerTighter": "меньше времени: {t}",
   "level.goldHint": "3 звезды — решить за {t}",
   "game.dailyLevel": "Уровень дня",
-  "result.dailyLevel": "Уровень дня"
+  "result.dailyLevel": "Уровень дня",
+  "pause.mistakes": "ошибки {mistakes}",
+  "pause.time": "время {t}"
 }

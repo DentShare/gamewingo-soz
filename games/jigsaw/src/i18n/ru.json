@@ -39,5 +39,7 @@
   "level.goldHint": "3 звезды — промахов не больше {n}",
   "level.goldHintFlawless": "3 звезды — собрать без промахов",
   "game.dailyLevel": "Уровень дня",
-  "result.dailyLevel": "Уровень дня"
+  "result.dailyLevel": "Уровень дня",
+  "game.level": "Картинка {n}",
+  "pause.progress": "собрано {progress}"
 }

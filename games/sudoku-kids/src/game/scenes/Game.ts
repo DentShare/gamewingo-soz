@@ -7,8 +7,9 @@ import { mulberry32 } from '../../core/rng';
 import { levelAt, type SudokuParams } from '../../core/levels';
 import { COLORS, FONT } from '../palette';
 import {
-  applyTheme, setupCamera, type Button, makeButton, makeBackButton, makeKeyCap, toast, shakeCamera,
-  playSound,
+  applyTheme, setupCamera, type Button, makeButton, makeKeyCap, toast, shakeCamera,
+  playSound, makeGameHeader, openPauseSheet, setBackHandler, uiText, TOP_BAR_H,
+  type GameHeader, type PauseSheet,
 } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
@@ -19,7 +20,7 @@ import { startOnboarding, type OnboardingTargets, type Rect } from '../onboardin
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
 
 const W = 400;
-const GRID_TOP = 92;
+const GRID_TOP = TOP_BAR_H + 16; // поле сразу под шапкой партии
 const PAD_TOP = 470;   // верх цифровой панели
 const KEY_H = 54;
 const KEY_GAP = 8;
@@ -33,7 +34,6 @@ export class Game extends Scene {
   private params!: SudokuParams;
   /** Ошибочных вводов за партию: считается лимитом уровня, а не подсказками. */
   private mistakes = 0;
-  private mistakesText?: Phaser.GameObjects.Text;
   private session!: Session;
 
   // Состояние партии (плоские сетки size×size).
@@ -52,7 +52,8 @@ export class Game extends Scene {
   private cellTexts: Phaser.GameObjects.Text[] = [];
   private selectionRing!: Phaser.GameObjects.Rectangle;
   private hintButton!: Button;
-  private timeText!: Phaser.GameObjects.Text;
+  private header?: GameHeader;
+  private pause: PauseSheet | null = null;
   private timer!: RoundTimer;
 
   // Геометрия доски (нужна и смоук-тесту через __sudoku).
@@ -76,6 +77,10 @@ export class Game extends Scene {
     this.hintsLeft = MAX_HINTS;
     this.finished = false;
     this.tutorialActive = false;
+    this.header = undefined;
+    this.pause = null;
+    // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
@@ -88,7 +93,7 @@ export class Game extends Scene {
     this.mistakes = 0;
     this.session = this.registry.get('session') as Session;
 
-    // «Как играть» из меню: обучение на настоящей сетке, без сессии, таймера и ввода.
+    // «Как играть» из паузы: обучение на настоящей сетке, без сессии, таймера и ввода.
     if (this.registry.get('howto')) {
       this.runHowto();
       return;
@@ -102,7 +107,8 @@ export class Game extends Scene {
     this.timer.start();
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') this.timer.pause();
-      else if (e.type === 'RESUME') this.timer.resume();
+      // Приложение вернулось, но шит паузы открыт — таймер ждёт «Продолжить».
+      else if (e.type === 'RESUME' && !this.pause?.open) this.timer.resume();
     });
     this.events.once('shutdown', off);
 
@@ -110,18 +116,19 @@ export class Game extends Scene {
   }
 
   update() {
-    if (!this.timeText || !this.timer || this.finished) return;
-    const elapsed = Math.floor(this.timer.elapsedMs() / 1000);
+    if (!this.header || !this.timer || this.finished) return;
+    const sec = this.clockSec();
     const limit = this.params.timeLimitSec;
-    // С лимитом идёт обратный отсчёт: последние десять секунд подсвечены красным.
-    const sec = limit ? Math.max(0, limit - elapsed) : elapsed;
-    const mm = String(Math.floor(sec / 60)).padStart(2, '0');
-    const ss = String(sec % 60).padStart(2, '0');
-    this.timeText.setText(`${mm}:${ss}`);
-    if (limit) {
-      this.timeText.setColor(sec <= 10 ? COLORS.danger : COLORS.headMuted);
-      if (sec <= 0) this.failRound('time');
-    }
+    // С лимитом идёт обратный отсчёт: последние десять секунд — белый чип с красным текстом.
+    this.header.setChip('time', formatClock(sec), Boolean(limit) && sec <= 10);
+    if (limit && sec <= 0) this.failRound('time');
+  }
+
+  /** Секунды на часах: с лимитом — сколько осталось, без лимита — сколько прошло. */
+  private clockSec(): number {
+    const elapsed = Math.floor((this.timer?.elapsedMs() ?? 0) / 1000);
+    const limit = this.params.timeLimitSec;
+    return limit ? Math.max(0, limit - elapsed) : elapsed;
   }
 
   /** Уровень не пройден: набрали лимит ошибок или кончилось время. */
@@ -160,7 +167,7 @@ export class Game extends Scene {
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
 
-  /** «Как играть» из меню: настоящая сетка 4×4 с данными, но без партии; по концу — в меню. */
+  /** «Как играть» из паузы: настоящая сетка 4×4 с данными, но без партии; по концу — в меню. */
   private runHowto() {
     this.registry.set('howto', false); // одноразовый вход
     this.tutorialActive = true;
@@ -263,41 +270,80 @@ export class Game extends Scene {
     };
   }
 
-  // ── HUD: кнопка назад + таймер ───────────────────────────────────────────────
+  // ── Шапка партии и пауза ─────────────────────────────────────────────────────
 
+  /**
+   * Шапка каталога: стрелка (пауза), «Уровень N» и чипы ошибок (если у уровня
+   * лимит) и таймера. Раньше здесь были белая пилюля «Назад» и текстовый HUD,
+   * а тап по «Назад» посреди уровня на время сразу терял партию.
+   * «Подсказки: N» — кнопка под цифровой панелью, в шапку не переезжает.
+   */
   private buildHud() {
-    this.buildBackButton();
-    this.add
-      .text(W / 2 + 26, 20, this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }), {
-        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-    if (this.params.mistakeLimit) {
-      this.mistakesText = this.add
-        .text(W / 2 + 26, 42, this.mistakesLabel(), {
-          fontFamily: FONT, fontSize: 16, color: COLORS.headText,
-        })
-        .setOrigin(0.5)
-        .setResolution(DPR);
-    }
-    this.timeText = this.add
-      .text(W - 20, 34, '00:00', { fontFamily: FONT, fontSize: 16, color: COLORS.headMuted })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
+    const limit = this.params.mistakeLimit;
+    this.header = makeGameHeader(this, {
+      title: this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }),
+      chips: [
+        ...(limit ? [{ id: 'mistakes', text: this.mistakesLabel(), widest: `${limit} / ${limit}` }] : []),
+        { id: 'time', text: formatClock(this.params.timeLimitSec), widest: '88:88' },
+      ],
+      onBack: () => this.openPause(),
+    });
   }
 
+  /** Ошибки в чипе: «сделано / лимит». */
   private mistakesLabel(): string {
-    return t(this.locale, 'game.mistakes', { n: this.mistakes, limit: this.params.mistakeLimit });
+    return `${this.mistakes} / ${this.params.mistakeLimit}`;
   }
 
-  /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
-  private buildBackButton() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+  /** Стрелка в шапке: пауза с выбором, а не мгновенный выход. */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
+    if (this.tutorialActive) {
+      this.exitToMenu();
+      return;
+    }
+    this.timer?.pause();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      summary: this.pauseSummary(),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => { this.pause = null; this.timer?.resume(); },
+      onRestart: () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
   }
 
-  private goBack() {
-    if (this.finished || this.tutorialActive) return;
+  /**
+   * «Таймер остановлен · ошибки 1 / 3 · осталось 0:09». Таймер стоит на любом
+   * уровне: время решает звёзды, даже когда лимита нет.
+   */
+  private pauseSummary(): string {
+    const limit = this.params.timeLimitSec;
+    const parts = [uiText(this.locale, 'pause.timerStopped')];
+    if (this.params.mistakeLimit) parts.push(t(this.locale, 'pause.mistakes', { mistakes: this.mistakesLabel() }));
+    parts.push(limit
+      ? uiText(this.locale, 'pause.left', { t: formatClock(this.clockSec()) })
+      : t(this.locale, 'pause.time', { t: formatClock(this.clockSec()) }));
+    return parts.join(' · ');
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
+  }
+
+  private exitToMenu() {
+    if (this.finished) return;
     this.finished = true;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
@@ -419,7 +465,7 @@ export class Game extends Scene {
 
     if (wrong && this.params.mistakeLimit) {
       this.mistakes++;
-      this.mistakesText?.setText(this.mistakesLabel());
+      this.header?.setChip('mistakes', this.mistakesLabel());
       if (this.mistakes >= this.params.mistakeLimit) {
         this.failRound('mistakes');
         return;
@@ -530,4 +576,9 @@ export class Game extends Scene {
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }
+}
+
+/** «0:09», «1:50» — часы в чипе шапки. */
+function formatClock(sec: number): string {
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 }
