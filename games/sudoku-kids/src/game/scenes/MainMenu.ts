@@ -1,32 +1,25 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
-import { t } from '../../i18n';
 import {
   applyTheme,
   setupCamera,
-  makeTopBar,
   setBackHandler,
-  makeNextLevelCard,
-  makeChapterSection,
-  makeDailyLevelCard,
-  pluralForm,
+  makeGameIcon,
+  makeKidsTopBar,
+  makeKidsPathPager,
+  makeKidsPlayButton,
   TOP_BAR_H,
-  type LevelTileState,
+  type KidsStop,
 } from '../ui';
 import { COLORS } from '../palette';
-import { CHAPTER_TITLES, LADDER, LADDER_SIZE, levelInfo, type Phrase } from '../../core/levels';
+import { blockDims } from '../../core/sudoku';
+import { LADDER, LADDER_SIZE, levelAt } from '../../core/levels';
 import {
+  chapterLevels,
   chapterOf,
-  chapterStates,
-  dailyLevelFor,
-  DAILY_LEVEL,
-  isDailyLevelDone,
-  isDailyLevelUnlocked,
   isLadderComplete,
   loadProgress,
   nextLevel,
-  totalStars,
-  TARIFF,
 } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 
@@ -40,116 +33,85 @@ const SLUG = 'sudoku-kids';
 const HUB_URL = '../';
 
 /**
- * Меню по главам (макет 1c аудита): сверху «Следующий» — номер, новый рычаг и
- * порог трёх звёзд; под ним развёрнутая глава, остальные свёрнуты в строку;
- * внизу «Уровень дня».
+ * Детское меню (T8, раздел 1g аудита): игрок 3–6 лет не читает. Иконка игры,
+ * дорожка из пяти кружков (глава), поле следующего уровня картинкой —
+ * маленькая сетка 4×4 или 6×6 — и одна большая кнопка «играть». Ни
+ * «Уровень 3 из 15», ни замков: будущий кружок просто покачивается. Выход и
+ * звук — у «Родителям» (удержание 2 с). Уровня дня в детском меню нет.
  */
 export class MainMenu extends Scene {
   private locale: Locale = 'ru';
-  /** Какая глава развёрнута; по умолчанию — та, где следующий уровень. */
-  private shownChapter = 0;
 
   constructor() {
     super('MainMenu');
-  }
-
-  init(data: { chapter?: number }) {
-    this.shownChapter = data?.chapter ?? 0;
   }
 
   create() {
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     applyTheme(this);
     setupCamera(this);
-    // Переключение главы перерисовывает меню — без затемнения, иначе экран мигает.
-    if (!this.shownChapter) this.cameras.main.fadeIn(200, ...COLORS.fade);
+    this.cameras.main.fadeIn(200, ...COLORS.fade);
 
-    makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
-    // Системный «назад» из меню — тот же выход в каталог, что и стрелка.
-    setBackHandler(() => this.exitToCatalog());
+    makeKidsTopBar(this, { locale: this.locale, onExit: () => this.exitToCatalog() });
+    // Системный «назад» в меню ничего не делает: выход — только через «Родителям».
+    setBackHandler(() => {});
 
     const progress = loadProgress(SLUG);
     const complete = isLadderComplete(progress, LADDER_SIZE);
-    // Вся лестница пройдена — предлагаем первый уровень, где не хватает звёзд.
-    const improveAt = LADDER.find((lv) => (progress.stars[lv.n - 1] ?? 0) < 3)?.n;
-    const next = complete ? improveAt ?? LADDER_SIZE : nextLevel(progress, LADDER_SIZE);
-    const info = levelInfo(next);
+    // Всё пройдено — играем первый уровень, где не хватает звёзд, иначе первый.
+    const next = complete
+      ? LADDER.find((lv) => (progress.stars[lv.n - 1] ?? 0) < 3)?.n ?? 1
+      : nextLevel(progress, LADDER_SIZE);
 
-    let y = TOP_BAR_H + 16;
-    const card = makeNextLevelCard(this, CX, y, {
-      locale: this.locale,
-      n: next,
-      stars: totalStars(progress),
-      maxStars: LADDER_SIZE * 3,
-      field: this.phrase(info.field, true),
-      intro: info.intro ? this.phrase(info.intro) : undefined,
-      goldHint: this.phrase(info.goldHint),
-      improve: complete,
-      onPlay: () => this.startLevel(next),
+    makeGameIcon(this, CX, TOP_BAR_H + 84, 120);
+
+    const chapters: KidsStop[][] = chapterLevels(LADDER_SIZE).map((levels) => levels.map((n) => {
+      const stars = progress.stars[n - 1] ?? 0;
+      return { n, stars, state: n === next ? 'current' : stars > 0 ? 'done' : 'future' };
+    }));
+    const pager = makeKidsPathPager(this, CX, TOP_BAR_H + 172, {
+      chapters,
+      initial: chapterOf(next) - 1,
+      onPick: (n) => this.startLevel(n),
     });
-    y += card.height + 20;
 
-    // Главы: развёрнутая первой, остальные строкой — по порядку.
-    const chapters = chapterStates(progress, LADDER_SIZE);
-    const shown = this.shownChapter || chapterOf(next);
-    const ordered = [chapters[shown - 1], ...chapters.filter((c) => c.n !== shown)];
-    for (const ch of ordered) {
-      const expanded = ch.n === shown;
-      const tiles: LevelTileState[] = ch.levels.map((n) => ({
-        n,
-        unlocked: n <= next || (progress.stars[n - 1] ?? 0) > 0,
-        stars: progress.stars[n - 1] ?? 0,
-        current: n === next && !complete,
-      }));
-      const section = makeChapterSection(this, CX, y, {
-        locale: this.locale,
-        n: ch.n,
-        title: t(this.locale, CHAPTER_TITLES[ch.n - 1]),
-        levels: tiles,
-        cleared: ch.cleared,
-        done: ch.done,
-        unlocked: ch.unlocked,
-        stars: ch.stars,
-        maxStars: ch.maxStars,
-        bonus: TARIFF.chapterClear,
-        expanded,
-        onPick: (n) => this.startLevel(n),
-        onToggle: () => this.scene.restart({ chapter: ch.n }),
-      });
-      y += section.height + (expanded ? 20 : 14);
-    }
+    // Поле картинкой: маленькая сетка 4×4 или 6×6 — ребёнок видит, какое поле его ждёт.
+    // Место под самое большое поле (6×6 в рамке — 108) с отступом от точек глав.
+    const fieldY = TOP_BAR_H + 172 + pager.height + 72;
+    this.drawField(fieldY, levelAt(next).params.size);
 
-    // Уровень дня: тот же генератор, расклад по дате — один на всех игроков.
-    y += 2;
-    const dailyState = !isDailyLevelUnlocked(progress) ? 'locked' : isDailyLevelDone(SLUG) ? 'done' : 'ready';
-    makeDailyLevelCard(this, CX, y, {
-      locale: this.locale,
-      state: dailyState,
-      bonus: TARIFF.levelOfDay,
-      unlockAfter: DAILY_LEVEL.unlockAfter,
-      onPlay: () => this.startDaily(),
-    });
-    // «Как играть» и звук живут в паузе партии — меню короче на два ряда.
+    makeKidsPlayButton(this, CX, fieldY + 112, () => this.startLevel(next));
   }
 
-  /** Фраза из core → строка на языке игрока; `counted` — ключ с формой числа. */
-  private phrase(p: Phrase, counted = false): string {
-    const key = counted ? `${p.key}.${pluralForm(Number(p.vars.n))}` : p.key;
-    return t(this.locale, key, p.vars);
+  /** Мини-поле: та же разметка, что у доски в партии, — тонкие клетки и толстые границы блоков. */
+  private drawField(cy: number, n: 4 | 6) {
+    // Большое поле и нарисовано больше: 6×6 заметно крупнее 4×4, клетки одного размера.
+    const side = n * 16;
+    const cell = side / n;
+    const x0 = CX - side / 2;
+    const y0 = cy - side / 2;
+    const { rows: bRows, cols: bCols } = blockDims(n);
+    const g = this.add.graphics();
+    g.fillStyle(COLORS.panel, 1).fillRoundedRect(x0 - 6, y0 - 6, side + 12, side + 12, 10);
+    // Несколько «готовых цифр» — серые клетки, как на настоящей доске.
+    g.fillStyle(COLORS.givenBg, 1);
+    for (let i = 0; i < n * n; i++) {
+      if ((i * 7 + Math.floor(i / n)) % 3 !== 0) continue;
+      g.fillRect(x0 + (i % n) * cell, y0 + Math.floor(i / n) * cell, cell, cell);
+    }
+    g.lineStyle(1, COLORS.gridLine, 1);
+    for (let i = 1; i < n; i++) {
+      g.lineBetween(x0 + i * cell, y0, x0 + i * cell, y0 + side);
+      g.lineBetween(x0, y0 + i * cell, x0 + side, y0 + i * cell);
+    }
+    g.lineStyle(2.5, COLORS.blockLine, 1);
+    for (let i = 0; i <= n; i += bCols) g.lineBetween(x0 + i * cell, y0, x0 + i * cell, y0 + side);
+    for (let i = 0; i <= n; i += bRows) g.lineBetween(x0, y0 + i * cell, x0 + side, y0 + i * cell);
   }
 
   private startLevel(n: number) {
     this.registry.set('level', n);
     this.registry.set('mode', 'level');
-    this.registry.set('locale', this.locale);
-    this.scene.start('Game');
-  }
-
-  private startDaily() {
-    const daily = dailyLevelFor(SLUG);
-    this.registry.set('level', daily.n);
-    this.registry.set('mode', 'dailyLevel');
-    this.registry.set('dailySeed', daily.seed);
     this.registry.set('locale', this.locale);
     this.scene.start('Game');
   }
@@ -163,5 +125,4 @@ export class MainMenu extends Scene {
       window.location.href = hub;
     }
   }
-
 }

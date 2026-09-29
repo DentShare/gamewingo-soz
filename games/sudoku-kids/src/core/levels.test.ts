@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { chapterLevels, harderLevers } from '@gamewingo/game-progress';
-import { CHAPTER_TITLES, LADDER, LADDER_SIZE, LEVERS, formatSec, levelAt, levelInfo } from './levels';
+import { LADDER, LADDER_SIZE, LEVERS, levelAt } from './levels';
 import { makePuzzle } from './sudoku';
 import { mulberry32 } from './rng';
 
@@ -68,24 +68,10 @@ describe('лестница мини-судоку', () => {
     }
   });
 
-  it('главы соответствуют названиям: знакомство → аккуратно (лимит ошибок) → на время', () => {
+  it('три главы по рычагу: знакомство → аккуратно (лимит ошибок) → на время', () => {
     const [c1, c2, c3] = chapterLevels(LADDER_SIZE).map((ns) => ns.map((n) => levelAt(n).params));
-    expect(CHAPTER_TITLES).toHaveLength(3);
     expect(c1.every((p) => !p.mistakeLimit && !p.timeLimitSec)).toBe(true);
     expect(c2.every((p) => p.mistakeLimit > 0 && !p.timeLimitSec)).toBe(true);
     expect(c3.every((p) => p.mistakeLimit > 0 && p.timeLimitSec > 0)).toBe(true);
-  });
-
-  it('карточка уровня называет ровно то, что изменилось', () => {
-    expect(levelInfo(1).intro).toBeNull();
-    expect(levelInfo(2).intro).toEqual({ key: 'intro.clues', vars: { n: 10 } });
-    expect(levelInfo(6).intro).toEqual({ key: 'intro.mistakes', vars: { n: 3 } });
-    expect(levelInfo(9).intro).toEqual({ key: 'intro.mistakesTighter', vars: { n: 3 } });
-    expect(levelInfo(11).intro).toEqual({ key: 'intro.timer', vars: { t: '5:00' } });
-    expect(levelInfo(15).intro).toEqual({ key: 'intro.timerTighter', vars: { t: '4:00' } });
-    // Рост поля с мягким лимитом и щедрыми цифрами называется ростом поля.
-    expect(levelInfo(8).intro).toEqual({ key: 'intro.field', vars: { n: 6 } });
-    expect(levelInfo(8).field).toEqual({ key: 'level.field', vars: { n: 6 } });
-    expect(levelInfo(7).goldHint.vars).toEqual({ t: formatSec(LADDER[6].goals.gold) });
   });
 });

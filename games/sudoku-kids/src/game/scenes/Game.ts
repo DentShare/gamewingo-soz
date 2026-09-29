@@ -259,7 +259,8 @@ export class Game extends Scene {
   private buildHud() {
     const limit = this.params.mistakeLimit;
     this.header = makeGameHeader(this, {
-      title: this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }),
+      // Детская игра: в шапке название, а не «Уровень N» — номер ребёнку ничего не говорит.
+      title: t(this.locale, 'app.title'),
       chips: [
         ...(limit ? [{ id: 'mistakes', text: this.mistakesLabel(), widest: `× ${limit} / ${limit}` }] : []),
         { id: 'time', text: formatClock(this.params.timeLimitSec), widest: '88:88' },

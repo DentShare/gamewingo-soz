@@ -1,4 +1,4 @@
-import { harderLevers, type LevelDef, type StarGoals } from '@gamewingo/game-progress';
+import type { LevelDef, StarGoals } from '@gamewingo/game-progress';
 
 /**
  * Лестница мини-судоку: пятнадцать уровней в трёх главах по рычагу сложности.
@@ -59,56 +59,7 @@ export const LADDER: readonly SudokuLevel[] = TABLE.map(([size, clues, mistakeLi
 
 export const LADDER_SIZE = LADDER.length;
 
-/** Названия глав — ключи словаря; глава n — уровни 5(n−1)+1 … 5n. */
-export const CHAPTER_TITLES = ['chapter.1', 'chapter.2', 'chapter.3'] as const;
-
 /** Уровень по номеру. Номер вне лестницы зажимается — реестр мог сохранить старое значение. */
 export function levelAt(n: number): SudokuLevel {
   return LADDER[Math.min(LADDER_SIZE, Math.max(1, Math.round(n))) - 1];
-}
-
-/** Ключ словаря с подстановками — core не знает языков, только что сказать. */
-export interface Phrase {
-  key: string;
-  vars: Record<string, number | string>;
-}
-
-export interface LevelInfo {
-  /** Чип поля: «4×4». Ключ с формой числа — `level.field.<one|few|many>` (формы одинаковые). */
-  field: Phrase;
-  /** Что нового по сравнению с предыдущим уровнем; на первом — ничего. */
-  intro: Phrase | null;
-  /** Порог трёх звёзд — время решения. */
-  goldHint: Phrase;
-}
-
-/** «1:50» — время в подписи. */
-export function formatSec(sec: number): string {
-  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
-}
-
-/**
- * Что показать о уровне до старта: поле, новый рычаг, порог золота. Новый рычаг
- * вычисляется сравнением с предыдущим уровнем — так подпись не разойдётся с
- * таблицей, сколько её ни правь.
- */
-export function levelInfo(n: number): LevelInfo {
-  const { params: p, goals } = levelAt(n);
-  const prev = n > 1 ? levelAt(n - 1).params : null;
-  let intro: Phrase | null = null;
-  // Называем тот рычаг, что стал жёстче: смягчения при росте поля игрок не ищет.
-  const harder = prev ? harderLevers(prev, p, LEVERS)[0] : undefined;
-  if (prev && harder === 'size') intro = { key: 'intro.field', vars: { n: p.size } };
-  if (prev && harder === 'clues') intro = { key: 'intro.clues', vars: { n: p.clues } };
-  if (prev && harder === 'mistakeLimit') {
-    intro = { key: prev.mistakeLimit ? 'intro.mistakesTighter' : 'intro.mistakes', vars: { n: p.mistakeLimit } };
-  }
-  if (prev && harder === 'timeLimitSec') {
-    intro = { key: prev.timeLimitSec ? 'intro.timerTighter' : 'intro.timer', vars: { t: formatSec(p.timeLimitSec) } };
-  }
-  return {
-    field: { key: 'level.field', vars: { n: p.size } },
-    intro,
-    goldHint: { key: 'level.goldHint', vars: { t: formatSec(goals.gold) } },
-  };
 }
