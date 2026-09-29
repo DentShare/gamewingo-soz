@@ -5,7 +5,8 @@ import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT, tileColor, tileTextColor, tileFontSize } from '../palette';
 import {
   applyTheme, darken, toast, setupCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler, makeRecordGhost,
-  TOP_BAR_H, type GameHeader, type PauseSheet, type RecordGhost,
+  runFirstMoveTutorial, showRuleOnce,
+  TOP_BAR_H, type GameHeader, type PauseSheet, type RecordGhost, type FirstMoveTutorial, type Rect,
 } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
@@ -17,7 +18,6 @@ import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import {
   loadBest, loadSave, saveGame, clearSave, hasOnboarded, setOnboarded,
 } from '../../core/persistence';
-import { startOnboarding, type Rect } from '../onboarding';
 
 const W = 400;
 const TILE = 80;
@@ -32,13 +32,14 @@ const BOARD_TOP = TOP_BAR_H + 48;
 const SWIPE_MIN = 24; // порог свайпа, px
 
 /**
- * Показательное поле для обучения: две «2» рядом в верхнем ряду сливаются ходом влево,
- * а плитки в нулевой колонке остаются на месте — слияние видно без лишнего движения.
+ * Стартовая раздача обучения: две «2» рядом посередине второго ряда. Смах влево или
+ * вправо сливает их в «4»; смах вверх/вниз оставляет их соседями в одном ряду
+ * (спавн между соседними плитками невозможен) — слияние остаётся на следующий ход.
  */
 const TUTORIAL_CELLS: number[][] = [
-  [2, 2, 0, 0],
-  [4, 0, 0, 0],
-  [8, 0, 0, 0],
+  [0, 0, 0, 0],
+  [0, 2, 2, 0],
+  [0, 0, 0, 0],
   [0, 0, 0, 0],
 ];
 
@@ -61,8 +62,14 @@ export class Game extends Scene {
   private best = 0;
   private timer!: RoundTimer;
   private finished = false;
-  /** Идёт обучение: игровой ввод (свайпы и стрелки) заблокирован. */
-  private tutorialActive = false;
+  /** Обучение первого хода (подсказка поверх живой партии) или null. */
+  private tutorial: FirstMoveTutorial | null = null;
+  /**
+   * «Как играть» из паузы: учебное поле поверх сохранённой партии. Ходы не пишутся
+   * в сохранение, сессия и часы не стартуют, рекорд не двигается; после первого
+   * слияния (или «Пропустить») — обратно в сохранённую партию.
+   */
+  private sandbox = false;
   private swipeFrom: { x: number; y: number } | null = null;
 
   constructor() {
@@ -72,7 +79,8 @@ export class Game extends Scene {
   create() {
     // Сцена переиспользуется между рестартами — сбрасываем изменяемое состояние.
     this.finished = false;
-    this.tutorialActive = false;
+    this.tutorial = null;
+    this.sandbox = false;
     this.swipeFrom = null;
     this.header = undefined;
     this.ghost = undefined;
@@ -89,42 +97,57 @@ export class Game extends Scene {
     this.cheered = new Set();
     this.tileMoves = new Map();
     this.session = this.registry.get('session') as Session;
+    this.timer = createRoundTimer(() => performance.now());
 
-    // «Как играть» из меню: обучение поверх настоящего поля, без сессии и таймера.
-    if (this.registry.get('howto')) {
-      this.runHowto();
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
+    const resume = !!this.registry.get('resume');
+    this.registry.set('resume', false);
+
+    // «Как играть» из паузы: учебное поле, сохранённая партия не трогается.
+    if (howto) {
+      this.sandbox = true;
+      this.core = createGrid2048(this.freshRng(), { cells: TUTORIAL_CELLS });
+      this.best = this.recordScore();
+      this.buildScene();
+      this.startTutorial();
       return;
     }
 
     // Продолжение сохранённой партии или новая игра.
-    const resume = !!this.registry.get('resume');
-    this.registry.set('resume', false);
     const saved = resume ? loadSave() : null;
+    // Первая партия начинается с раздачи обучения: две «2» рядом — слияние в один смах.
+    const teach = !saved && !hasOnboarded();
     if (saved) {
       this.core = createGrid2048(this.freshRng(), saved);
     } else {
       clearSave(); // старая партия больше не нужна
-      this.core = createGrid2048(this.freshRng());
+      this.core = teach
+        ? createGrid2048(this.freshRng(), { cells: TUTORIAL_CELLS })
+        : createGrid2048(this.freshRng());
     }
     this.best = this.recordScore();
+    this.buildScene();
 
-    this.buildHud();
-    this.buildBoard();
-    this.tileLayer = this.add.container(0, 0);
-    this.redraw();
-    this.bindInput();
-
-    this.timer = createRoundTimer(() => performance.now());
     this.session.start();
     this.timer.start();
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') this.timer.pause();
       // Приложение вернулось, а у игрока открыта пауза (или идёт обучение) — часы стоят дальше.
-      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorialActive) this.timer.resume();
+      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorial?.active) this.timer.resume();
     });
     this.events.once('shutdown', off);
 
-    this.maybeShowOnboarding(!!saved);
+    // Продолженная партия — никогда не под обучением.
+    if (teach) this.startTutorial();
+  }
+
+  private buildScene() {
+    this.buildHud();
+    this.buildBoard();
+    this.tileLayer = this.add.container(0, 0);
+    this.redraw();
+    this.bindInput();
   }
 
   private freshRng(): () => number {
@@ -134,103 +157,67 @@ export class Game extends Scene {
   // ── Обучение ────────────────────────────────────────────────────────────────
 
   /**
-   * «Как играть» из меню: строим настоящее поле с показательной раскладкой,
-   * НЕ стартуем сессию/таймер, НЕ трогаем сохранение партии и рекорд.
-   * По завершении/пропуску — обратно в меню.
+   * Обучение в один шаг: поле видно, две одинаковые плитки обведены, внизу фраза
+   * «смахни влево или вправо». Смах — настоящий ход; первое слияние — `done()`.
+   * Счёт и часы включаются после первого слияния.
    */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-    this.best = this.recordScore();
-    this.core = createGrid2048(this.freshRng(), { cells: TUTORIAL_CELLS });
-
-    this.buildHud();
-    this.buildBoard();
-    this.tileLayer = this.add.container(0, 0);
-    this.redraw();
-    this.bindInput(); // ввод связан, но tryMove заблокирован флагом обучения
-
-    this.time.delayedCall(360, () => {
-      this.launchOnboarding(() => {
-        setOnboarded();
-        this.scene.start('MainMenu');
-      });
-    });
-  }
-
-  /**
-   * Первая партия: показываем обучение один раз поверх настоящего поля.
-   * На время обучения поле подменяется показательной раскладкой, таймер на паузе;
-   * после — возвращается свежая партия игрока.
-   */
-  private maybeShowOnboarding(resumed: boolean) {
-    if (resumed || hasOnboarded() || this.core.moves > 0) return;
-    const realCore = this.core;
-    this.tutorialActive = true;
+  private startTutorial() {
     this.timer.pause();
-    this.core = createGrid2048(this.freshRng(), { cells: TUTORIAL_CELLS });
-    this.redraw();
-    this.refreshScore();
-
-    this.time.delayedCall(360, () => {
-      this.launchOnboarding(() => {
+    this.header?.setChipsVisible(false);
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove'),
+      note: this.sandbox ? undefined : t(this.locale, 'tutorial.note'),
+      targets: () => this.mergeTargets(),
+      pad: 6,
+      radius: 16,
+      onDone: (skipped) => {
         setOnboarded();
-        this.core = realCore;
-        this.redraw();
-        this.refreshScore();
-        this.tutorialActive = false;
-        this.timer.resume();
-      });
+        if (this.sandbox) {
+          // Показали слияние — возвращаемся в сохранённую партию.
+          this.time.delayedCall(skipped ? 0 : 650, () => this.leaveSandbox());
+          return;
+        }
+        this.header?.setChipsVisible(true);
+        if (!this.pause?.open) this.timer.resume();
+        if (!skipped) showRuleOnce(this, '2048:goal', t(this.locale, 'rule.goal'));
+      },
     });
   }
 
-  private launchOnboarding(onDone: () => void) {
-    let demoDone = false;
-    startOnboarding(
-      this,
-      this.locale,
-      { board: this.boardRect(), hud: this.hudRect() },
-      {
-        demoMerge: () => {
-          if (demoDone) return null;
-          demoDone = true;
-          return this.tutorialMove('left');
-        },
-      },
-      onDone,
-    );
-  }
-
-  private boardRect(): Rect {
-    return { x: BOARD_LEFT, y: BOARD_TOP, w: BOARD, h: BOARD };
-  }
-
-  /** Чипы счёта и рекорда в шапке — для подсветки на третьем шаге обучения. */
-  private hudRect(): Rect {
-    const a = this.header?.chipRect('score');
-    const b = this.header?.chipRect('best');
-    if (!a || !b) return this.boardRect();
-    const x = Math.min(a.x, b.x);
-    const y = Math.min(a.y, b.y);
-    return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
-  }
-
   /**
-   * Настоящий ход в режиме обучения: ядро, анимации и счёт работают как в игре,
-   * но сохранение партии и конец игры не трогаются.
-   * Возвращает прямоугольник слитой плитки — обучение её подсвечивает.
+   * Что подсветить: ближайшая пара одинаковых соседних плиток (по ряду — в первую
+   * очередь, её сливает смах влево/вправо). Нет пары — всё поле.
    */
-  private tutorialMove(dir: Dir): Rect | null {
-    const before = this.core.cells.map((row) => [...row]);
-    const expected = applyMove(before, dir);
-    if (!expected.moved) return null;
-    this.core.move(dir);
-    this.redraw({ spawn: this.findSpawn(expected.cells), merged: expected.merges.map((m) => [m.row, m.col]) });
-    this.refreshScore();
-    const m = expected.merges[0];
-    if (!m) return null;
-    const { x, y } = this.cellXY(m.row, m.col);
-    return { x: x - TILE / 2, y: y - TILE / 2, w: TILE, h: TILE };
+  private mergeTargets(): Rect[] {
+    const cells = this.core.cells;
+    const span = (r0: number, c0: number, r1: number, c1: number): Rect => {
+      const a = this.cellXY(r0, c0);
+      const b = this.cellXY(r1, c1);
+      return { x: a.x - TILE / 2, y: a.y - TILE / 2, w: b.x - a.x + TILE, h: b.y - a.y + TILE };
+    };
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c + 1 < SIZE; c++) {
+        if (cells[r][c] !== 0 && cells[r][c] === cells[r][c + 1]) return [span(r, c, r, c + 1)];
+      }
+    }
+    for (let c = 0; c < SIZE; c++) {
+      for (let r = 0; r + 1 < SIZE; r++) {
+        if (cells[r][c] !== 0 && cells[r][c] === cells[r + 1][c]) return [span(r, c, r + 1, c)];
+      }
+    }
+    return [{ x: BOARD_LEFT, y: BOARD_TOP, w: BOARD, h: BOARD }];
+  }
+
+  /** Конец «Как играть»: обратно в сохранённую партию (или новую, если её нет). */
+  private leaveSandbox() {
+    if (this.finished) return;
+    this.finished = true;
+    this.cameras.main.fadeOut(200, ...COLORS.fade);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.registry.set('resume', true);
+      this.scene.restart();
+    });
   }
 
   // ── Шапка партии и пауза ─────────────────────────────────────────────────────
@@ -254,8 +241,8 @@ export class Game extends Scene {
     // Шкала — по очкам, а не по номиналу: очки растут с каждым слиянием плавно,
     // плитка удваивается ступенями — шкала бы стояла и прыгала. Полоса y 56…65 —
     // выше строки испытания (CHALLENGE_Y = 78, кегль 13): не пересекаются.
-    // В «Как играть» шкалы нет: показательные ходы — не партия.
-    if (!this.tutorialActive) {
+    // В «Как играть» шкалы нет: учебные ходы — не партия.
+    if (!this.sandbox) {
       this.ghost = makeRecordGhost(this, TOP_BAR_H + 3, loadBests('2048').score ?? 0);
       this.ghost.update(this.core.score); // продолженная партия стартует не с нуля
     }
@@ -290,8 +277,8 @@ export class Game extends Scene {
   /** Обновляет счёт и, при необходимости, рекорд в шапке по состоянию ядра. */
   private refreshScore() {
     this.header?.setChip('score', this.scoreLabel());
-    // Показательный ход обучения — не игровой: рекорд он двигать не должен.
-    if (this.tutorialActive) return;
+    // Учебный ход «Как играть» — не игровой: рекорд он двигать не должен.
+    if (this.sandbox) return;
     this.ghost?.update(this.core.score);
     if (this.core.score > this.best) {
       this.best = this.core.score;
@@ -302,9 +289,9 @@ export class Game extends Scene {
   /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
   private openPause() {
     if (this.finished || this.pause?.open) return;
-    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
-    if (this.tutorialActive) {
-      this.exitToMenu();
+    // «Как играть» ставить на паузу незачем — стрелка возвращает в партию.
+    if (this.sandbox) {
+      this.leaveSandbox();
       return;
     }
     this.swipeFrom = null; // начатый до паузы свайп не должен доехать до поля
@@ -315,7 +302,8 @@ export class Game extends Scene {
       kind: 'saved',
       summary: this.pauseSummary(),
       sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
-      onResume: () => { this.pause = null; this.timer.resume(); },
+      // Пока идёт обучение первой партии, часы стоят и после паузы.
+      onResume: () => { this.pause = null; if (!this.tutorial?.active) this.timer.resume(); },
       // Новая партия: create() без флага resume стирает сохранение и раздаёт поле заново.
       onRestart: () => {
         this.registry.set('resume', false);
@@ -467,16 +455,28 @@ export class Game extends Scene {
 
   private tryMove(dir: Dir) {
     // Пауза блокирует и свайпы, и стрелки клавиатуры.
-    if (this.finished || this.tutorialActive || this.pause?.open) return;
+    if (this.finished || this.pause?.open) return;
     const before = this.core.cells.map((row) => [...row]);
     const res = this.core.move(dir);
-    if (!res.moved) return;
+    if (!res.moved) {
+      // Первый смах «в стену» — объясняем одной строкой в момент события.
+      showRuleOnce(this, '2048:noMove', t(this.locale, 'rule.noMove'));
+      return;
+    }
     playSound('swipe');
 
     // Спавн и слитые клетки для подскока: сравниваем с чистым ходом без спавна.
     const expected = applyMove(before, dir);
     this.redraw({ spawn: this.findSpawn(expected.cells), merged: expected.merges.map((m) => [m.row, m.col]) });
     this.refreshScore();
+
+    // Обучение: первое слияние — ход сделан; иначе подсветка едет за парой.
+    if (this.tutorial?.active) {
+      if (expected.merges.length > 0) this.tutorial.done();
+      else this.tutorial.refresh();
+    }
+    // «Как играть»: учебное поле не сохраняется и не заканчивается партией.
+    if (this.sandbox) return;
 
     // Партию больше ничего не обрывает: новый крупный номинал — только праздник.
     const mt = this.core.maxTile();

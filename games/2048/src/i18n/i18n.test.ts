@@ -9,8 +9,7 @@ const REQUIRED = [
   'menu.back', 'menu.catalog', 'menu.record',
   'menu.challenges',
   'game.score', 'game.best', 'game.reached', 'game.challenge',
-  'onboarding.swipe', 'onboarding.merge', 'onboarding.score', 'onboarding.goal',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
+  'tutorial.firstMove', 'tutorial.note', 'rule.noMove', 'rule.goal',
   'result.game', 'result.tile', 'result.newGame', 'result.thisGameMissing',
   'result.points.one', 'result.points.few', 'result.points.many',
 ];
@@ -24,6 +23,9 @@ describe('i18n (2048)', () => {
       expect(ru).toHaveProperty(k);
       expect(uz).toHaveProperty(k);
     }
+  });
+  it('ключи старого пошагового онбординга удалены', () => {
+    for (const k of Object.keys(ru)) expect(k.startsWith('onboarding.')).toBe(false);
   });
   it('t() подставляет параметры', () => {
     expect(t('ru', 'game.score', { n: 1234 })).toContain('1234');
