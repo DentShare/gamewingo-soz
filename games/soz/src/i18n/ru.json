@@ -48,5 +48,7 @@
   "menu.guessesFew": "{n} попытки",
   "menu.guessesMany": "{n} попыток",
   "sound.on": "Звук: вкл",
-  "sound.off": "Звук: выкл"
+  "sound.off": "Звук: выкл",
+  "pause.attempt": "попытка {a}",
+  "pause.dailySaved": "ряды слова дня сохранятся"
 }

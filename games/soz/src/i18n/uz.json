@@ -48,5 +48,7 @@
   "menu.guessesFew": "{n} urinish",
   "menu.guessesMany": "{n} urinish",
   "sound.on": "Ovoz: yoqilgan",
-  "sound.off": "Ovoz: oʻchirilgan"
+  "sound.off": "Ovoz: oʻchirilgan",
+  "pause.attempt": "urinish {a}",
+  "pause.dailySaved": "kun soʻzi qatorlari saqlanadi"
 }

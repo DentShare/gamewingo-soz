@@ -2,11 +2,10 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import {
-  makeButton,
   applyTheme,
   setupCamera,
   makeTopBar,
-  makeSoundToggle,
+  setBackHandler,
   makeNextLevelCard,
   makeChapterSection,
   makeDailyLevelCard,
@@ -67,6 +66,8 @@ export class MainMenu extends Scene {
     if (!this.shownChapter) this.cameras.main.fadeIn(200, ...COLORS.fade);
 
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
+    // Системный «назад» из меню — тот же выход в каталог, что и стрелка.
+    setBackHandler(() => this.exitToCatalog());
 
     const progress = loadProgress(SLUG);
     const complete = isLadderComplete(progress, LADDER_SIZE);
@@ -132,22 +133,14 @@ export class MainMenu extends Scene {
     // Уровень дня: тот же генератор, колода по дате — один расклад на всех игроков.
     y += 2;
     const dailyState = !isDailyLevelUnlocked(progress) ? 'locked' : isDailyLevelDone(SLUG) ? 'done' : 'ready';
-    const daily = makeDailyLevelCard(this, CX, y, {
+    makeDailyLevelCard(this, CX, y, {
       locale: this.locale,
       state: dailyState,
       bonus: TARIFF.levelOfDay,
       unlockAfter: DAILY_LEVEL.unlockAfter,
       onPlay: () => this.startDaily(),
     });
-    y += daily.height + 20 + 20; // + половина высоты кнопки: её y — центр
-
-    // «Как играть» и звук переедут в паузу вместе с новой шапкой партии (T3).
-    makeButton(this, CX, y, t(this.locale, 'menu.howto'), () => this.showHowto());
-    // Звук: беззвучный режим общий для каталога, поэтому виджет из дизайн-системы.
-    makeSoundToggle(this, CX, y + 50, {
-      on: t(this.locale, 'sound.on'),
-      off: t(this.locale, 'sound.off'),
-    });
+    // «Как играть» и звук живут в паузе партии — меню короче на два ряда.
   }
 
   /** Фраза из core → строка на языке игрока; `counted` — ключ с формой числа. */
@@ -180,14 +173,5 @@ export class MainMenu extends Scene {
       const hub = (this.registry.get('catalogUrl') as string) || HUB_URL;
       window.location.href = hub;
     }
-  }
-
-  /** «Как играть» — обучение поверх настоящей партии; по концу → в меню. */
-  private showHowto() {
-    this.registry.set('howto', true);
-    this.registry.set('mode', 'level');
-    this.registry.set('locale', this.locale);
-    this.registry.set('level', 1);
-    this.scene.start('Game');
   }
 }

@@ -2,7 +2,7 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import {
-  makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip, playSound, makePhoenix,
+  setBackHandler, makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip, playSound, makePhoenix,
 } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
@@ -38,6 +38,7 @@ export class GameOver extends Scene {
   create() {
     applyTheme(this);
     setupCamera(this);
+    setBackHandler(() => this.scene.start('MainMenu'));
     this.cameras.main.fadeIn(220, ...COLORS.fade);
     const session = this.registry.get('session') as Session | undefined;
     const last = this.registry.get('lastGame') as LastGame;

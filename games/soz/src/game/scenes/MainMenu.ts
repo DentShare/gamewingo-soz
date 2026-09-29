@@ -10,7 +10,7 @@ import {
   makeLevelGrid,
   makeLadderSummary,
   type LevelTileState,
-  makeSoundToggle,
+  setBackHandler,
 } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
@@ -42,6 +42,8 @@ export class MainMenu extends Scene {
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
+    // Системный «назад» из меню — тот же выход в каталог, что и стрелка.
+    setBackHandler(() => this.exitToCatalog());
 
     // Слово дня — отдельный режим со своей наградой, он не входит в лестницу.
     const dayId = (this.registry.get('dayId') as number) ?? 0;
@@ -85,22 +87,16 @@ export class MainMenu extends Scene {
     makeButton(this, CX, belowGrid, t(this.locale, 'menu.play', { n: next }), () => this.startLevel(next), {
       primary: dailyDone,
     });
-    makeButton(this, CX, belowGrid + 52, t(this.locale, 'menu.howto'), () => this.showHowto());
+    // «Как играть» и звук живут в паузе партии; высокий контраст пока здесь (отдельная задача).
 
     const label = () =>
       `${t(this.locale, 'a11y.highContrast')}: ${this.registry.get('highContrast') ? '✓' : '×'}`;
     let btn: Button;
-    btn = makeButton(this, CX, belowGrid + 104, label(), () => {
+    btn = makeButton(this, CX, belowGrid + 52, label(), () => {
       const on = !this.registry.get('highContrast');
       this.registry.set('highContrast', on);
       setHighContrast(on);
       btn.setLabel(label());
-    });
-
-    // Звук: беззвучный режим общий для каталога, поэтому виджет из дизайн-системы.
-    makeSoundToggle(this, CX, belowGrid + 156, {
-      on: t(this.locale, 'sound.on'),
-      off: t(this.locale, 'sound.off'),
     });
   }
 
@@ -144,14 +140,5 @@ export class MainMenu extends Scene {
       const hub = (this.registry.get('catalogUrl') as string) || HUB_URL;
       window.location.href = hub;
     }
-  }
-
-  /** «Как играть» — запускает интерактивное обучение поверх игрового поля; по концу → в меню. */
-  private showHowto() {
-    this.registry.set('howto', true);
-    this.registry.set('mode', 'practice');
-    this.registry.set('level', 1);
-    this.registry.set('locale', this.locale);
-    this.scene.start('Game');
   }
 }

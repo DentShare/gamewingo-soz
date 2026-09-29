@@ -53,5 +53,9 @@
   "level.goldHint": "3 yulduz — koʻpi bilan {n} ta xato",
   "level.goldHintPerfect": "3 yulduz — xatosiz",
   "game.dailyLevel": "Kun darajasi",
-  "result.dailyLevel": "Kun darajasi"
+  "result.dailyLevel": "Kun darajasi",
+  "game.level": "{n}-daraja",
+  "pause.question": "savol {q}",
+  "pause.mistakes": "xatolar {m}",
+  "game.mistakesShort": "× {n}/{max}"
 }
