@@ -29,17 +29,16 @@
   "challenge.hits55": "55 попаданий за раунд",
   "challenge.score7000": "Набери 7000 очков за раунд",
   "challenge.score9000": "Набери 9000 очков за раунд",
-  "onboarding.aim": "Бейте по целям, пока они не исчезли.",
-  "onboarding.combo": "Попадания подряд поднимают множитель — очков всё больше.",
-  "onboarding.time": "У вас 60 секунд. Промах не штрафует, но сбивает серию.",
-  "onboarding.next": "Далее",
-  "onboarding.done": "Понятно",
-  "onboarding.skip": "Пропустить",
   "pause.score": "очки {n}",
   "result.points.one": "{n} очко",
   "result.points.few": "{n} очка",
   "result.points.many": "{n} очков",
   "result.hits.one": "{n} попадание",
   "result.hits.few": "{n} попадания",
-  "result.hits.many": "{n} попаданий"
+  "result.hits.many": "{n} попаданий",
+  "tutorial.firstMove": "Нажми на подсвеченную цель",
+  "tutorial.note": "Минута пойдёт после первого попадания",
+  "rule.miss": "Мимо — очки не снимаются, но серия сбрасывается",
+  "rule.combo": "Серия! Попадания подряд умножают очки",
+  "rule.expired": "Цель погасла — серия сбросилась. Успевай, пока горит"
 }

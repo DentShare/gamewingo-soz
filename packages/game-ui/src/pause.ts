@@ -32,6 +32,8 @@ export interface GameHeader {
   /** Обновить чип; `warn` — последние секунды таймера: белая плашка, красный текст. */
   setChip(id: string, text: string, warn?: boolean): void;
   setTitle(s: string): void;
+  /** Спрятать метрики до первого действия (T6): «Ходы: 0 · 0:00» в первую секунду — шум. */
+  setChipsVisible(visible: boolean): void;
   /** Короткий «пульс» чипа — отклик на верный ход, как раньше подпрыгивал текст HUD. */
   pulseChip(id: string): void;
   /** Прямоугольник чипа в мировых координатах — для подсветки в обучении. */
@@ -121,6 +123,12 @@ export function makeGameHeader(
       const w = chipW.get(id);
       if (r === undefined || w === undefined) return null;
       return { x: r - w, y: cy - 13, w, h: 26 };
+    },
+    setChipsVisible: (visible) => {
+      for (const c of chips.values()) {
+        c.g.setVisible(visible);
+        c.t.setVisible(visible);
+      }
     },
     pulseChip: (id) => {
       const c = chips.get(id);

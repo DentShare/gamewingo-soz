@@ -27,15 +27,13 @@
   "challenge.blocks48": "48 blokli minora qur",
   "challenge.perfect20": "Bir oʻyinda 20 ta aniq tushirish",
   "challenge.blocks60": "60 blokli minora qur",
-  "onboarding.drop": "Blok oʻzi yuradi. Tashlash uchun bosing.",
-  "onboarding.cut": "Chetdan chiqqan qismi kesiladi, minora torayadi.",
-  "onboarding.score": "Har bir blok — ochko. Aniq tushirish minorani toraytirmaydi va bonus beradi.",
-  "onboarding.next": "Keyingi",
-  "onboarding.done": "Tushunarli",
-  "onboarding.skip": "Oʻtkazib yuborish",
   "result.height": "Balandlik {n}",
   "result.points.one": "{n} ochko",
   "result.points.few": "{n} ochko",
   "result.points.many": "{n} ochko",
-  "pause.summary": "Hisob {score} · aniq {perfects}"
+  "pause.summary": "Hisob {score} · aniq {perfects}",
+  "tutorial.firstMove": "Blok ramkaga kirganda bosing",
+  "rule.aim": "Blok hali minora ustida emas — ramkaga kirishini kuting",
+  "rule.cut": "Chetdan chiqqan qismi kesiladi, minora torayadi",
+  "rule.perfect": "Aniq tushirish minorani toraytirmaydi va bonus ochko beradi"
 }

@@ -3,13 +3,6 @@
   "menu.howto": "Qanday oʻynash",
   "menu.back": "Orqaga",
   "menu.catalog": "Oʻyinlarga",
-  "onboarding.board": "Kartochkalarni ikkitadan oching va qayerda nima yashiringanini eslab qoling.",
-  "onboarding.match": "Ikkitasi bir xil boʻlsa — juft topildi va ochiq qoladi.",
-  "onboarding.miss": "Mos kelmasa — yopiladi. Qayerda nima yotganini eslab qoling.",
-  "onboarding.score": "Yurish va vaqt qancha kam boʻlsa — ochko va yulduz shuncha koʻp.",
-  "onboarding.next": "Keyingi",
-  "onboarding.done": "Tushunarli",
-  "onboarding.skip": "Oʻtkazib yuborish",
   "game.moves": "Yurishlar: {n}",
   "result.title": "Barcha juftlar topildi!",
   "sound.on": "Ovoz: yoqilgan",
@@ -38,5 +31,10 @@
   "result.gapMoves.few": "{n} ta yurish",
   "result.gapMoves.many": "{n} ta yurish",
   "result.almostDetail": "Yurishlar: {moves} · kerak {need} · vaqt {time}",
-  "result.foundOf": "Topilgan juftlar: {n} dan {k}"
+  "result.foundOf": "Topilgan juftlar: {n} dan {k}",
+  "tutorial.firstMove": "Belgilangan ikki kartani oching — bu juftlik",
+  "tutorial.note": "Taymer va yurishlar birinchi juftlikdan keyin yoqiladi",
+  "rule.miss": "Juft emas — yopiladi. Qayerda nima borligini eslab qoling",
+  "rule.moveLimit": "Endi yurishlar soni cheklangan — hisoblagichni kuzating",
+  "rule.timer": "Endi darajaga vaqt berilgan — taymerni kuzating"
 }

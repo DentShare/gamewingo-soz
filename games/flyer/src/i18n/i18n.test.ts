@@ -9,8 +9,7 @@ const REQUIRED = [
   'menu.challenges',
   'game.tapToStart', 'game.challenge',
   'result.passed.one', 'result.passed.few', 'result.passed.many', 'result.points.one', 'result.points.few', 'result.points.many',
-  'onboarding.flap', 'onboarding.gap', 'onboarding.score',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
+  'tutorial.firstMove', 'rule.score', 'rule.crash',
 ];
 
 describe('i18n (flyer)', () => {

@@ -3,7 +3,8 @@ import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import {
   applyTheme, setupCamera, makeButton, makeChip, playSound, makeGameHeader, openPauseSheet,
-  setBackHandler, uiText, TOP_BAR_H, type GameHeader, type PauseSheet,
+  setBackHandler, uiText, TOP_BAR_H, runFirstMoveTutorial, showRuleOnce,
+  type FirstMoveTutorial, type Rect, type GameHeader, type PauseSheet,
 } from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
@@ -13,7 +14,6 @@ import { createQuizGame, type AnswerResult, type QuizGame } from '../../core/qui
 import { mulberry32 } from '../../core/rng';
 import { computeScore } from '../../core/score';
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
-import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
@@ -54,7 +54,8 @@ export class Game extends Scene {
   private answered = false;
   private finished = false;
   private paused = false;
-  private tutorialActive = false;
+  /** Обучение в один шаг: первый ответ — настоящий ход (T6). */
+  private tutorial: FirstMoveTutorial | null = null;
 
   constructor() {
     super('Game');
@@ -68,7 +69,7 @@ export class Game extends Scene {
     this.answered = false;
     this.finished = false;
     this.paused = false;
-    this.tutorialActive = false;
+    this.tutorial = null;
     this.header = undefined;
     this.pause = null;
     this.shownSec = -1;
@@ -104,18 +105,12 @@ export class Game extends Scene {
     this.buildHud();
     this.showQuestion();
 
-    // «Как играть» из меню: обучение поверх настоящей партии, без сессии и таймера.
-    if (this.registry.get('howto')) {
-      this.runHowto();
-      return;
-    }
-
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') { this.paused = true; this.timer?.pause(); }
       else if (e.type === 'RESUME') {
         this.paused = false;
         // Приложение вернулось, но игрок сам поставил паузу — время стоит, пока он не нажмёт «Продолжить».
-        if (!this.pause?.open) this.timer?.resume();
+        if (!this.pause?.open && !this.tutorial?.active) this.timer?.resume();
       }
     });
     this.events.once('shutdown', off);
@@ -123,12 +118,17 @@ export class Game extends Scene {
     this.timer = createRoundTimer(() => performance.now());
     this.session.start();
     this.timer.start();
-    this.maybeShowOnboarding();
+
+    // «Как играть» из паузы — то же обучение на новой партии.
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
+    if (howto || !hasOnboarded()) this.startTutorial();
+    else this.announceLimits();
   }
 
   update(_time: number, delta: number) {
     // Открытая пауза держит и полосу, и просрочку: вопрос не сгорит, пока игрок в шите.
-    if (this.finished || this.answered || this.paused || this.tutorialActive || this.pause?.open) return;
+    if (this.finished || this.answered || this.paused || this.tutorial?.active || this.pause?.open) return;
     if (!this.timeLimitSec) return;
     this.questionLeftMs -= delta;
     this.paintTimer();
@@ -248,6 +248,8 @@ export class Game extends Scene {
 
   private pick(index: number) {
     if (this.answered || this.finished) return;
+    // Первый ответ — верный или нет — и есть ход: обучение закрывается, часы идут.
+    this.tutorial?.done();
     this.reveal(this.core.answer(index), index);
   }
 
@@ -270,6 +272,8 @@ export class Game extends Scene {
     if (!result.correct) {
       this.cameras.main.shake(160, 0.006);
       this.time.delayedCall(700, () => this.header?.setChip('mistakes', this.mistakesLabel()));
+      // Правило про ошибки и их лимит — в момент первой ошибки, а не карточкой заранее.
+      showRuleOnce(this, 'quiz:mistakes', t(this.locale, 'rule.mistakes', { max: levelAt(this.level).params.maxMistakes }));
     }
 
     this.showFact(result);
@@ -352,11 +356,6 @@ export class Game extends Scene {
   /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
   private openPause() {
     if (this.finished || this.pause?.open) return;
-    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
-    if (this.tutorialActive) {
-      this.exitToMenu();
-      return;
-    }
     this.timer?.pause();
     this.pause = openPauseSheet(this, {
       locale: this.locale,
@@ -364,7 +363,8 @@ export class Game extends Scene {
       sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
       onResume: () => {
         this.pause = null;
-        if (!this.paused) this.timer?.resume();
+        // В обучении часы стоят до первого ответа — «Продолжить» их не запускает.
+        if (!this.paused && !this.tutorial?.active) this.timer?.resume();
       },
       onRestart: () => this.scene.restart(),
       onExit: () => this.exitToMenu(),
@@ -405,41 +405,45 @@ export class Game extends Scene {
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
 
-  /** «Как играть» из меню: настоящая партия, но без сессии и таймера; по концу — в меню. */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
+  /**
+   * Обучение в один шаг: вопрос и варианты видны, варианты обведены и пульсируют,
+   * внизу одна фраза. Первый ответ — настоящий ход; чипы шапки и часы включаются
+   * после него. Про ошибки и лимит — строкой в момент первой ошибки.
+   */
+  private startTutorial() {
+    this.timer?.pause();
+    this.header?.setChipsVisible(false);
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove'),
+      note: this.timeLimitSec ? t(this.locale, 'tutorial.note') : undefined,
+      // Вопрос в той же рамке, что и варианты: его нужно прочитать, а не угадать сквозь вуаль.
+      targets: () => [this.playRect()],
+      pad: 8,
+      radius: 14,
+      onDone: () => {
         setOnboarded();
-        this.scene.start('MainMenu');
-      });
-    });
-  }
-
-  /** Первая партия — показываем обучение один раз. */
-  private maybeShowOnboarding() {
-    if (hasOnboarded()) return;
-    this.tutorialActive = true;
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
-        setOnboarded();
-        this.tutorialActive = false;
-      });
-    });
-  }
-
-  private tutorialSteps(): OnboardingStep[] {
-    return [
-      { textKey: 'onboarding.question', target: (): Rect => this.questionRect(), pad: 10, radius: 14 },
-      { textKey: 'onboarding.fact', target: (): Rect => this.optionsRect(), pad: 8, radius: 14 },
-      {
-        textKey: 'onboarding.mistakes',
-        target: (): Rect => this.header?.chipRect('mistakes') ?? this.questionRect(),
-        pad: 6,
-        radius: 16,
+        this.header?.setChipsVisible(true);
+        if (!this.pause?.open && !this.paused) this.timer?.resume();
+        this.announceLimits();
       },
-    ];
+    });
+    // Варианты въезжают твином (+10 px) — перерисовать рамку, когда они встанут на место.
+    this.time.delayedCall(60 * this.options.length + 240, () => this.tutorial?.refresh());
+  }
+
+  /** Лимит времени на вопрос — одной строкой в начале первого уровня, где он появился. */
+  private announceLimits() {
+    if (this.timeLimitSec) showRuleOnce(this, 'quiz:timer', t(this.locale, 'rule.timer', { n: this.timeLimitSec }));
+  }
+
+  /** Вопрос и варианты одним прямоугольником — зона первого хода. */
+  private playRect(): Rect {
+    const q = this.questionRect();
+    const o = this.optionsRect();
+    const x = Math.min(q.x, o.x);
+    const right = Math.max(q.x + q.w, o.x + o.w);
+    return { x, y: q.y, w: right - x, h: o.y + o.h - q.y };
   }
 
   private questionRect(): Rect {

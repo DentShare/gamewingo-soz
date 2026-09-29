@@ -9,6 +9,7 @@ import { COLORS, FIGURE_COLORS, FONT } from '../palette';
 import {
   applyTheme, setupCamera, makeGlyph, playSound,
   makeGameHeader, openPauseSheet, setBackHandler, type GameHeader, type PauseSheet,
+  runFirstMoveTutorial, showRuleOnce, motionAllowed, type FirstMoveTutorial, type Rect,
 } from '../ui';
 import { drawBin, drawFigure } from '../shapes';
 import { DPR } from '../dpr';
@@ -17,7 +18,6 @@ import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
-import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
 
 const W = 400;
 
@@ -47,8 +47,11 @@ function binLayout(count: number): { w: number; xs: number[] } {
 const DROP_TOP = BIN_TOP - 56;
 const DROP_BOTTOM = BIN_TOP + BIN_H + 44;
 
-/** Демонстрация перетаскивания в обучении рисуется поверх затемнения onboarding. */
-const DEMO_DEPTH = 1500;
+/**
+ * Обучение приглушает поле слоем на глубине 900. Фигурка в пальце и «палец»-подсказка
+ * жеста в это время идут поверх него — иначе на пути от лотка к корзине они тускнеют.
+ */
+const TUTORIAL_TOP_DEPTH = 910;
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
@@ -70,7 +73,8 @@ export class Game extends Scene {
 
   private timer?: RoundTimer;
   private finished = false;
-  private tutorialActive = false;
+  /** Обучение в один шаг: первая фигурка в своей корзине — настоящий ход (T6). */
+  private tutorial: FirstMoveTutorial | null = null;
 
   // Перетаскивание. Камера отмасштабирована в DPR раз, поэтому сырые pointer.x/y —
   // координаты ХОЛСТА: их обязательно переводим в мировые через getWorldPoint.
@@ -79,7 +83,7 @@ export class Game extends Scene {
   private dragOffY = 0;
   private worldBuf = new PhaserMath.Vector2();
 
-  private demoTweens: Phaser.Tweens.Tween[] = [];
+  private demoTween?: Phaser.Tweens.Tween;
   private demoFinger?: Phaser.GameObjects.Container;
 
   constructor() {
@@ -91,11 +95,11 @@ export class Game extends Scene {
     this.bins = [];
     this.item = undefined;
     this.hintFx = undefined;
-    this.demoTweens = [];
+    this.demoTween = undefined;
     this.demoFinger = undefined;
     this.dragging = false;
     this.finished = false;
-    this.tutorialActive = false;
+    this.tutorial = null;
     this.timer = undefined;
     this.header = undefined;
     this.pause = null;
@@ -111,12 +115,6 @@ export class Game extends Scene {
     this.daily = this.registry.get('mode') === 'dailyLevel';
     this.session = this.registry.get('session') as Session | undefined;
 
-    // «Как играть» из меню: обучение поверх настоящего поля, без сессии и таймера.
-    if (this.registry.get('howto')) {
-      this.runHowto();
-      return;
-    }
-
     this.buildRound();
 
     this.timer = createRoundTimer(() => performance.now());
@@ -124,11 +122,15 @@ export class Game extends Scene {
     this.timer.start();
     const off = this.session?.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') this.timer?.pause();
-      else if (e.type === 'RESUME') this.timer?.resume();
+      // Наша пауза открыта или идёт обучение — часы стоят до «Продолжить» / первой фигурки.
+      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorial?.active) this.timer?.resume();
     });
     if (off) this.events.once('shutdown', off);
 
-    this.maybeShowOnboarding();
+    // «Как играть» из паузы — то же обучение на новой партии.
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
+    if (howto || !hasOnboarded()) this.startTutorial();
   }
 
   // ── Сборка партии ────────────────────────────────────────────────────────────
@@ -184,11 +186,6 @@ export class Game extends Scene {
   /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
   private openPause() {
     if (this.finished || this.pause?.open) return;
-    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
-    if (this.tutorialActive) {
-      this.exitToMenu();
-      return;
-    }
     // Фигурка в пальце на паузу не уезжает — возвращаем её в лоток.
     if (this.dragging) {
       this.dragging = false;
@@ -199,7 +196,8 @@ export class Game extends Scene {
       locale: this.locale,
       summary: this.pauseSummary(),
       sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
-      onResume: () => { this.pause = null; this.timer?.resume(); },
+      // В обучении часы стоят до первой фигурки — «Продолжить» их не запускает.
+      onResume: () => { this.pause = null; if (!this.tutorial?.active) this.timer?.resume(); },
       onRestart: () => this.scene.restart(),
       onExit: () => this.exitToMenu(),
       onHowto: () => {
@@ -274,11 +272,19 @@ export class Game extends Scene {
     }
   }
 
-  /** Габарит всех корзин — зона подсветки в обучении. */
-  private binsRect(): Rect {
-    const x = this.binXs[0] - this.binW / 2 - 8;
-    const last = this.binXs[this.binXs.length - 1];
-    return { x, y: BIN_TOP, w: last + this.binW / 2 + 8 - x, h: BIN_H };
+  /** Лоток с фигуркой — первая цель обучения. */
+  private trayRect(): Rect {
+    return { x: SPAWN_X - TRAY_R, y: SPAWN_Y - TRAY_R, w: TRAY_R * 2, h: TRAY_R * 2 };
+  }
+
+  /** Корзина для текущей фигурки (−1, если фигурки нет). */
+  private rightBin(): number {
+    const cur = this.core.current;
+    return cur ? this.core.bins.indexOf(this.core.featureOf(cur)) : -1;
+  }
+
+  private binRect(i: number): Rect {
+    return { x: this.binXs[i] - this.binW / 2, y: BIN_TOP, w: this.binW, h: BIN_H };
   }
 
   // ── Фигурка и перетаскивание ─────────────────────────────────────────────────
@@ -324,9 +330,12 @@ export class Game extends Scene {
   }
 
   private onGrab(p: Phaser.Input.Pointer) {
-    if (this.finished || this.tutorialActive || this.dragging || !this.item) return;
+    if (this.finished || this.dragging || !this.item) return;
     this.tweens.killTweensOf(this.item);
-    this.item.setScale(1.1).setDepth(20);
+    // В обучении фигурка в пальце — поверх приглушения, «палец»-подсказка больше не нужен.
+    const onTop = this.tutorial?.active === true;
+    if (onTop) this.stopDragDemo();
+    this.item.setScale(1.1).setDepth(onTop ? TUTORIAL_TOP_DEPTH : 20);
     // Камера зумлена в DPR раз → сырые pointer.x/y надо перевести в мировые координаты,
     // иначе фигурка «улетает» от пальца.
     const w = this.cameras.main.getWorldPoint(p.x, p.y, this.worldBuf);
@@ -384,6 +393,8 @@ export class Game extends Scene {
     this.bounceBin(bin);
     this.flashBin(bin);
     this.clearHint();
+    // Первая фигурка в своей корзине закрывает обучение: дальше обычная партия.
+    this.tutorial?.done();
     this.header?.setChip('progress', this.progressLabel());
     this.header?.pulseChip('progress');
 
@@ -398,6 +409,8 @@ export class Game extends Scene {
   /** Неверно: не штраф, а подсказка — фигурка вернулась, правильная корзина подсвечена. */
   private rejectItem(bin: number) {
     this.wobbleBin(bin);
+    // Правило про ошибку — в момент первой ошибки, а не карточкой заранее.
+    showRuleOnce(this, 'sorting:mistake', t(this.locale, 'rule.mistake'));
     const right = this.core.bins.indexOf(this.core.featureOf(this.core.current!));
     if (right >= 0) this.showHint(right);
     this.returnItem();
@@ -409,7 +422,11 @@ export class Game extends Scene {
     c.setDepth(10);
     this.tweens.add({
       targets: c, x: SPAWN_X, y: SPAWN_Y, scale: 1, duration: 320, ease: 'Back.easeOut',
-      onComplete: () => this.idlePulse(),
+      onComplete: () => {
+        this.idlePulse();
+        // Фигурка вернулась, а обучение ещё идёт — снова показываем жест.
+        if (this.tutorial?.active) this.startDragDemo();
+      },
     });
   }
 
@@ -465,105 +482,59 @@ export class Game extends Scene {
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
 
-  /** «Как играть» из меню: строим настоящее поле, показываем обучение, по концу — в меню. */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-    this.buildRound();
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
-        setOnboarded();
-        this.stopDragDemo();
-        this.scene.start('MainMenu');
-      });
-    });
-  }
-
-  /** Первая партия — показываем обучение один раз. Таймер на паузе, перетаскивание заблокировано. */
-  private maybeShowOnboarding() {
-    if (hasOnboarded()) return;
-    this.tutorialActive = true;
+  /**
+   * Обучение в один шаг: поле видно, обведены фигурка в лотке и её корзина,
+   * «палец» показывает жест. Перетаскивание — настоящий ход; прогресс в шапке
+   * и часы включаются после первой верно разложенной фигурки.
+   */
+  private startTutorial() {
     this.timer?.pause();
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
+    this.header?.setChipsVisible(false);
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      // В режиме «по форме» фраза говорит про форму, а не про цвет.
+      text: t(this.locale, this.mode === 'color' ? 'tutorial.firstMove' : 'tutorial.firstMoveShape'),
+      targets: () => {
+        const bin = this.rightBin();
+        return bin >= 0 ? [this.trayRect(), this.binRect(bin)] : [this.trayRect()];
+      },
+      pad: 8,
+      radius: 20,
+      onDone: () => {
         setOnboarded();
         this.stopDragDemo();
-        this.tutorialActive = false;
-        this.timer?.resume();
-      });
+        this.header?.setChipsVisible(true);
+        if (!this.pause?.open) this.timer?.resume();
+      },
     });
-  }
-
-  /** Три шага НА РЕАЛЬНОМ ПОЛЕ: взять фигурку → перетащить (с показом) → цель партии. */
-  private tutorialSteps(): OnboardingStep[] {
-    return [
-      {
-        textKey: 'onboarding.take',
-        target: () => ({
-          x: SPAWN_X - TRAY_R, y: SPAWN_Y - TRAY_R, w: TRAY_R * 2, h: TRAY_R * 2,
-        }),
-        pad: 8,
-        radius: 76,
-      },
-      {
-        // В режиме «по форме» подсказка говорит про форму, а не про цвет.
-        textKey: this.mode === 'color' ? 'onboarding.drop' : 'onboarding.dropShape',
-        target: () => this.binsRect(),
-        pad: 10,
-        radius: 20,
-        // Карточка уходит вверх, чтобы не перекрывать траекторию демонстрации.
-        captionY: 140,
-        prepare: () => this.startDragDemo(),
-      },
-      {
-        textKey: 'onboarding.goal',
-        target: () => this.header?.chipRect('progress') ?? this.binsRect(),
-        pad: 8,
-        radius: 16,
-        prepare: () => this.stopDragDemo(),
-      },
-    ];
+    this.startDragDemo();
   }
 
   /**
-   * Реальная демонстрация перетаскивания: фигурка (с «пальцем») ездит из лотка
-   * в свою корзину и обратно, поверх затемнения обучения — движение видно всегда.
+   * Подсказка жеста: «палец» едет от фигурки к её корзине и обратно поверх
+   * приглушения. Саму фигурку не двигаем — её берёт ребёнок.
    */
   private startDragDemo() {
-    const c = this.item;
-    const cur = this.core.current;
-    if (!c || !cur) return;
-    const bin = this.core.bins.indexOf(this.core.featureOf(cur));
+    this.stopDragDemo();
+    const bin = this.rightBin();
     if (bin < 0) return;
-
-    this.tweens.killTweensOf(c);
-    c.setScale(1).setDepth(DEMO_DEPTH);
     const tx = this.binXs[bin];
-    // Глубже в корзину: так демонстрация не наезжает на карточку-подсказку.
-    const ty = BIN_TOP + 66;
-
-    this.demoFinger = makeGlyph(this, SPAWN_X + 30, SPAWN_Y + 40, 'tap', 30)
-      .setDepth(DEMO_DEPTH + 1);
-
-    const cfg = {
-      duration: 900, ease: 'Sine.easeInOut', yoyo: true, hold: 320, repeat: -1, repeatDelay: 220,
-    } as const;
-    this.demoTweens.push(this.tweens.add({ targets: c, x: tx, y: ty, ...cfg }));
-    this.demoTweens.push(
-      this.tweens.add({ targets: this.demoFinger, x: tx + 30, y: ty + 40, ...cfg }),
-    );
+    const ty = BIN_TOP + 60;
+    this.demoFinger = makeGlyph(this, SPAWN_X + 20, SPAWN_Y + 30, 'tap', 34)
+      .setDepth(TUTORIAL_TOP_DEPTH + 1);
+    // Без анимаций «палец» просто стоит на фигурке — путь показывают две рамки.
+    if (!motionAllowed()) return;
+    this.demoTween = this.tweens.add({
+      targets: this.demoFinger, x: tx + 20, y: ty + 30,
+      duration: 1000, ease: 'Sine.easeInOut', hold: 300, repeat: -1, repeatDelay: 300,
+    });
   }
 
   private stopDragDemo() {
-    for (const tw of this.demoTweens) tw.remove();
-    this.demoTweens = [];
+    this.demoTween?.remove();
+    this.demoTween = undefined;
     this.demoFinger?.destroy();
     this.demoFinger = undefined;
-    if (this.item) {
-      this.tweens.killTweensOf(this.item);
-      this.item.setPosition(SPAWN_X, SPAWN_Y).setScale(1).setDepth(10);
-      this.idlePulse();
-    }
   }
 
   // ── Финиш ────────────────────────────────────────────────────────────────────

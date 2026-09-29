@@ -6,7 +6,8 @@ import { challengeStates, loadBests, type ChallengeDef } from '@gamewingo/game-p
 import { COLORS, FONT } from '../palette';
 import {
   setupCamera, shakeCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler, makeRecordGhost,
-  TOP_BAR_H, type GameHeader, type PauseSheet, type RecordGhost,
+  TOP_BAR_H, runFirstMoveTutorial, showRuleOnce,
+  type GameHeader, type PauseSheet, type RecordGhost, type FirstMoveTutorial, type Rect,
 } from '../ui';
 import { DPR, VIEW_TOP, VIEW_BOTTOM } from '../dpr';
 import { mulberry32 } from '../../core/rng';
@@ -15,7 +16,6 @@ import {
 } from '../../core/flight';
 import { computeScore } from '../../core/score';
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
-import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
@@ -69,7 +69,8 @@ export class Game extends Scene {
   private bobMs = 0;
 
   private timer?: RoundTimer;
-  private tutorialActive = false;
+  /** Обучение в один шаг: первый пройденный проём — настоящий ход (T6). */
+  private tutorial: FirstMoveTutorial | null = null;
   private dead = false;
   private leaving = false;
 
@@ -95,7 +96,7 @@ export class Game extends Scene {
     this.time.paused = false;
     // Системный «назад» ведёт туда же, куда стрелка: полёт → пауза → меню.
     setBackHandler(() => this.onSystemBack());
-    this.tutorialActive = false;
+    this.tutorial = null;
     this.dead = false;
     this.leaving = false;
 
@@ -113,13 +114,6 @@ export class Game extends Scene {
     this.buildHero();
     this.buildHud();
     this.syncViews();
-
-    // «Как играть» из меню: обучение поверх настоящего экрана, без сессии и таймера.
-    if (this.registry.get('howto')) {
-      this.runHowto();
-      return;
-    }
-
     this.bindInput();
 
     this.timer = createRoundTimer(() => performance.now());
@@ -127,22 +121,23 @@ export class Game extends Scene {
     // Приложение уходит в фон (звонок, шторка) — открываем ту же паузу, что и стрелка:
     // мир стоит, а вернувшись, игрок сам жмёт «Продолжить» — герой не упадёт без него.
     const off = this.session?.onApp((e: AppToGameEvent) => {
-      if (e.type === 'PAUSE') {
-        if (!this.tutorialActive) this.openPause();
-        else this.timer?.pause();
-      } else if (e.type === 'RESUME') {
+      if (e.type === 'PAUSE') this.openPause();
+      else if (e.type === 'RESUME') {
         if (!this.paused && this.core.started) this.timer?.resume();
       }
     });
     if (off) this.events.once('shutdown', off);
 
-    this.maybeShowOnboarding();
+    // «Как играть» из паузы — то же обучение на новом полёте.
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
+    if (howto || !hasOnboarded()) this.startTutorial();
   }
 
   update(_time: number, delta: number) {
     // На паузе кадры просто пропускаем: ядро копит время только из переданной
     // дельты, поэтому после «Продолжить» следующий кадр — обычные ~16 мс, без рывка.
-    if (this.paused || this.tutorialActive || this.dead || this.leaving) return;
+    if (this.paused || this.dead || this.leaving) return;
 
     const res = this.core.step(delta);
     if (this.core.started) this.scrollDecor(delta);
@@ -154,6 +149,9 @@ export class Game extends Scene {
     }
     this.updateChips();
     this.updateChallengeLine();
+    if (res.scored) this.onScored();
+    // Рамки обучения едут вместе с героем и первой стеной.
+    this.tutorial?.refresh();
     if (res.over) this.die();
   }
 
@@ -175,7 +173,7 @@ export class Game extends Scene {
   private flap() {
     if (this.paused) return;
     playSound('swipe');
-    if (this.tutorialActive || this.dead || this.leaving) return;
+    if (this.dead || this.leaving) return;
     const first = !this.core.started;
     this.core.flap();
     if (first) this.onFirstFlap();
@@ -195,58 +193,39 @@ export class Game extends Scene {
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
 
-  /** «Как играть» из меню: настоящий экран игры, обучение, по концу — назад в меню. */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-    this.time.delayedCall(320, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
+  /**
+   * Обучение в один шаг. Полёт и так ждёт первого тапа, поэтому мир ничего не
+   * делает, пока игрок читает. Обведены ракета и проём первой стены (он выровнен
+   * по стартовой высоте — пролететь его легко), внизу одна фраза. Первый взмах —
+   * настоящий старт; обучение заканчивается на первом пройденном проёме.
+   */
+  private startTutorial() {
+    this.header?.setChipsVisible(false);
+    this.hintText.setVisible(false); // полоса обучения говорит то же самое
+    const first = this.core.obstacles[0];
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove'),
+      targets: () => {
+        const rects: Rect[] = [{ x: HERO_X - 26, y: this.hero.y - 26, w: 52, h: 52 }];
+        if (!first.passed) rects.push({ x: first.x - 3, y: first.gapY, w: WALL_W + 6, h: first.gapH });
+        return rects;
+      },
+      pad: 6,
+      radius: 18,
+      onDone: (skipped) => {
         setOnboarded();
-        this.leaving = true;
-        this.cameras.main.fadeOut(200, ...COLORS.fade);
-        this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
-      });
+        this.header?.setChipsVisible(true);
+        // Пропустили до взлёта — возвращаем обычную подсказку «Тапните, чтобы взлететь».
+        if (skipped && !this.core.started) this.hintText.setVisible(true).setAlpha(1);
+      },
     });
   }
 
-  /** Первая партия — показываем обучение один раз. Ввод на это время заблокирован. */
-  private maybeShowOnboarding() {
-    if (hasOnboarded()) return;
-    this.tutorialActive = true;
-    this.time.delayedCall(320, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
-        setOnboarded();
-        this.tutorialActive = false;
-      });
-    });
-  }
-
-  /** Три шага на реальном экране: герой → ближайший проём → счёт. */
-  private tutorialSteps(): OnboardingStep[] {
-    return [
-      {
-        textKey: 'onboarding.flap',
-        target: (): Rect => ({ x: HERO_X - 26, y: this.core.y - 26, w: 52, h: 52 }),
-        pad: 6,
-        radius: 26,
-      },
-      {
-        textKey: 'onboarding.gap',
-        target: (): Rect => {
-          const o = this.core.obstacles[0];
-          return { x: o.x - 3, y: o.gapY - 32, w: WALL_W + 6, h: o.gapH + 64 };
-        },
-        pad: 6,
-        radius: 14,
-      },
-      {
-        textKey: 'onboarding.score',
-        target: (): Rect =>
-          this.header?.chipRect('score') ?? { x: HERO_X - 26, y: this.core.y - 26, w: 52, h: 52 },
-        pad: 8,
-        radius: 16,
-      },
-    ];
+  /** Пройден проём: первый закрывает обучение и одной строкой объясняет счёт. */
+  private onScored() {
+    if (this.tutorial?.active) this.tutorial.done();
+    showRuleOnce(this, 'flyer:score', t(this.locale, 'rule.score'));
   }
 
   // ── Отрисовка мира ───────────────────────────────────────────────────────────
@@ -421,11 +400,6 @@ export class Game extends Scene {
   /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
   private openPause() {
     if (this.dead || this.leaving || this.pause?.open) return;
-    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
-    if (this.tutorialActive) {
-      this.exitToMenu();
-      return;
-    }
     this.freezeWorld();
     this.pause = openPauseSheet(this, {
       locale: this.locale,
@@ -532,7 +506,9 @@ export class Game extends Scene {
     if (this.core.cause !== 'floor') {
       this.tweens.add({ targets: this.hero, y: FLOOR_Y - 16, duration: 460, delay: 60, ease: 'Quad.easeIn' });
     }
-    this.time.delayedCall(760, () => this.endGame());
+    // Первое крушение на устройстве — одна строка, почему полёт окончен; даём её прочесть.
+    const rule = showRuleOnce(this, 'flyer:crash', t(this.locale, 'rule.crash'));
+    this.time.delayedCall(rule ? 1900 : 760, () => this.endGame());
   }
 
   private endGame() {

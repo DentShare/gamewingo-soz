@@ -29,17 +29,16 @@
   "challenge.hits55": "Bir raundda 55 ta aniq zarba",
   "challenge.score7000": "Bir raundda 7000 ochko toʻpla",
   "challenge.score9000": "Bir raundda 9000 ochko toʻpla",
-  "onboarding.aim": "Nishonlar yoʻqolguncha ularga uring.",
-  "onboarding.combo": "Ketma-ket zarbalar koʻpaytiruvchini oshiradi — ochko koʻproq boʻladi.",
-  "onboarding.time": "Sizda 60 soniya bor. Xato jarima emas, lekin seriyani uzadi.",
-  "onboarding.next": "Keyingi",
-  "onboarding.done": "Tushunarli",
-  "onboarding.skip": "Oʻtkazib yuborish",
   "pause.score": "ochko {n}",
   "result.points.one": "{n} ochko",
   "result.points.few": "{n} ochko",
   "result.points.many": "{n} ochko",
   "result.hits.one": "{n} ta aniq zarba",
   "result.hits.few": "{n} ta aniq zarba",
-  "result.hits.many": "{n} ta aniq zarba"
+  "result.hits.many": "{n} ta aniq zarba",
+  "tutorial.firstMove": "Belgilangan nishonga bosing",
+  "tutorial.note": "Bir daqiqa birinchi zarbadan keyin boshlanadi",
+  "rule.miss": "Xato — ochko ayrilmaydi, lekin seriya uziladi",
+  "rule.combo": "Seriya! Ketma-ket zarbalar ochkoni koʻpaytiradi",
+  "rule.expired": "Nishon oʻchdi — seriya uzildi. U yonib turganda ulguring"
 }

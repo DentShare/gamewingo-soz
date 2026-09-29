@@ -7,12 +7,6 @@
   "game.progress": "{total} dan {n}",
   "game.praise": "Barakalla!",
   "game.help": "Birga sanaymiz!",
-  "onboarding.count": "Bu yerda nechta narsa borligini sana.",
-  "onboarding.tap": "Pastdan raqamni bos — nechta sanading.",
-  "onboarding.help": "Xato qildingmi? Hechqisi yoʻq: sanashni koʻrsatamiz, yana urinib koʻrasan.",
-  "onboarding.next": "Keyingi",
-  "onboarding.done": "Tushunarli",
-  "onboarding.skip": "Oʻtkazib yuborish",
   "result.title": "Barakalla!",
   "sound.on": "Ovoz: yoqilgan",
   "sound.off": "Ovoz: oʻchirilgan",
@@ -35,5 +29,7 @@
   "result.gapMistakes.few": "{n} ta kamroq xato",
   "result.gapMistakes.many": "{n} ta kamroq xato",
   "result.almostDetail": "Xatolar: {n} · koʻpi bilan {need} ta boʻlsin",
-  "result.almostDetailClean": "Xatolar: {n} · xatosiz boʻlsin"
+  "result.almostDetailClean": "Xatolar: {n} · xatosiz boʻlsin",
+  "tutorial.firstMove": "{n} raqamini bos — bu yerda shuncha rasm bor",
+  "rule.mistake": "Hechqisi yoʻq! Birga sanaymiz — keyin yana bos"
 }

@@ -3,6 +3,7 @@ import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import {
   applyTheme, setupCamera, playSound, sparkle, makeGameHeader, openPauseSheet, setBackHandler, TOP_BAR_H,
+  runFirstMoveTutorial, showRuleOnce, type FirstMoveTutorial, type Rect,
   type GameHeader, type PauseSheet,
 } from '../ui';
 import { COLORS, FONT } from '../palette';
@@ -13,7 +14,6 @@ import { mulberry32 } from '../../core/rng';
 import { computeScore } from '../../core/score';
 import { BASE_FRAME, buildPictureTexture, pieceFrameKey, PICTURE_SIZE } from '../picture';
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
-import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
@@ -31,6 +31,8 @@ const TRAY_H = 104;
 const TRAY_PIECE_MAX = 78;
 /** Зазор между кусочками в лотке, когда их там четыре. */
 const TRAY_GAP = 8;
+/** Кусочек в руке во время обучения — над приглушением (900), под паузой (1000). */
+const TUTORIAL_DRAG_DEPTH = 920;
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
@@ -56,7 +58,8 @@ export class Game extends Scene {
   private finished = false;
   /** Партия стоит: пауза приложения (PAUSE от моста) или открытый шит паузы. */
   private paused = false;
-  private tutorialActive = false;
+  /** Обучение в один шаг: первый кусочек на своём месте — настоящий ход (T6). */
+  private tutorial: FirstMoveTutorial | null = null;
 
   constructor() {
     super('Game');
@@ -67,7 +70,7 @@ export class Game extends Scene {
     this.trayViews = new Map();
     this.finished = false;
     this.paused = false;
-    this.tutorialActive = false;
+    this.tutorial = null;
     this.ghost = undefined;
     this.header = undefined;
     this.pause = null;
@@ -99,23 +102,25 @@ export class Game extends Scene {
     this.refillTray();
     this.bindDrag();
 
-    // «Как играть» из паузы: обучение поверх настоящего поля, без сессии и таймера.
-    if (this.registry.get('howto')) {
-      this.runHowto();
-      return;
-    }
-
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') { this.paused = true; this.timer?.pause(); }
       // Приложение вернулось, но шит паузы открыт — партия ждёт «Продолжить».
-      else if (e.type === 'RESUME' && !this.pause?.open) { this.paused = false; this.timer?.resume(); }
+      // В обучении часы стоят до первого кусочка на месте.
+      else if (e.type === 'RESUME' && !this.pause?.open) {
+        this.paused = false;
+        if (!this.tutorial?.active) this.timer?.resume();
+      }
     });
     this.events.once('shutdown', off);
 
     this.timer = createRoundTimer(() => performance.now());
     this.session.start();
     this.timer.start();
-    this.maybeShowOnboarding();
+
+    // «Как играть» из паузы — то же обучение на новой партии.
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
+    if (howto || !hasOnboarded()) this.startTutorial();
   }
 
   // ── Экран ────────────────────────────────────────────────────────────────────
@@ -235,8 +240,9 @@ export class Game extends Scene {
 
   private bindDrag() {
     this.input.on('dragstart', (_p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Image) => {
-      if (this.tutorialActive || this.finished || this.paused) return;
-      obj.setDepth(20);
+      if (this.finished || this.paused) return;
+      // В обучении кусочек в руке — над приглушением, иначе его «гасит» по пути к месту.
+      obj.setDepth(this.tutorial?.active ? TUTORIAL_DRAG_DEPTH : 20);
       // В руке кусочек показывается в натуральную величину поля — так видно, куда он встанет.
       this.tweens.add({
         targets: obj,
@@ -246,12 +252,12 @@ export class Game extends Scene {
     });
 
     this.input.on('drag', (_p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Image, x: number, y: number) => {
-      if (this.tutorialActive || this.finished || this.paused) return;
+      if (this.finished || this.paused) return;
       obj.setPosition(x, y);
     });
 
     this.input.on('dragend', (_p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Image) => {
-      if (this.tutorialActive || this.finished) return;
+      if (this.finished) return;
       // Пауза посреди перетаскивания — кусочек возвращается в лоток, а не висит в воздухе.
       if (this.paused) {
         this.returnToTray(obj);
@@ -286,6 +292,8 @@ export class Game extends Scene {
     }
 
     playSound('ok');
+    // Первый кусочек на месте закрывает обучение: дальше обычная партия.
+    this.tutorial?.done();
 
     // Кусочек встал: фиксируем на поле ровно в клетке.
     const center = slotCenter(slot, this.core.cols, this.pieceW, this.pieceH);
@@ -340,6 +348,8 @@ export class Game extends Scene {
       targets: view, angle: { from: -6, to: 6 }, duration: 70, yoyo: true, repeat: 1,
       onComplete: () => view.setAngle(0),
     });
+    // Правило про ошибку — в момент первой ошибки, а не карточкой заранее.
+    showRuleOnce(this, 'jigsaw:wrong', t(this.locale, 'rule.wrong'));
     this.hintText.setText(t(this.locale, 'game.almost'));
     this.time.delayedCall(1400, () => this.hintText.setText(t(this.locale, 'game.take')));
   }
@@ -376,11 +386,6 @@ export class Game extends Scene {
   /** Стрелка в шапке: пауза с выбором, а не мгновенный выход. */
   private openPause() {
     if (this.finished || this.pause?.open) return;
-    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
-    if (this.tutorialActive) {
-      this.exitToMenu();
-      return;
-    }
     this.paused = true;
     this.timer?.pause();
     this.pause = openPauseSheet(this, {
@@ -391,7 +396,8 @@ export class Game extends Scene {
       onResume: () => {
         this.pause = null;
         this.paused = false;
-        this.timer?.resume();
+        // В обучении часы стоят до первого кусочка — «Продолжить» их не запускает.
+        if (!this.tutorial?.active) this.timer?.resume();
       },
       onRestart: () => this.scene.restart(),
       onExit: () => this.exitToMenu(),
@@ -421,43 +427,70 @@ export class Game extends Scene {
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
 
-  /** «Как играть» из паузы: настоящее поле, но без сессии и таймера; по концу — в меню. */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
+  /**
+   * Обучение в один шаг: поле видно, один кусочек в лотке и его место на поле
+   * обведены и пульсируют, внизу одна фраза. Перетащить кусочек — настоящий ход;
+   * часы и счётчик включаются после первого кусочка на месте. Ошибка
+   * объясняется в момент ошибки. Историю про картинку обещает меню — здесь
+   * её не повторяем.
+   */
+  private startTutorial() {
+    const piece = this.pickTutorialPiece();
+    if (piece === null) return;
+    this.timer?.pause();
+    this.header?.setChipsVisible(false);
+    // Строка «Возьми кусочек…» под лотком дублирует полосу обучения.
+    this.hintText.setVisible(false);
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove'),
+      targets: () => {
+        const view = this.trayViews.get(piece);
+        // Кусочек уже в руке или на месте — подсвечиваем только место.
+        return view ? [this.trayPieceRect(view), this.slotRect(piece)] : [this.slotRect(piece)];
+      },
+      pad: 4,
+      radius: 10,
+      onDone: () => {
         setOnboarded();
-        this.scene.start('MainMenu');
-      });
+        this.header?.setChipsVisible(true);
+        this.hintText.setVisible(true);
+        if (!this.pause?.open && !this.paused) this.timer?.resume();
+      },
     });
   }
 
-  /** Первая партия — показываем обучение один раз. */
-  private maybeShowOnboarding() {
-    if (hasOnboarded()) return;
-    this.tutorialActive = true;
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
-        setOnboarded();
-        this.tutorialActive = false;
-      });
-    });
+  /**
+   * Кусочек для первого хода: из лежащих в лотке — тот, чьё место на поле
+   * ближе всего к нему. Короткий путь пальца — малышу проще дотянуть.
+   */
+  private pickTutorialPiece(): number | null {
+    let best: number | null = null;
+    let bestDist = Infinity;
+    for (const [piece, view] of this.trayViews) {
+      const pos = this.trayPos(view.getData('trayIndex') as number);
+      const c = slotCenter(piece, this.core.cols, this.pieceW, this.pieceH);
+      const d = Math.hypot(BOARD_LEFT + c.x - pos.x, BOARD_TOP + c.y - pos.y);
+      if (d < bestDist) { bestDist = d; best = piece; }
+    }
+    return best;
   }
 
-  private tutorialSteps(): OnboardingStep[] {
-    return [
-      { textKey: 'onboarding.take', target: (): Rect => this.trayRect(), pad: 8, radius: 14 },
-      { textKey: 'onboarding.place', target: (): Rect => this.boardRect(), pad: 6, radius: 16 },
-      { textKey: 'onboarding.story', target: (): Rect => this.boardRect(), pad: 6, radius: 16 },
-    ];
+  /** Кусочек в лотке — по его месту в лотке, а не по текущему размеру (он «выпрыгивает»). */
+  private trayPieceRect(view: Phaser.GameObjects.Image): Rect {
+    const pos = this.trayPos(view.getData('trayIndex') as number);
+    const scale = this.trayScale();
+    const w = this.pieceW * scale;
+    const h = this.pieceH * scale;
+    return { x: pos.x - w / 2, y: pos.y - h / 2, w, h };
   }
 
-  private trayRect(): Rect {
-    return { x: BOARD_LEFT, y: TRAY_TOP, w: BOARD, h: TRAY_H };
-  }
-
-  private boardRect(): Rect {
-    return { x: BOARD_LEFT, y: BOARD_TOP, w: BOARD, h: BOARD };
+  /** Место кусочка на поле. */
+  private slotRect(piece: number): Rect {
+    const c = slotCenter(piece, this.core.cols, this.pieceW, this.pieceH);
+    return {
+      x: BOARD_LEFT + c.x - this.pieceW / 2, y: BOARD_TOP + c.y - this.pieceH / 2,
+      w: this.pieceW, h: this.pieceH,
+    };
   }
 }

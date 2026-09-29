@@ -8,13 +8,6 @@
   "game.moves": "Yurishlar: {n}",
   "game.goal": "Ortiqcha sonlarni oʻchiring",
   "game.reset": "Boshidan",
-  "onboarding.board": "Har bir qator oʻngida va har bir ustun ostida yigʻindi yozilgan. Qoladigan sonlar shuncha boʻlishi kerak.",
-  "onboarding.row": "Bu qatordagi ortiqchasini oʻchiring — qolgan sonlar aynan shu yigʻindini beradi.",
-  "onboarding.cross": "Ortiqcha son ustiga bosing — u oʻchiriladi. Qaytarish uchun yana bosing.",
-  "onboarding.reset": "Toʻgʻri kelgan yigʻindi yashil rangda yonadi. Chalkashsangiz, «Boshidan» doskani tiklaydi.",
-  "onboarding.next": "Keyingi",
-  "onboarding.done": "Tushunarli",
-  "onboarding.skip": "Oʻtkazib yuborish",
   "result.title": "Toʻgʻri keldi!",
   "chapter.1": "Tanishuv",
   "chapter.2": "Ikki xonali",
@@ -32,5 +25,9 @@
   "result.gapMoves.one": "{n} ta yurish kamroq",
   "result.gapMoves.few": "{n} ta yurish kamroq",
   "result.gapMoves.many": "{n} ta yurish kamroq",
-  "result.almostDetail": "Yurishlar: {moves} · ideal {best}"
+  "result.almostDetail": "Yurishlar: {moves} · ideal {best}",
+  "tutorial.firstMove": "Ramkadagi son ortiqcha — oʻchirish uchun ustiga bosing",
+  "tutorial.note": "Oʻngda va pastda — yigʻindilar: shuncha qolishi kerak",
+  "rule.over": "Yigʻindi qizardi — keraklisi oʻchirildi. Qaytarish uchun songa yana bosing",
+  "rule.negative": "Manfiy sonlar paydo boʻldi: minusni oʻchirsangiz, yigʻindi oshadi"
 }

@@ -182,3 +182,75 @@ export function createSumsGame(puzzle: Puzzle): SumsGame {
     },
   };
 }
+
+/**
+ * Клетки, которые **точно** лишние: их нет ни в одном решении, а не только в
+ * задуманном (решений может быть несколько — см. шапку файла). Нужны обучению:
+ * первый ход показываем на числе, про которое подсказка не врёт.
+ *
+ * Метод — распространение по линиям: для каждой строки и столбца перебираем
+ * наборы «оставить» (до 2⁹ на линию), согласные с уже выведенным, и сумма
+ * которых равна цели. Клетка не входит ни в один такой набор — вычеркнуть;
+ * входит во все — оставить. Повторяем, пока что-то меняется. Вывод строгий:
+ * всё, что помечено «вычеркнуть», лишнее в любом решении.
+ *
+ * Порядок результата — от самых наглядных: сперва то, что видно по одной
+ * линии, а среди них — число больше суммы своей строки или столбца.
+ */
+export function surelyExtraCells(puzzle: Puzzle): number[] {
+  const { size, cells, rowTargets, colTargets } = puzzle;
+  const lines: Array<{ idx: number[]; target: number }> = [];
+  for (let k = 0; k < size; k++) {
+    lines.push({ idx: Array.from({ length: size }, (_, c) => k * size + c), target: rowTargets[k] });
+    lines.push({ idx: Array.from({ length: size }, (_, r) => r * size + k), target: colTargets[k] });
+  }
+
+  /** undefined — неизвестно, true — оставить, false — вычеркнуть. */
+  const state: Array<boolean | undefined> = new Array(size * size).fill(undefined);
+  const firstPass = new Set<number>();
+  let pass = 0;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const { idx, target } of lines) {
+      let any = 0, all = (1 << size) - 1, found = false;
+      for (let mask = 0; mask < 1 << size; mask++) {
+        let sum = 0, ok = true;
+        for (let b = 0; b < size && ok; b++) {
+          const keep = (mask >> b) & 1;
+          const s = state[idx[b]];
+          if (s !== undefined && s !== (keep === 1)) ok = false;
+          if (keep) sum += cells[idx[b]];
+        }
+        if (!ok || sum !== target) continue;
+        found = true;
+        any |= mask;
+        all &= mask;
+      }
+      if (!found) continue; // противоречия быть не может: решение существует по построению
+      for (let b = 0; b < size; b++) {
+        const i = idx[b];
+        if (state[i] !== undefined) continue;
+        if (!((any >> b) & 1)) {
+          state[i] = false;
+          changed = true;
+          if (pass === 0) firstPass.add(i);
+        } else if ((all >> b) & 1) {
+          state[i] = true;
+          changed = true;
+        }
+      }
+    }
+    pass++;
+  }
+
+  const r = (i: number) => Math.floor(i / size);
+  const c = (i: number) => i % size;
+  const obvious = (i: number) =>
+    cells[i] > 0 && !puzzle.cells.some((v) => v < 0) && (cells[i] > rowTargets[r(i)] || cells[i] > colTargets[c(i)]);
+  const rank = (i: number) => (firstPass.has(i) ? 0 : 2) + (obvious(i) ? 0 : 1);
+  return state
+    .map((s, i) => (s === false ? i : -1))
+    .filter((i) => i >= 0)
+    .sort((a, b) => rank(a) - rank(b) || a - b);
+}

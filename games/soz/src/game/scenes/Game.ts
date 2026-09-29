@@ -8,17 +8,17 @@ import { createGame, type Game as CoreGame } from '../../core/gameState';
 import { pickDailyWord, dailyIndex } from '../../core/dailyWord';
 import { saveDaily, loadDaily, hasOnboarded, setOnboarded } from '../../core/persistence';
 import { keyboardFor, ENTER, BACKSPACE, UZ_DIGRAPH_KEYS, type Key } from '../keyboards';
-import { paletteFor, statusColor, COLORS, FONT, type Palette } from '../palette';
+import { paletteFor, statusColor, COLORS, FONT, HIGH_CONTRAST, type Palette } from '../palette';
 import {
   toast, applyTheme, setupCamera, makeKeyCap, type KeyCap, playSound, makeGameHeader, openPauseSheet,
-  setBackHandler, TOP_BAR_H, type GameHeader, type PauseSheet,
+  setBackHandler, TOP_BAR_H, VIEW_BOTTOM, runFirstMoveTutorial, showRuleOnce,
+  type FirstMoveTutorial, type Rect, type GameHeader, type PauseSheet,
 } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
-import { startOnboarding, type Rect } from '../onboarding';
 import confetti from 'canvas-confetti';
 
 import ansRu from '../../data/answers.ru.json';
@@ -57,16 +57,13 @@ export class Game extends Scene {
   private current: string[] = [];
   private timer!: RoundTimer;
   private finished = false;
-  private tutorialActive = false;
+  /** Обучение в один шаг: первый отправленный ряд — настоящий ход (T6). */
+  private tutorial: FirstMoveTutorial | null = null;
   private header?: GameHeader;
   private pause: PauseSheet | null = null;
-  /** «Как играть»: поле без партии — `coreGame` здесь от прошлой партии, не трогаем его. */
-  private howto = false;
 
-  // Зоны для обучения (заполняются при построении доски/клавиатуры).
-  private boardBounds!: Rect;
+  /** Клавиатура целиком — цель обучения (заполняется при построении). */
   private keyboardBounds!: Rect;
-  private enterKeyBounds!: Rect;
 
   constructor() {
     super('Game');
@@ -76,14 +73,13 @@ export class Game extends Scene {
     // Phaser переиспользует один экземпляр сцены между рестартами — сбрасываем изменяемое
     // состояние здесь (инициализаторы полей выполняются только при конструировании).
     this.finished = false;
-    this.tutorialActive = false;
+    this.tutorial = null;
     this.current = [];
     this.tiles = [];
     this.rowContainers = [];
     this.keyObjects = new Map();
     this.header = undefined;
     this.pause = null;
-    this.howto = false;
     // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
     setBackHandler(() => this.onSystemBack());
 
@@ -99,11 +95,9 @@ export class Game extends Scene {
     this.session = this.registry.get('session') as Session;
     this.palette = paletteFor(!!this.registry.get('highContrast'));
 
-    // Режим «Как играть»: показываем обучение поверх пустого поля, по концу — в меню.
-    if (this.registry.get('howto')) {
-      this.runHowto();
-      return;
-    }
+    // «Как играть» из паузы — то же обучение на этой же партии (флаг одноразовый).
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
 
     const { answers, allowed } = DATA[this.locale];
     this.dict = loadDictionary(this.locale, answers, allowed);
@@ -149,56 +143,73 @@ export class Game extends Scene {
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') this.timer.pause();
       // Игрок сам поставил паузу — время стоит, пока он не нажмёт «Продолжить».
-      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorialActive) this.timer.resume();
+      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorial?.active) this.timer.resume();
     });
     this.events.once('shutdown', off);
 
     this.bindPhysicalKeyboard();
-    this.maybeShowOnboarding();
+    if (howto || (!hasOnboarded() && this.coreGame.guessesUsed === 0)) this.startTutorial();
   }
 
-  /** «Как играть» из меню: строим поле, показываем обучение, по завершении — обратно в меню. */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-    this.howto = true;
-    this.buildBoard();
-    this.buildKeyboard();
-    this.buildHeader();
-    const back = () => {
-      setOnboarded();
-      this.scene.start('MainMenu');
-    };
-    this.time.delayedCall(360, () => {
-      startOnboarding(
-        this,
-        this.locale,
-        this.palette,
-        { board: this.boardBounds, keyboard: this.keyboardBounds, enterKey: this.enterKeyBounds },
-        back,
-      );
-    });
-  }
-
-  /** Первый запуск (свежая партия) — показываем обучение один раз. Таймер на паузе. */
-  private maybeShowOnboarding() {
-    if (this.finished || hasOnboarded() || this.coreGame.guessesUsed > 0) return;
-    this.tutorialActive = true;
+  /**
+   * Обучение в один шаг: поле видно, текущая строка и клавиатура обведены и
+   * пульсируют, внизу одна фраза. Первый отправленный ряд — настоящий ход; чип
+   * попытки и часы включаются после него. Что значат цвета — строкой в момент,
+   * когда они впервые появились на плитках.
+   */
+  private startTutorial() {
     this.timer.pause();
-    // Даём кадру отрисоваться (и завершиться fade-in камеры), затем открываем оверлей.
-    this.time.delayedCall(360, () => {
-      startOnboarding(
-        this,
-        this.locale,
-        this.palette,
-        { board: this.boardBounds, keyboard: this.keyboardBounds, enterKey: this.enterKeyBounds },
-        () => {
-          setOnboarded();
-          this.tutorialActive = false;
-          this.timer.resume();
-        },
-      );
+    this.header?.setChipsVisible(false);
+    const row = this.coreGame.guessesUsed;
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove'),
+      targets: () => [this.rowRect(this.coreGame.guessesUsed), this.keyboardBounds],
+      pad: 6,
+      radius: 12,
+      barTop: (h) => this.tutorialBarTop(h, row),
+      onDone: () => {
+        setOnboarded();
+        this.header?.setChipsVisible(true);
+        if (!this.pause?.open) this.timer.resume();
+      },
     });
+  }
+
+  /**
+   * Полоса обучения живёт у нижнего края. На экранах 16:9 (логическая высота 720)
+   * узбекская клавиатура в четыре ряда уходит под неё — и «галочка» перекрыта.
+   * Тогда ставим полосу на пустые строки поля между текущей строкой и клавиатурой:
+   * они всё равно приглушены.
+   */
+  private tutorialBarTop(h: number, row: number): number {
+    const bottomTop = VIEW_BOTTOM - 16 - h - 8;
+    const kb = this.keyboardBounds;
+    if (kb.y + kb.h + 8 <= bottomTop) return bottomTop;
+    const gapTop = this.rowCenterY(row) + TILE / 2 + 8;
+    const gapBottom = kb.y - 8;
+    return gapBottom - gapTop >= h
+      ? (gapTop + gapBottom) / 2 - h / 2
+      : this.rowCenterY(row) - TILE / 2 - 8 - h; // последняя строка — над ней
+  }
+
+  /** Строка поля в координатах сцены. */
+  private rowRect(row: number): Rect {
+    return { x: BOARD_X, y: this.rowCenterY(row) - TILE / 2, w: BOARD_W, h: TILE };
+  }
+
+  /** Подсказка: во время обучения — над вуалью (900), иначе на обычной глубине. */
+  private say(message: string) {
+    toast(this, 200, 640, message, this.tutorial?.active ? { depth: 960 } : {});
+  }
+
+  /**
+   * Цвета плиток — одной строкой, когда они впервые появились. Под шапкой
+   * плашка закрыла бы первую строку, которую объясняет, — ставим её под раскрытый ряд.
+   */
+  private explainColors(row: number) {
+    const key = this.palette === HIGH_CONTRAST ? 'rule.colorsContrast' : 'rule.colors';
+    showRuleOnce(this, 'soz:colors', t(this.locale, key), { y: this.rowCenterY(row) + TILE / 2 + 10 });
   }
 
   private randomPracticeWord(): string {
@@ -212,8 +223,6 @@ export class Game extends Scene {
   private rowCenterY(row: number) { return BOARD_Y + TILE / 2 + row * (TILE + GAP); }
 
   private buildBoard() {
-    const boardH = this.params.guesses * (TILE + GAP) - GAP;
-    this.boardBounds = { x: BOARD_X, y: BOARD_Y, w: BOARD_W, h: boardH };
     for (let r = 0; r < this.params.guesses; r++) {
       const container = this.add.container(0, 0);
       const rowTiles: Tile[] = [];
@@ -270,7 +279,6 @@ export class Game extends Scene {
         if (isSpecial) {
           // Символы ⏎/⌫ не входят в сабсет шрифта — рисуем векторные иконки (надёжно везде).
           this.drawSpecialKeyIcon(key, cx, y + kh / 2);
-          if (key === ENTER) this.enterKeyBounds = { x: cx - w / 2, y, w, h: kh };
         } else {
           this.keyObjects.set(key, cap);
         }
@@ -307,7 +315,6 @@ export class Game extends Scene {
 
   private bindPhysicalKeyboard() {
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
-      if (this.tutorialActive) return;
       // Escape — та же стрелка: открыть паузу, повторный — продолжить.
       if (e.key === 'Escape') {
         if (this.pause?.open) {
@@ -343,7 +350,7 @@ export class Game extends Scene {
   /** Текущая попытка: «3 / 6»; после последней — «6 / 6», а не «7 / 6». */
   private attemptLabel(): string {
     const max = this.params.guesses;
-    const used = this.howto ? 0 : this.coreGame?.guessesUsed ?? 0;
+    const used = this.coreGame?.guessesUsed ?? 0;
     return `${Math.min(max, used + 1)} / ${max}`;
   }
 
@@ -354,11 +361,6 @@ export class Game extends Scene {
   /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
   private openPause() {
     if (this.finished || this.pause?.open) return;
-    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
-    if (this.tutorialActive) {
-      this.exitToMenu();
-      return;
-    }
     this.timer?.pause();
     const daily = this.mode === 'daily';
     this.pause = openPauseSheet(this, {
@@ -381,7 +383,8 @@ export class Game extends Scene {
 
   private resumeFromPause() {
     this.pause = null;
-    this.timer?.resume();
+    // В обучении часы стоят до первого ряда — «Продолжить» их не запускает.
+    if (!this.tutorial?.active) this.timer?.resume();
   }
 
   /** «попытка 3 / 6» и для слова дня — что сыгранные ряды не пропадут. */
@@ -403,7 +406,7 @@ export class Game extends Scene {
 
   /** Незавершённую партию слова дня сохраняем, чтобы прогресс не потерялся (и не переигрывался). */
   private saveDailyProgress() {
-    if (this.mode !== 'daily' || this.howto || !this.coreGame || this.coreGame.guessesUsed === 0) return;
+    if (this.mode !== 'daily' || !this.coreGame || this.coreGame.guessesUsed === 0) return;
     saveDaily(this.locale, this.dayId, {
       rows: this.coreGame.rows,
       status: this.coreGame.status,
@@ -421,7 +424,7 @@ export class Game extends Scene {
   }
 
   private onKey(key: Key) {
-    if (this.finished || this.tutorialActive || this.pause?.open) return;
+    if (this.finished || this.pause?.open) return;
     if (key === ENTER) return this.onEnter();
     if (key === BACKSPACE) return this.onBackspace();
     if (this.current.length >= WORD_LENGTH) return;
@@ -459,14 +462,14 @@ export class Game extends Scene {
     if (this.current.length < WORD_LENGTH) {
       playSound('wrong');
       this.shake(row);
-      toast(this, 200, 640, t(this.locale, 'game.invalidWord'));
+      this.say(t(this.locale, 'game.invalidWord'));
       return;
     }
     const word = this.current.join('');
     if (!this.dict.has(word)) {
       playSound('wrong');
       this.shake(row);
-      toast(this, 200, 640, t(this.locale, 'game.notInList'));
+      this.say(t(this.locale, 'game.notInList'));
       return;
     }
     const violation = this.coreGame.checkStrict(this.current);
@@ -476,15 +479,18 @@ export class Game extends Scene {
       const message = violation.kind === 'position'
         ? t(this.locale, 'game.strictPosition', { unit: violation.unit.toUpperCase(), n: violation.index + 1 })
         : t(this.locale, 'game.strictMissing', { unit: violation.unit.toUpperCase() });
-      toast(this, 200, 640, message);
+      this.say(message);
       return;
     }
     playSound('ok');
     this.coreGame.submit(this.current);
     this.current = [];
+    // Первый отправленный ряд и есть ход: вуаль уходит, раскрытие видно целиком.
+    this.tutorial?.done();
 
     this.revealRow(row, () => {
       this.refreshKeyColors();
+      this.explainColors(row);
       this.syncAttempt();
       const status = this.coreGame.status;
       if (status === 'won') {

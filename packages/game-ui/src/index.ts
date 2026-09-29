@@ -18,3 +18,4 @@ export * from './strings.js';
 export * from './chapters.js';
 export * from './pause.js';
 export * from './results.js';
+export * from './tutorial.js';

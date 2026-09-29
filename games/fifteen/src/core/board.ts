@@ -56,8 +56,6 @@ export interface Board {
   canMove(i: number): boolean;
   /** Сдвигает плитку i в пустую клетку. true — ход сделан. */
   move(i: number): boolean;
-  /** Обнуляет счётчик ходов (расклад не трогает) — для служебных ходов вроде обучающего показа. */
-  resetMoves(): void;
   isSolved(): boolean;
 }
 
@@ -83,7 +81,6 @@ export function createBoardFromTiles(tiles: readonly number[], size: number): Bo
       moves++;
       return true;
     },
-    resetMoves() { moves = 0; },
     isSolved: () => isSolvedTiles(t),
   };
 }

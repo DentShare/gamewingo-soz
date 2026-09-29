@@ -3,13 +3,6 @@
   "menu.howto": "Как играть",
   "menu.back": "Назад",
   "menu.catalog": "К играм",
-  "onboarding.board": "Открывайте карточки по две и запоминайте, что где спрятано.",
-  "onboarding.match": "Две одинаковые — пара найдена и остаётся открытой.",
-  "onboarding.miss": "Не совпали — закроются. Запоминайте, где что лежит.",
-  "onboarding.score": "Чем меньше ходов и времени — тем больше очков и звёзд.",
-  "onboarding.next": "Далее",
-  "onboarding.done": "Понятно",
-  "onboarding.skip": "Пропустить",
   "game.moves": "Ходы: {n}",
   "result.title": "Все пары найдены!",
   "sound.on": "Звук: вкл",
@@ -38,5 +31,10 @@
   "result.gapMoves.few": "{n} хода",
   "result.gapMoves.many": "{n} ходов",
   "result.almostDetail": "Ходов: {moves} · нужно {need} · время {time}",
-  "result.foundOf": "Найдено пар: {k} из {n}"
+  "result.foundOf": "Найдено пар: {k} из {n}",
+  "tutorial.firstMove": "Открой две подсвеченные карточки — это пара",
+  "tutorial.note": "Таймер и ходы включатся после первой пары",
+  "rule.miss": "Не пара — закроются. Запоминай, где что лежит",
+  "rule.moveLimit": "Теперь ходов ограниченное число — следи за счётчиком",
+  "rule.timer": "Теперь на уровень есть время — следи за таймером"
 }

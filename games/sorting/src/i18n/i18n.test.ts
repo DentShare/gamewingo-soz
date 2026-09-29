@@ -13,8 +13,7 @@ const REQUIRED = [
   'game.progress', 'result.title',
   'result.gapMistakes.one', 'result.gapMistakes.few', 'result.gapMistakes.many',
   'result.almostDetail', 'result.almostDetailClean',
-  'onboarding.take', 'onboarding.drop', 'onboarding.goal',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
+  'tutorial.firstMove', 'tutorial.firstMoveShape', 'rule.mistake',
 ];
 
 describe('i18n (sorting)', () => {

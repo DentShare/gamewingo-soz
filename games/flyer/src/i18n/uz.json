@@ -26,17 +26,14 @@
   "challenge.survive120": "Havoda 2 daqiqa chidab ber",
   "challenge.pass40": "Bir parvozda 40 ta teshikdan oʻt",
   "challenge.pass45": "Bir parvozda 45 ta teshikdan oʻt",
-  "onboarding.flap": "Ekranni bosing — qahramon koʻtariladi. Bosmasangiz — pastga tushadi.",
-  "onboarding.gap": "Teshikdan uchib oʻting. Devor, pol yoki shiftga tegsangiz — oʻyin tugaydi.",
-  "onboarding.score": "Har bir oʻtilgan teshik — bir ochko. Keyin tezlik ortadi.",
-  "onboarding.next": "Keyingi",
-  "onboarding.done": "Tushunarli",
-  "onboarding.skip": "Oʻtkazib yuborish",
   "result.points.one": "{n} ochko",
   "result.points.few": "{n} ochko",
   "result.points.many": "{n} ochko",
   "pause.summary": "Teshiklar {passed} · havoda {time}",
   "result.passed.one": "{n} ta teshik",
   "result.passed.few": "{n} ta teshik",
-  "result.passed.many": "{n} ta teshik"
+  "result.passed.many": "{n} ta teshik",
+  "tutorial.firstMove": "Uchish uchun bosing va raketani teshikdan oʻtkazing",
+  "rule.score": "Har bir teshik — bir ochko. Keyin devorlar tezlashadi",
+  "rule.crash": "Devor, yer yoki tepaga tegdingiz — parvoz tugadi"
 }

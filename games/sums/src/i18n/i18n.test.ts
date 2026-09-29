@@ -11,8 +11,7 @@ const REQUIRED = [
   'game.dailyLevel',
   'sound.on', 'sound.off',
   'game.level', 'game.moves', 'game.goal', 'game.reset',
-  'onboarding.board', 'onboarding.row', 'onboarding.cross', 'onboarding.reset',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
+  'tutorial.firstMove', 'tutorial.note', 'rule.over', 'rule.negative',
   'result.title', 'result.gapMoves.one', 'result.gapMoves.few', 'result.gapMoves.many',
   'result.almostDetail',
 ];

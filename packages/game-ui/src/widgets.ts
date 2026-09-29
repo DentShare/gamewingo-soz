@@ -402,8 +402,15 @@ export function makeGameIcon(
 }
 
 /** Всплывающая подсказка: тёмная плашка, сама исчезает. */
-export function toast(scene: Scene, x: number, y: number, message: string): void {
-  const root = scene.add.container(x, y).setDepth(100);
+export function toast(
+  scene: Scene,
+  x: number,
+  y: number,
+  message: string,
+  /** Глубина плашки: поверх обучения (вуаль 900) нужна выше. */
+  opts: { depth?: number } = {},
+): Phaser.GameObjects.Container {
+  const root = scene.add.container(x, y).setDepth(opts.depth ?? 100);
   const txt = scene.add
     .text(0, 0, message, { fontFamily: FONT, fontSize: TYPE.body, color: S.white })
     .setOrigin(0.5)
@@ -418,4 +425,5 @@ export function toast(scene: Scene, x: number, y: number, message: string): void
     targets: root, alpha: 0, delay: 1100, duration: 400,
     onComplete: () => root.destroy(),
   });
+  return root;
 }

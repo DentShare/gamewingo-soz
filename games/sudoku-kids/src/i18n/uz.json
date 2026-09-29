@@ -4,14 +4,6 @@
   "menu.back": "Orqaga",
   "menu.catalog": "Oʻyinlarga",
   "game.hints": "Yordam: {n}",
-  "onboarding.grid": "Boʻsh kataklarni 1 dan 4 gacha raqamlar bilan toʻldiring. Qora raqamlarni oʻzgartirib boʻlmaydi.",
-  "onboarding.row": "Har bir qatorda har bir raqam faqat bir marta keladi.",
-  "onboarding.block": "Xuddi shu qoida — ustunda va blokda ham.",
-  "onboarding.input": "Katakni tanlang, soʻng pastdagi raqamni bosing. Xato qizil rangda koʻrinadi.",
-  "onboarding.hint": "💡 raqamni aytib beradi — bir oʻyinda 3 marta.",
-  "onboarding.next": "Keyingi",
-  "onboarding.done": "Tushunarli",
-  "onboarding.skip": "Oʻtkazib yuborish",
   "result.title": "Yechildi!",
   "sound.on": "Ovoz: yoqilgan",
   "sound.off": "Ovoz: oʻchirilgan",
@@ -40,5 +32,9 @@
   "result.gapSeconds.few": "{n} soniya",
   "result.gapSeconds.many": "{n} soniya",
   "result.almostDetail": "Vaqt: {time} · {need} ichida kerak",
-  "result.filledOf": "Toʻldirilgan kataklar: {n} dan {k}"
+  "result.filledOf": "Toʻldirilgan kataklar: {n} dan {k}",
+  "tutorial.firstMove": "Yonib turgan raqamni bos",
+  "rule.mistake": "Mos emas: qator, ustun va kvadratda raqamlar takrorlanmaydi",
+  "rule.mistakeLimit": "Endi xato {n} tadan oshmasin — diqqat qil",
+  "rule.timer": "Endi darajaga vaqt bor — soatga qarab tur"
 }

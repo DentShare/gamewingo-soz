@@ -13,8 +13,8 @@ const REQUIRED = [
   'game.level', 'game.moves', 'game.movesLimit', 'game.fail.moves', 'game.fail.time',
   'result.title', 'result.failed', 'result.gapMoves.one', 'result.gapMoves.few', 'result.gapMoves.many',
   'result.almostDetail', 'result.inPlaceOf',
-  'onboarding.board', 'onboarding.tile', 'onboarding.move', 'onboarding.goal',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
+  'tutorial.firstMove', 'tutorial.note',
+  'rule.goal', 'rule.stuck', 'rule.moveLimit', 'rule.timer',
 ];
 
 describe('i18n (fifteen)', () => {

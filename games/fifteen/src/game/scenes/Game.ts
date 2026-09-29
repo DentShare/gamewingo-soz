@@ -7,6 +7,7 @@ import { COLORS, FONT } from '../palette';
 import {
   applyTheme, darken, setupCamera, toast, shakeCamera, playSound,
   makeGameHeader, openPauseSheet, setBackHandler, uiText, TOP_BAR_H,
+  runFirstMoveTutorial, showRuleOnce, type FirstMoveTutorial, type Rect,
   type GameHeader, type PauseSheet,
 } from '../ui';
 import { DPR } from '../dpr';
@@ -15,7 +16,6 @@ import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
-import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
 
 const W = 400;
 const GRID_TOP = TOP_BAR_H + 16; // поле сразу под шапкой партии
@@ -46,11 +46,8 @@ export class Game extends Scene {
   private cellSize = 0;
   private gridLeft = 0;   // центр первой клетки по X
   private gridTop = 0;    // центр первой клетки по Y
-  /** Идёт обучение: игровой ввод (тапы и стрелки) не принимаем. */
-  private tutorialActive = false;
-  /** Клетка, из которой нужно вернуть плитку после обучающего показа (−1 — нечего). */
-  private demoUndoCell = -1;
-  private boardBounds: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  /** Обучение в один шаг: первый сдвиг плитки — настоящий ход (T6). */
+  private tutorial: FirstMoveTutorial | null = null;
 
   constructor() {
     super('Game');
@@ -60,8 +57,7 @@ export class Game extends Scene {
     // Сцена переиспользуется между рестартами — сбрасываем изменяемое состояние.
     this.views = [];
     this.finished = false;
-    this.tutorialActive = false;
-    this.demoUndoCell = -1;
+    this.tutorial = null;
     this.header = undefined;
     this.pause = null;
     // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
@@ -77,12 +73,6 @@ export class Game extends Scene {
     this.params = levelAt(this.level).params;
     this.session = this.registry.get('session') as Session;
 
-    // Режим «Как играть» из меню: обучение на настоящем поле, партия не начинается.
-    if (this.registry.get('howto')) {
-      this.runHowto();
-      return;
-    }
-
     this.board = this.newBoard();
 
     this.buildHud();
@@ -95,11 +85,15 @@ export class Game extends Scene {
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') this.timer.pause();
       // Приложение вернулось на передний план, а наша пауза открыта — часы стоят до «Продолжить».
-      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorialActive) this.timer.resume();
+      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorial?.active) this.timer.resume();
     });
     this.events.once('shutdown', off);
 
-    this.maybeShowOnboarding();
+    // «Как играть» из паузы — то же обучение на новой партии.
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
+    if (howto || !hasOnboarded()) this.startTutorial();
+    else this.announceLimits();
   }
 
   /** Свежий решаемый расклад текущего уровня. */
@@ -113,77 +107,74 @@ export class Game extends Scene {
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
 
-  /** «Как играть» из меню: строим настоящее поле, но без сессии и таймера; по концу — в меню. */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-
-    this.board = this.newBoard();
-    this.buildHud();
-    this.buildGrid();
-    this.bindKeyboard();
-    // Таймер нужен только чтобы update() было что показывать: не стартуем — стоит на 00:00.
-    this.timer = createRoundTimer(() => performance.now());
-
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
+  /**
+   * Обучение в один шаг: поле видно, плитка рядом с пустой клеткой обведена и
+   * пульсирует, внизу одна фраза. Тап по ней (или по любой подвижной, или
+   * стрелка) — настоящий ход; ходы и таймер включаются после него. Цель
+   * «собери по порядку» и лимиты — строкой уже после первого хода.
+   */
+  private startTutorial() {
+    this.timer.pause();
+    this.header?.setChipsVisible(false);
+    const cell = this.movableCell();
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove'),
+      note: t(this.locale, 'tutorial.note'),
+      targets: () => [this.tileRect(cell)],
+      pad: 6,
+      radius: 16,
+      onDone: () => {
         setOnboarded();
-        this.scene.start('MainMenu');
-      });
+        this.header?.setChipsVisible(true);
+        if (!this.pause?.open && !this.finished) this.timer.resume();
+        // Цель — сразу после первого хода, за ней лимиты уровня.
+        this.showRules(['goal', ...this.limitRules()]);
+      },
     });
   }
 
-  /** Первая партия — показываем обучение один раз. Таймер на паузе, ввод заблокирован. */
-  private maybeShowOnboarding() {
-    if (this.finished || hasOnboarded()) return;
-    this.tutorialActive = true;
-    this.timer.pause();
-    // Даём кадру отрисоваться (и завершиться fade-in камеры), затем открываем оверлей.
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
-        setOnboarded();
-        this.undoDemoMove();
-        this.tutorialActive = false;
-        this.timer.resume();
-      });
-    });
+  /** Лимиты уровня — строкой в начале первого уровня, где они появились. */
+  private announceLimits() {
+    this.showRules(this.limitRules());
+  }
+
+  private limitRules(): string[] {
+    const out: string[] = [];
+    if (this.params.moveLimit) out.push('moveLimit');
+    if (this.params.timeLimitSec) out.push('timer');
+    return out;
+  }
+
+  /** Правила по одному: следующий тост — когда предыдущий погас (2 с + затухание), чтобы не слиплись. */
+  private showRules(ids: string[]) {
+    if (this.finished || ids.length === 0) return;
+    const [id, ...rest] = ids;
+    const shown = showRuleOnce(this, `fifteen:${id}`, t(this.locale, `rule.${id}`));
+    if (shown) this.time.delayedCall(2500, () => this.showRules(rest));
+    else this.showRules(rest);
   }
 
   /**
-   * Четыре шага на живом поле: всё поле → конкретная подвижная плитка → настоящий
-   * ход этой плиткой → чипы шапки (ходы и время).
+   * Плитка для первого хода: соседняя с пустой клеткой, и лучше та, что едет
+   * ближе к своему месту — первый ход обучения не должен запутывать поле.
    */
-  private tutorialSteps(): OnboardingStep[] {
-    const from = this.movableCell();
-    let to = from;
-    return [
-      { rect: () => this.boardBounds, textKey: 'onboarding.board', pad: 10, radius: 20, gap: 12 },
-      { rect: () => this.tileRect(from), textKey: 'onboarding.tile', pad: 6, radius: 16 },
-      {
-        rect: () => this.tileRect(to),
-        textKey: 'onboarding.move',
-        pad: 6,
-        radius: 16,
-        before: (done) => {
-          to = this.board.tiles.indexOf(0); // пустая клетка = куда приедет плитка
-          this.performMove(from);
-          this.demoUndoCell = to;           // вернём плитку на место после обучения
-          this.time.delayedCall(SLIDE_MS + 180, done);
-        },
-      },
-      { rect: () => this.chipsRect(), textKey: 'onboarding.goal', pad: 8, radius: 16, gap: 40 },
-    ];
-  }
-
-  /** Любая плитка, соседняя с пустой клеткой (по горизонтали — нагляднее). */
   private movableCell(): number {
     const n = this.board.size;
     const e = this.board.tiles.indexOf(0);
-    const row = Math.floor(e / n);
-    const col = e % n;
-    if (col > 0) return e - 1;
-    if (col < n - 1) return e + 1;
-    return row > 0 ? e - n : e + n;
+    const er = Math.floor(e / n);
+    const ec = e % n;
+    const cand: number[] = [];
+    // Горизонтальные соседи первыми — такой сдвиг нагляднее.
+    if (ec > 0) cand.push(e - 1);
+    if (ec < n - 1) cand.push(e + 1);
+    if (er > 0) cand.push(e - n);
+    if (er < n - 1) cand.push(e + n);
+    const home = (v: number) => v - 1;
+    const dist = (v: number, at: number) =>
+      Math.abs(Math.floor(home(v) / n) - Math.floor(at / n)) + Math.abs((home(v) % n) - (at % n));
+    const gain = (c: number) => dist(this.board.tiles[c], c) - dist(this.board.tiles[c], e);
+    return cand.reduce((best, c) => (gain(c) > gain(best) ? c : best), cand[0]);
   }
 
   private tileRect(cell: number): Rect {
@@ -192,27 +183,10 @@ export class Game extends Scene {
     return { x: x - s / 2, y: y - s / 2, w: s, h: s };
   }
 
-  /** Возврат плитки после обучающего показа: расклад и счётчик как до обучения. */
-  private undoDemoMove() {
-    if (this.demoUndoCell < 0) return;
-    this.performMove(this.demoUndoCell);
-    this.demoUndoCell = -1;
-    this.board.resetMoves();
-    this.header?.setChip('moves', this.movesLabel());
-  }
-
   /** Ходы в чипе: с лимитом «сделано / всего», без лимита — просто счётчик. */
   private movesLabel(): string {
     const n = this.board?.moves ?? 0;
     return this.params.moveLimit ? `${n} / ${this.params.moveLimit}` : String(n);
-  }
-
-  /** Общая рамка чипов «ходы + время» — её подсвечивает последний шаг обучения. */
-  private chipsRect(): Rect {
-    const a = this.header?.chipRect('moves');
-    const b = this.header?.chipRect('time');
-    if (!a || !b) return this.boardBounds;
-    return { x: a.x, y: a.y, w: b.x + b.w - a.x, h: a.h };
   }
 
   update() {
@@ -233,7 +207,7 @@ export class Game extends Scene {
 
   /** Уровень не пройден: кончились ходы или время. */
   private failRound(cause: 'moves' | 'time') {
-    if (this.finished || this.tutorialActive) return;
+    if (this.finished || this.tutorial?.active) return;
     this.finished = true;
     this.timer.pause();
     toast(this, 200, 620, t(this.locale, `game.fail.${cause}`));
@@ -263,17 +237,13 @@ export class Game extends Scene {
   /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
   private openPause() {
     if (this.finished || this.pause?.open) return;
-    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
-    if (this.tutorialActive) {
-      this.exitToMenu();
-      return;
-    }
     this.timer.pause();
     this.pause = openPauseSheet(this, {
       locale: this.locale,
       summary: this.pauseSummary(),
       sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
-      onResume: () => { this.pause = null; this.timer.resume(); },
+      // В обучении часы стоят до первого хода — «Продолжить» их не запускает.
+      onResume: () => { this.pause = null; if (!this.tutorial?.active) this.timer.resume(); },
       onRestart: () => this.scene.restart(),
       onExit: () => this.exitToMenu(),
       onHowto: () => {
@@ -329,12 +299,6 @@ export class Game extends Scene {
     const gridH = n * this.cellSize + (n - 1) * GAP;
     this.gridLeft = (W - gridW) / 2 + this.cellSize / 2;
     this.gridTop = GRID_TOP + (GRID_BOTTOM - GRID_TOP - gridH) / 2 + this.cellSize / 2;
-    this.boardBounds = {
-      x: this.gridLeft - this.cellSize / 2,
-      y: this.gridTop - this.cellSize / 2,
-      w: gridW,
-      h: gridH,
-    };
 
     // «Лунка» поля — мягкая подложка под плитками.
     const pad = 10;
@@ -403,19 +367,22 @@ export class Game extends Scene {
     kb.on('keydown-RIGHT', () => fromEmpty(0, -1));
   }
 
-  /** Ход по воле игрока (тап или стрелка). Во время обучения ввод игнорируем. */
+  /** Ход по воле игрока (тап или стрелка). */
   private tryMoveCell(cell: number) {
     // Под паузой поле не нажать (затемнение глотает тапы), но стрелки клавиатуры — дошли бы.
-    if (this.tutorialActive || this.pause?.open) return;
+    if (this.pause?.open) return;
     this.performMove(cell);
   }
 
-  /** Сам ход. Этим же путём ходит обучающий показ — мимо блокировки ввода. */
   private performMove(cell: number) {
     if (this.finished) return;
     const view = this.views[cell];
     if (!view || view.animating) return;
-    if (!this.board.canMove(cell)) return;
+    if (!this.board.canMove(cell)) {
+      // Правило «ходит только соседка пустой» — в момент первой такой попытки, а не карточкой заранее.
+      showRuleOnce(this, 'fifteen:stuck', t(this.locale, 'rule.stuck'));
+      return;
+    }
 
     const target = this.board.tiles.indexOf(0);   // пустая клетка до хода
     if (!this.board.move(cell)) return;
@@ -432,6 +399,8 @@ export class Game extends Scene {
     });
 
     this.header?.setChip('moves', this.movesLabel());
+    // Первый сдвиг закрывает обучение: дальше обычная партия с таймером и ходами.
+    this.tutorial?.done();
 
     if (this.board.isSolved()) {
       this.finished = true;

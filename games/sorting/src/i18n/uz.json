@@ -6,13 +6,6 @@
   "mode.color": "Rang boʻyicha joylaymiz",
   "mode.shape": "Shakl boʻyicha joylaymiz",
   "game.progress": "{total} dan {n}",
-  "onboarding.take": "Shaklni barmoq bilan ushla.",
-  "onboarding.drop": "Uni xuddi shu rangdagi savatga sudrab olib bor.",
-  "onboarding.dropShape": "Uni xuddi shu shakldagi savatga sudrab olib bor.",
-  "onboarding.goal": "Hamma shakllarni joylashtir. Xato qilsang ham qoʻrqma — yana urinib koʻr.",
-  "onboarding.next": "Keyingi",
-  "onboarding.done": "Tushunarli",
-  "onboarding.skip": "Oʻtkazib yuborish",
   "result.title": "Barakalla!",
   "sound.on": "Ovoz: yoqilgan",
   "sound.off": "Ovoz: oʻchirilgan",
@@ -36,5 +29,8 @@
   "result.gapMistakes.few": "{n} ta kamroq xato",
   "result.gapMistakes.many": "{n} ta kamroq xato",
   "result.almostDetail": "Xatolar: {n} · koʻpi bilan {need} ta boʻlsin",
-  "result.almostDetailClean": "Xatolar: {n} · xatosiz boʻlsin"
+  "result.almostDetailClean": "Xatolar: {n} · xatosiz boʻlsin",
+  "tutorial.firstMove": "Shaklni xuddi shu rangdagi savatga sudrab olib bor",
+  "tutorial.firstMoveShape": "Shaklni xuddi shu shakldagi savatga sudrab olib bor",
+  "rule.mistake": "Bu savat emas! Keraklisi miltillaydi — yana urinib koʻr"
 }

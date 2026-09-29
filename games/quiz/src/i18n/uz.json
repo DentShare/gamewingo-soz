@@ -20,12 +20,6 @@
   "topic.science": "Fan",
   "topic.body": "Inson tanasi",
   "topic.money": "Pul",
-  "onboarding.question": "Savolni oʻqing va variantlardan birini tanlang.",
-  "onboarding.fact": "Javobdan keyin qiziqarli fakt ochiladi — hammasi shuning uchun.",
-  "onboarding.mistakes": "Xato qilish mumkin, ammo chegara bor: xatolar hisobini kuzating.",
-  "onboarding.next": "Keyingi",
-  "onboarding.done": "Tushunarli",
-  "onboarding.skip": "Oʻtkazib yuborish",
   "result.title": "Daraja oʻtildi",
   "result.failed": "Daraja oʻtilmadi",
   "chapter.1": "Tanishuv",
@@ -51,5 +45,9 @@
   "result.gapMistakes.few": "{n} ta xato kamroq",
   "result.gapMistakes.many": "{n} ta xato kamroq",
   "result.almostDetail": "Xatolar: {mistakes} · koʻpi bilan {need} ta boʻlsin",
-  "result.almostDetailPerfect": "Xatolar: {mistakes} · xatosiz boʻlsin"
+  "result.almostDetailPerfect": "Xatolar: {mistakes} · xatosiz boʻlsin",
+  "tutorial.firstMove": "Savolni oʻqing va toʻgʻri deb bilgan javobni bosing",
+  "tutorial.note": "Taymer birinchi javobdan keyin yoqiladi",
+  "rule.mistakes": "Xato qilish mumkin, lekin chegara — {max}: xatolar hisobini kuzating",
+  "rule.timer": "Endi savolga {n} soniya — vaqt chizigʻini kuzating"
 }
