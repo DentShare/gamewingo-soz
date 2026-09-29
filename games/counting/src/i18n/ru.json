@@ -38,5 +38,8 @@
   "level.goldHint": "3 звезды — ошибок не больше {n}",
   "level.goldHintClean": "3 звезды — без ошибок",
   "game.dailyLevel": "Уровень дня",
-  "result.dailyLevel": "Уровень дня"
+  "result.dailyLevel": "Уровень дня",
+  "game.level": "Уровень {n}",
+  "pause.progress": "вопрос {n} из {total}",
+  "pause.mistakes": "ошибок: {n}"
 }

@@ -6,7 +6,10 @@ import {
 import { mulberry32 } from '../../core/rng';
 import { levelAt } from '../../core/levels';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, setupCamera, makeGlyph, type GlyphName, makeBackButton, makeKeyCap, playSound } from '../ui';
+import {
+  applyTheme, setupCamera, makeGlyph, type GlyphName, makeKeyCap, playSound,
+  makeGameHeader, openPauseSheet, setBackHandler, type GameHeader, type PauseSheet,
+} from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -71,7 +74,8 @@ export class Game extends Scene {
   /** Всплывающие цифры 1, 2, 3… при пересчёте — над предметами. */
   private helpLayer!: Phaser.GameObjects.Container;
   private pads: DigitPad[] = [];
-  private progressText!: Phaser.GameObjects.Text;
+  private header?: GameHeader;
+  private pause: PauseSheet | null = null;
   private feedbackText!: Phaser.GameObjects.Text;
 
   private cellSize = 0;
@@ -95,6 +99,10 @@ export class Game extends Scene {
     this.tutorialActive = false;
     this.helping = false;
     this.timer = undefined;
+    this.header = undefined;
+    this.pause = null;
+    // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
@@ -206,24 +214,25 @@ export class Game extends Scene {
     return { x: left, y: PAD_Y - half, w: Math.max(...xs) + half - left, h: this.padSize };
   }
 
-  // ── HUD ──────────────────────────────────────────────────────────────────────
+  // ── Шапка партии, вопрос, похвала ───────────────────────────────────────────
 
+  /**
+   * Шапка каталога: стрелка (пауза), «Уровень N» / «Уровень дня» и чип
+   * прогресса «3 из 5». Таймера и проигрыша у «Счёта» нет — других чипов не нужно.
+   */
   private buildHud() {
-    this.buildBackButton();
-    this.progressText = this.add
-      .text(W - 20, 34, '', { fontFamily: FONT, fontSize: 16, color: COLORS.headMuted })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
-
-    // Обычный уровень номера в шапке не показывает; уровень дня подписан — чтобы было видно, что это он.
-    if (this.daily) {
-      this.add
-        .text(W / 2, 34, t(this.locale, 'game.dailyLevel'), {
-          fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
-        })
-        .setOrigin(0.5)
-        .setResolution(DPR);
-    }
+    const total = levelAt(this.level).params.questions;
+    this.header = makeGameHeader(this, {
+      title: this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }),
+      chips: [
+        {
+          id: 'progress',
+          text: t(this.locale, 'game.progress', { n: 1, total }),
+          widest: t(this.locale, 'game.progress', { n: total, total }),
+        },
+      ],
+      onBack: () => this.openPause(),
+    });
 
     this.add
       .text(W / 2, 92, t(this.locale, 'game.question'), {
@@ -241,13 +250,57 @@ export class Game extends Scene {
       .setAlpha(0);
   }
 
-  /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
-  private buildBackButton() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+  /** Прогресс партии в чипе: «3 из 5». */
+  private updateProgress() {
+    this.header?.setChip(
+      'progress',
+      t(this.locale, 'game.progress', { n: this.core.asked, total: this.core.total }),
+    );
   }
 
-  private goBack() {
-    if (this.finished || this.tutorialActive) return;
+  /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
+    if (this.tutorialActive) {
+      this.exitToMenu();
+      return;
+    }
+    this.timer?.pause();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      summary: this.pauseSummary(),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => { this.pause = null; this.timer?.resume(); },
+      onRestart: () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
+  }
+
+  /** «вопрос 3 из 5 · ошибок: 1» — таймера нет, поэтому про него ни слова. */
+  private pauseSummary(): string {
+    return [
+      t(this.locale, 'pause.progress', { n: this.core.asked, total: this.core.total }),
+      t(this.locale, 'pause.mistakes', { n: this.core.mistakes }),
+    ].join(' · ');
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
+  }
+
+  private exitToMenu() {
+    if (this.finished) return;
     this.finished = true;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
@@ -299,9 +352,7 @@ export class Game extends Scene {
     const q = this.core.question;
     this.renderItems(q.count, ITEMS[q.itemIndex]);
     q.options.forEach((n, i) => this.pads[i].setValue(n));
-    this.progressText.setText(
-      t(this.locale, 'game.progress', { n: this.core.asked, total: this.core.total }),
-    );
+    this.updateProgress();
   }
 
   // ── Кнопки-цифры ─────────────────────────────────────────────────────────────
@@ -354,9 +405,7 @@ export class Game extends Scene {
 
     if (res.correct) {
       this.celebrate();
-      this.progressText.setText(
-        t(this.locale, 'game.progress', { n: this.core.asked, total: this.core.total }),
-      );
+      this.updateProgress();
       if (res.done) {
         this.time.delayedCall(1000, () => this.endGame());
       } else {
