@@ -31,6 +31,10 @@ export interface FirstMoveTutorialOpts {
   pad?: number;
   /** Скругление рамки. */
   radius?: number;
+  /** Круглая цель (мишень): вырез и рамка — круг, вписанный в прямоугольник цели. */
+  shape?: 'rect' | 'circle';
+  /** Насколько приглушать остальное (0…1). Аркадам в движении — мягче, например 0.4. */
+  veilAlpha?: number;
   /** Обучение закончено — ходом (`done`) или «Пропустить». */
   onDone(skipped: boolean): void;
 }
@@ -41,6 +45,8 @@ export interface FirstMoveTutorial {
   /** Цели изменились (открылась одна карточка из двух) — перерисовать подсветку. */
   refresh(): void;
   readonly active: boolean;
+  /** Верх полосы-подсказки — чтобы игра могла приподнять поле над ней. */
+  readonly barTop: number;
 }
 
 /** Глубина слоя: над полем, под паузой (1000) и тостами правил. */
@@ -50,11 +56,11 @@ const DEPTH = 900;
  * Приглушение всего, кроме целей: прямоугольники-«ячейки» между краями целей.
  * Сетка по x/y-краям целей даёт ровное покрытие без масок и render-texture.
  */
-function drawVeil(g: Phaser.GameObjects.Graphics, holes: Rect[], top: number, bottom: number): void {
+function drawVeil(g: Phaser.GameObjects.Graphics, holes: Rect[], top: number, bottom: number, alpha: number, circle: boolean): void {
   const xs = [0, LOGICAL_W, ...holes.flatMap((h) => [h.x, h.x + h.w])].sort((a, b) => a - b);
   const ys = [top, bottom, ...holes.flatMap((h) => [h.y, h.y + h.h])].sort((a, b) => a - b);
   const inHole = (x: number, y: number) => holes.some((h) => x > h.x && x < h.x + h.w && y > h.y && y < h.y + h.h);
-  g.fillStyle(C.bg, 0.65);
+  g.fillStyle(C.bg, alpha);
   for (let i = 0; i < xs.length - 1; i++) {
     for (let j = 0; j < ys.length - 1; j++) {
       const x0 = Math.max(0, xs[i]), x1 = Math.min(LOGICAL_W, xs[i + 1]);
@@ -62,6 +68,23 @@ function drawVeil(g: Phaser.GameObjects.Graphics, holes: Rect[], top: number, bo
       if (x1 - x0 < 0.5 || y1 - y0 < 0.5) continue;
       if (inHole((x0 + x1) / 2, (y0 + y1) / 2)) continue;
       g.fillRect(x0, y0, x1 - x0, y1 - y0);
+    }
+  }
+  // Круглая цель: углы квадрата вокруг круга тоже приглушаем — вырез остаётся круглым.
+  if (circle) {
+    for (const h of holes) {
+      const cx = h.x + h.w / 2, cy = h.y + h.h / 2, r = Math.min(h.w, h.h) / 2;
+      const corners: Array<[number, number, number]> = [
+        [h.x, h.y, Math.PI], [h.x + h.w, h.y, Math.PI * 1.5], [h.x + h.w, h.y + h.h, 0], [h.x, h.y + h.h, Math.PI / 2],
+      ];
+      for (const [qx, qy, a0] of corners) {
+        const pts: Phaser.Types.Math.Vector2Like[] = [{ x: qx, y: qy }];
+        for (let k = 0; k <= 8; k++) {
+          const a = a0 + (Math.PI / 2) * (k / 8);
+          pts.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
+        }
+        g.fillPoints(pts as Phaser.Math.Vector2[], true);
+      }
     }
   }
 }
@@ -112,10 +135,14 @@ export function runFirstMoveTutorial(scene: Scene, o: FirstMoveTutorialOpts): Fi
   const draw = () => {
     const holes = o.targets().map((r) => ({ x: r.x - pad, y: r.y - pad, w: r.w + pad * 2, h: r.h + pad * 2 }));
     veil.clear();
-    drawVeil(veil, holes, TOP_BAR_H, VIEW_BOTTOM);
+    const circle = o.shape === 'circle';
+    drawVeil(veil, holes, TOP_BAR_H, VIEW_BOTTOM, o.veilAlpha ?? 0.65, circle);
     rings.clear();
     rings.lineStyle(3, C.primary, 1);
-    for (const h of holes) rings.strokeRoundedRect(h.x, h.y, h.w, h.h, radius);
+    for (const h of holes) {
+      if (circle) rings.strokeCircle(h.x + h.w / 2, h.y + h.h / 2, Math.min(h.w, h.h) / 2);
+      else rings.strokeRoundedRect(h.x, h.y, h.w, h.h, radius);
+    }
   };
   draw();
 
@@ -143,6 +170,7 @@ export function runFirstMoveTutorial(scene: Scene, o: FirstMoveTutorialOpts): Fi
     done: () => finish(false),
     refresh: () => { if (active) draw(); },
     get active() { return active; },
+    barTop: note ? barTop - 28 : barTop,
   };
 }
 

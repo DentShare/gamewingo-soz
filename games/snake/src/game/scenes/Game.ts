@@ -363,6 +363,8 @@ export class Game extends Scene {
       targets: () => [this.started ? this.headRect() : this.snakeRect(), this.foodRect()],
       pad: 6,
       radius: 12,
+      // Змейка едет под подсказкой — поле приглушаем мягче, чтобы видеть стены.
+      veilAlpha: 0.4,
       onDone: () => {
         setOnboarded();
         this.header?.setChipsVisible(true);

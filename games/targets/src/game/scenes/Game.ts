@@ -585,6 +585,7 @@ export class Game extends Scene {
       },
       pad: 10,
       radius: R_BIG + 10,
+      shape: 'circle',
       onDone: (skipped) => {
         setOnboarded();
         this.header?.setChipsVisible(true);
