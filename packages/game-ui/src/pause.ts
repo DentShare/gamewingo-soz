@@ -1,7 +1,7 @@
 import type { Scene } from 'phaser';
 import { C, S, FONT, TYPE, WEIGHT, TOP_BAR_H } from './tokens.js';
 import { DPR, LOGICAL_W, VIEW_TOP, VIEW_BOTTOM } from './viewport.js';
-import { makeButton, makeChip, makeSoundToggle } from './widgets.js';
+import { hideSplash, makeButton, makeChip, makeSoundToggle } from './widgets.js';
 import { playSound } from './audio.js';
 import { uiText } from './strings.js';
 
@@ -18,6 +18,12 @@ import { uiText } from './strings.js';
 export interface HeaderChip {
   id: string;
   text: string;
+  /**
+   * Самый длинный текст, который чип может показать («20 / 20», «10:00»).
+   * По нему считается ширина: чипы стоят вплотную, и растущий текст не должен
+   * наезжать на соседа.
+   */
+  widest?: string;
 }
 
 export interface GameHeader {
@@ -25,6 +31,8 @@ export interface GameHeader {
   /** Обновить чип; `warn` — последние секунды таймера: белая плашка, красный текст. */
   setChip(id: string, text: string, warn?: boolean): void;
   setTitle(s: string): void;
+  /** Прямоугольник чипа в мировых координатах — для подсветки в обучении. */
+  chipRect(id: string): { x: number; y: number; w: number; h: number } | null;
   destroy(): void;
 }
 
@@ -37,6 +45,7 @@ export function makeGameHeader(
   scene: Scene,
   opts: { title: string; chips?: HeaderChip[]; onBack(): void },
 ): GameHeader {
+  hideSplash();
   const root = scene.add.container(0, 0).setDepth(40);
   const cy = TOP_BAR_H / 2;
 
@@ -59,8 +68,10 @@ export function makeGameHeader(
   const chips = new Map<string, { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text }>();
   let right = LOGICAL_W - 14;
   const chipObjs: Phaser.GameObjects.GameObject[] = [];
+  const chipW = new Map<string, number>();
+  const chipMin = new Map<Phaser.GameObjects.Text, number>();
   const paintChip = (g: Phaser.GameObjects.Graphics, t: Phaser.GameObjects.Text, x: number, warn: boolean) => {
-    const w = Math.max(44, t.width + 16);
+    const w = Math.max(44, chipMin.get(t) ?? 0, t.width + 16);
     g.clear();
     g.fillStyle(C.white, warn ? 1 : 0.22).fillRoundedRect(x - w, cy - 13, w, 26, 13);
     t.setPosition(x - w / 2, cy);
@@ -71,10 +82,13 @@ export function makeGameHeader(
   for (const c of [...(opts.chips ?? [])].reverse()) {
     const g = scene.add.graphics();
     const t = scene.add
-      .text(0, 0, c.text, { fontFamily: FONT, fontSize: 13, fontStyle: WEIGHT.bold, color: S.white })
+      .text(0, 0, c.widest ?? c.text, { fontFamily: FONT, fontSize: 13, fontStyle: WEIGHT.bold, color: S.white })
       .setOrigin(0.5)
       .setResolution(DPR);
+    chipMin.set(t, t.width + 16);
+    t.setText(c.text);
     const w = paintChip(g, t, right, false);
+    chipW.set(c.id, w);
     chips.set(c.id, { g, t });
     chipRight.set(c.id, right);
     chipObjs.push(g, t);
@@ -97,7 +111,13 @@ export function makeGameHeader(
       const c = chips.get(id);
       if (!c) return;
       c.t.setText(text);
-      paintChip(c.g, c.t, chipRight.get(id) ?? LOGICAL_W - 14, warn);
+      chipW.set(id, paintChip(c.g, c.t, chipRight.get(id) ?? LOGICAL_W - 14, warn));
+    },
+    chipRect: (id) => {
+      const r = chipRight.get(id);
+      const w = chipW.get(id);
+      if (r === undefined || w === undefined) return null;
+      return { x: r - w, y: cy - 13, w, h: 26 };
     },
     setTitle: (s) => heading.setText(s),
     destroy: () => root.destroy(),

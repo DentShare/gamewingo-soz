@@ -6,8 +6,9 @@ import { createPairsGame, type PairsGame } from '../../core/game';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
 import {
-  applyTheme, darken, setupCamera, makeGlyph, type GlyphName, makeBackButton, toast, shakeCamera,
-  playSound,
+  applyTheme, darken, setupCamera, makeGlyph, type GlyphName, toast, shakeCamera,
+  playSound, makeGameHeader, openPauseSheet, setBackHandler, uiText, TOP_BAR_H,
+  type GameHeader, type PauseSheet,
 } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
@@ -18,7 +19,7 @@ import { hasOnboarded, setOnboarded } from '../../core/persistence';
 import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
 
 const W = 400;
-const GRID_TOP = 96;
+const GRID_TOP = TOP_BAR_H + 16; // поле сразу под шапкой партии
 const GRID_BOTTOM = 660;
 const GAP = 10;
 
@@ -39,8 +40,8 @@ export class Game extends Scene {
   private cardCenters: Array<{ cx: number; cy: number }> = [];
   private cardSize = 0;
   private gridRect: Rect = { x: 0, y: 0, w: 0, h: 0 };
-  private movesText!: Phaser.GameObjects.Text;
-  private timeText!: Phaser.GameObjects.Text;
+  private header?: GameHeader;
+  private pause: PauseSheet | null = null;
   private timer?: RoundTimer;
   private locked = false;   // во время показа промаха
   private finished = false;
@@ -61,6 +62,10 @@ export class Game extends Scene {
     this.finished = false;
     this.tutorialActive = false;
     this.timer = undefined;
+    this.header = undefined;
+    this.pause = null;
+    // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
@@ -93,18 +98,19 @@ export class Game extends Scene {
   }
 
   update() {
-    if (!this.timeText || !this.timer || this.finished) return;
-    const elapsed = Math.floor(this.timer.elapsedMs() / 1000);
+    if (!this.header || !this.timer || this.finished) return;
+    const sec = this.clockSec();
     const limit = this.params.timeLimitSec;
-    // С лимитом идёт обратный отсчёт: последние десять секунд подсвечены красным.
-    const sec = limit ? Math.max(0, limit - elapsed) : elapsed;
-    const mm = String(Math.floor(sec / 60)).padStart(2, '0');
-    const ss = String(sec % 60).padStart(2, '0');
-    this.timeText.setText(`${mm}:${ss}`);
-    if (limit) {
-      this.timeText.setColor(sec <= 10 ? COLORS.danger : COLORS.headMuted);
-      if (sec <= 0) this.failRound('time');
-    }
+    // С лимитом идёт обратный отсчёт: последние десять секунд — белый чип с красным текстом.
+    this.header.setChip('time', formatClock(sec), Boolean(limit) && sec <= 10);
+    if (limit && sec <= 0) this.failRound('time');
+  }
+
+  /** Секунды на часах: с лимитом — сколько осталось, без лимита — сколько прошло. */
+  private clockSec(): number {
+    const elapsed = Math.floor((this.timer?.elapsedMs() ?? 0) / 1000);
+    const limit = this.params.timeLimitSec;
+    return limit ? Math.max(0, limit - elapsed) : elapsed;
   }
 
   /** Колода уровня + HUD + сетка карточек. */
@@ -173,7 +179,7 @@ export class Game extends Scene {
         radius: 16,
         prepare: () => this.demoOpen(miss),
       },
-      { textKey: 'onboarding.score', target: () => rectOf(this.movesText), pad: 10, radius: 12 },
+      { textKey: 'onboarding.score', target: () => this.header?.chipRect('moves') ?? this.gridRect, pad: 8, radius: 16 },
     ];
   }
 
@@ -241,42 +247,74 @@ export class Game extends Scene {
     this.demoCards = [];
   }
 
-  // ── HUD: кнопка назад + ходы + таймер ────────────────────────────────────────
+  // ── Шапка партии и пауза ─────────────────────────────────────────────────────
 
+  /**
+   * Шапка каталога: стрелка (пауза), «Уровень N» и чипы ходов и таймера.
+   * Раньше здесь были белая пилюля «Назад» и текстовый HUD, а тап по «Назад»
+   * посреди уровня с лимитом сразу терял партию.
+   */
   private buildHud() {
-    this.buildBackButton();
-    this.add
-      .text(W / 2 + 26, 20, this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }), {
-        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-    this.movesText = this.add
-      .text(W / 2 + 26, 42, this.movesLabel(), {
-        fontFamily: FONT, fontSize: 16, color: COLORS.headText,
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-    this.timeText = this.add
-      .text(W - 20, 34, '00:00', { fontFamily: FONT, fontSize: 16, color: COLORS.headMuted })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
+    const limit = this.params.moveLimit;
+    this.header = makeGameHeader(this, {
+      title: this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }),
+      chips: [
+        { id: 'moves', text: this.movesLabel(), widest: limit ? `${limit} / ${limit}` : '888' },
+        { id: 'time', text: formatClock(this.params.timeLimitSec), widest: '88:88' },
+      ],
+      onBack: () => this.openPause(),
+    });
   }
 
-  /** Ходы: с лимитом показываем «сделано / всего», без лимита — просто счётчик. */
+  /** Ходы в чипе: с лимитом «сделано / всего», без лимита — просто счётчик. */
   private movesLabel(): string {
     const n = this.core?.moves ?? 0;
-    return this.params.moveLimit
-      ? t(this.locale, 'game.movesLimit', { n, limit: this.params.moveLimit })
-      : t(this.locale, 'game.moves', { n });
+    return this.params.moveLimit ? `${n} / ${this.params.moveLimit}` : String(n);
   }
 
-  /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
-  private buildBackButton() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+  /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
+    if (this.tutorialActive) {
+      this.exitToMenu();
+      return;
+    }
+    this.timer?.pause();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      summary: this.pauseSummary(),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => { this.pause = null; this.timer?.resume(); },
+      onRestart: () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
   }
 
-  private goBack() {
+  /** «Таймер остановлен · ходы 11 / 20 · осталось 0:09». */
+  private pauseSummary(): string {
+    const parts: string[] = [];
+    if (this.params.timeLimitSec) parts.push(uiText(this.locale, 'pause.timerStopped'));
+    parts.push(t(this.locale, 'pause.moves', { moves: this.movesLabel() }));
+    if (this.params.timeLimitSec) parts.push(uiText(this.locale, 'pause.left', { t: formatClock(this.clockSec()) }));
+    return parts.join(' · ');
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
+  }
+
+  private exitToMenu() {
     if (this.finished) return;
     this.finished = true;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
@@ -345,7 +383,7 @@ export class Game extends Scene {
     if (result === 'ignored') return;
 
     this.flipOpen(index);
-    this.movesText.setText(this.movesLabel());
+    this.header?.setChip('moves', this.movesLabel());
 
     if (result === 'match' || result === 'won') {
       playSound('ok');
@@ -437,7 +475,7 @@ export class Game extends Scene {
 }
 
 /** Габарит объекта сцены в координатах сцены (для подсветки в обучении). */
-function rectOf(obj: Phaser.GameObjects.Text): Rect {
-  const b = obj.getBounds();
-  return { x: b.x, y: b.y, w: b.width, h: b.height };
+/** «0:09», «1:50» — часы в чипе шапки. */
+function formatClock(sec: number): string {
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 }
