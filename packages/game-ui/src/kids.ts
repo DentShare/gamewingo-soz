@@ -227,7 +227,15 @@ function makeKidsPath(scene: Scene, cx: number, cy: number, stops: readonly Kids
     if (s.state === 'done') dot.add(makeStarRow(scene, 0, DONE / 2 + 14, s.stars, 7));
     const r = s.state === 'current' ? CURRENT / 2 : DONE / 2;
     const hit = scene.add.circle(0, 0, r + 8, 0x000000, 0).setInteractive({ useHandCursor: true });
-    hit.on('pointerup', () => {
+    // Тап, а не свайп: палец опустился на этот же кружок и почти не сдвинулся.
+    // Иначе свайп, закончившийся на кружке, запускал бы уровень.
+    let downAt: { x: number; y: number } | null = null;
+    hit.on('pointerdown', (p: Phaser.Input.Pointer) => { downAt = { x: p.worldX, y: p.worldY }; });
+    hit.on('pointerout', () => { downAt = null; });
+    hit.on('pointerup', (p: Phaser.Input.Pointer) => {
+      const d = downAt;
+      downAt = null;
+      if (!d || Math.hypot(p.worldX - d.x, p.worldY - d.y) > 14) return;
       if (s.state === 'future') {
         // Будущий — не «сломанная» кнопка, а лёгкое покачивание: «ещё не сейчас».
         if (motionAllowed()) scene.tweens.add({ targets: dot, angle: { from: -8, to: 8 }, duration: 70, yoyo: true, repeat: 2, onComplete: () => dot.setAngle(0) });
@@ -295,23 +303,38 @@ export function makeKidsPathPager(scene: Scene, cx: number, top: number, o: Kids
   };
 
   // Свайп по полосе дорожки: влево — следующая глава, вправо — предыдущая.
-  const swipe = scene.add.rectangle(cx, pathY, LOGICAL_W, CURRENT + 60, 0x000000, 0).setInteractive();
+  // Слушаем всю сцену, а не прямоугольник под кружками: свайп, начатый на
+  // кружке, тоже листает (кружки почти касаются, между ними не попасть).
+  const band = CURRENT / 2 + 30;
   let downX: number | null = null;
-  swipe.on('pointerdown', (p: Phaser.Input.Pointer) => { downX = p.x; });
-  swipe.on('pointerup', (p: Phaser.Input.Pointer) => {
+  const onDown = (p: Phaser.Input.Pointer) => {
+    downX = Math.abs(p.worldY - pathY) <= band ? p.worldX : null;
+  };
+  const onUp = (p: Phaser.Input.Pointer) => {
     if (downX === null) return;
-    const dx = p.x - downX;
+    const dx = p.worldX - downX;
     downX = null;
     if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+  };
+  scene.input.on('pointerdown', onDown);
+  scene.input.on('pointerup', onUp);
+  scene.events.once('shutdown', () => {
+    scene.input.off('pointerdown', onDown);
+    scene.input.off('pointerup', onUp);
   });
-  root.addAt(swipe, 0);
   return { root, height: dotsY + 8 - top };
 }
 
 /* ── Большая кнопка «играть» ──────────────────────────────────────────────── */
 
 /** Круг 88 с белым треугольником, тень primaryPressed 6 px, пульс 1,8 с. */
-export function makeKidsPlayButton(scene: Scene, x: number, y: number, onPlay: () => void, icon: 'play' | 'next' = 'play'): Phaser.GameObjects.Container {
+export function makeKidsPlayButton(
+  scene: Scene,
+  x: number,
+  y: number,
+  onPlay: () => void,
+  icon: 'play' | 'next' | 'retry' = 'play',
+): Phaser.GameObjects.Container {
   const R = 44;
   const root = scene.add.container(x, y);
   const g = scene.add.graphics();
@@ -320,6 +343,14 @@ export function makeKidsPlayButton(scene: Scene, x: number, y: number, onPlay: (
   g.fillStyle(C.white, 1);
   if (icon === 'play') {
     g.fillTriangle(-12, -18, -12, 18, 20, 0);
+  } else if (icon === 'retry') {
+    // «Ещё раз»: круговая стрелка.
+    g.lineStyle(7, C.white, 1).beginPath();
+    g.arc(0, 0, 17, -Math.PI * 0.35, Math.PI * 1.35);
+    g.strokePath();
+    const a = -Math.PI * 0.35;
+    const tx = Math.cos(a) * 17, ty = Math.sin(a) * 17;
+    g.fillTriangle(tx - 9, ty - 4, tx + 9, ty - 4, tx, ty + 9);
   } else {
     // «Дальше»: стрелка.
     g.fillRect(-18, -5, 22, 10);
@@ -364,5 +395,5 @@ export function makeKidsResult(
     scene.tweens.add({ targets: stars, scale: 1, duration: 420, delay: 380, ease: 'Back.easeOut' });
   }
   for (let i = 0; i < o.stars; i++) scene.time.delayedCall(420 + i * 170, () => playSound('star'));
-  makeKidsPlayButton(scene, cx, top + 420, o.onNext, 'next');
+  makeKidsPlayButton(scene, cx, top + 420, o.onNext, o.mood === 'sad' ? 'retry' : 'next');
 }
