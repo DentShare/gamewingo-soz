@@ -9,12 +9,12 @@ const REQUIRED = [
   'chapter.1', 'chapter.2', 'chapter.3',
   'level.field.one', 'level.field.few', 'level.field.many', 'level.goldHint', 'level.goldHintClean',
   'intro.field', 'intro.options', 'intro.questions',
-  'game.dailyLevel', 'result.dailyLevel',
+  'game.dailyLevel',
   'game.question', 'game.progress',
   'onboarding.count', 'onboarding.tap', 'onboarding.help',
   'onboarding.next', 'onboarding.done', 'onboarding.skip',
-  'result.title', 'result.score', 'result.level', 'result.nextLevel', 'result.unlocked',
-  'result.mistakes', 'result.newBest', 'result.playAgain', 'result.menu', 'error.network',
+  'result.title', 'result.gapMistakes.one', 'result.gapMistakes.few', 'result.gapMistakes.many',
+  'result.almostDetail', 'result.almostDetailClean',
 ];
 
 describe('i18n (counting)', () => {
@@ -38,8 +38,8 @@ describe('i18n (counting)', () => {
   });
 
   it('t() подставляет параметры в обеих локалях', () => {
-    expect(t('ru', 'result.score', { score: 1300 })).toContain('1300');
-    expect(t('uz', 'result.mistakes', { n: 2 })).toContain('2');
+    expect(t('ru', 'result.almostDetail', { n: 3, need: 1 })).toBe('Ошибок: 3 · нужно не больше 1');
+    expect(t('uz', 'result.gapMistakes.few', { n: 2 })).toContain('2');
     expect(t('ru', 'game.progress', { n: 3, total: 10 })).toBe('3 из 10');
     expect(t('uz', 'game.progress', { n: 3, total: 10 })).toBe('10 dan 3');
   });
