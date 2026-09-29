@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  createBoard, createBoardFromTiles, solvedTiles, randomWalk,
+  createBoard, createBoardFromTiles, solvedTiles, randomWalk, tilesInPlace,
 } from './board';
 import { mulberry32 } from './rng';
 import { computeScore, baseFor } from './score';
@@ -98,5 +98,14 @@ describe('score', () => {
   });
   it('поздний уровень ценится выше раннего', () => {
     expect(baseFor(15)).toBeGreaterThan(baseFor(1));
+  });
+});
+
+describe('tilesInPlace', () => {
+  it('собранное поле — все плитки на месте, пустая не считается', () => {
+    expect(tilesInPlace(solvedTiles(4))).toBe(15);
+  });
+  it('один ход от собранного — одна плитка не на месте', () => {
+    expect(tilesInPlace([1, 2, 3, 4, 5, 6, 7, 0, 8])).toBe(7);
   });
 });

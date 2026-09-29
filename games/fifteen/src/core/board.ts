@@ -4,6 +4,11 @@ export function solvedTiles(size: number): number[] {
   return Array.from({ length: n }, (_, i) => (i === n - 1 ? 0 : i + 1));
 }
 
+/** Сколько плиток стоит на своём месте — «докуда дошли» на экране проваленного уровня. */
+export function tilesInPlace(tiles: readonly number[]): number {
+  return tiles.reduce((k, v, i) => k + (v !== 0 && v === i + 1 ? 1 : 0), 0);
+}
+
 function isSolvedTiles(tiles: readonly number[]): boolean {
   const n = tiles.length;
   return tiles.every((v, i) => v === (i === n - 1 ? 0 : i + 1));
