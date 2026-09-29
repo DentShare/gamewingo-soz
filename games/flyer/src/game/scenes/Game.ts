@@ -2,11 +2,11 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import { CHALLENGES } from '../../core/challenges';
-import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
+import { challengeStates, loadBests, type ChallengeDef } from '@gamewingo/game-progress';
 import { COLORS, FONT } from '../palette';
 import {
-  setupCamera, shakeCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler,
-  TOP_BAR_H, type GameHeader, type PauseSheet,
+  setupCamera, shakeCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler, makeRecordGhost,
+  TOP_BAR_H, type GameHeader, type PauseSheet, type RecordGhost,
 } from '../ui';
 import { DPR, VIEW_TOP, VIEW_BOTTOM } from '../dpr';
 import { mulberry32 } from '../../core/rng';
@@ -55,6 +55,8 @@ export class Game extends Scene {
 
   /** Шапка партии: стрелка (пауза), название игры, чипы проёмов и времени в воздухе. */
   private header?: GameHeader;
+  /** «Призрак» рекорда проёмов под шапкой: каждый полёт — гонка с собой. */
+  private ghost?: RecordGhost;
   private pause: PauseSheet | null = null;
   /** Мир стоит: физика не шагает, часы сцены и твины заморожены (пауза-шит открыт). */
   private paused = false;
@@ -82,6 +84,7 @@ export class Game extends Scene {
     this.stripes = [];
     this.timer = undefined;
     this.header = undefined;
+    this.ghost = undefined;
     this.pause = null;
     this.paused = false;
     this.frozenTweens = [];
@@ -366,6 +369,8 @@ export class Game extends Scene {
       ],
       onBack: () => this.openPause(),
     });
+    this.ghost = makeRecordGhost(this, TOP_BAR_H + 3, loadBests('flyer').passed ?? 0);
+    this.ghost.update(this.core.score);
     // Активное испытание с живым прогрессом — под шапкой; когда всё пройдено, строки нет.
     if (this.challenge) {
       this.challengeText = this.add
@@ -391,12 +396,13 @@ export class Game extends Scene {
     });
   }
 
-  /** Проёмы и время в воздухе — в чипы шапки (только при изменении текста). */
+  /** Проёмы и время в воздухе — в чипы шапки, проёмы — в «призрак» рекорда (только при изменении). */
   private updateChips() {
     const score = String(this.core.score);
     if (score !== this.chipScore) {
       this.chipScore = score;
       this.header?.setChip('score', score);
+      this.ghost?.update(this.core.score);
     }
     const time = formatClock(this.airSec());
     if (time !== this.chipTime) {

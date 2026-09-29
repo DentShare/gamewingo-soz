@@ -32,14 +32,9 @@
   "onboarding.next": "Keyingi",
   "onboarding.done": "Tushunarli",
   "onboarding.skip": "Oʻtkazib yuborish",
-  "result.run": "Parvoz tugadi",
-  "result.score": "Ochko: {score}",
-  "result.detail": "Teshiklar: {passed} · Vaqt: {time}",
-  "result.newBest": "Yangi rekord!",
-  "result.closed": "Parvoz sinovlari",
-  "result.playAgain": "Yana",
-  "result.menu": "Menyuga",
-  "result.leaderboard": "Reyting",
-  "error.network": "Aloqa yoʻq",
+  "result.passed": "Teshiklar {n}",
+  "result.points.one": "{n} ochko",
+  "result.points.few": "{n} ochko",
+  "result.points.many": "{n} ochko",
   "pause.summary": "Teshiklar {passed} · havoda {time}"
 }

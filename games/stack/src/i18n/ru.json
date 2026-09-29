@@ -33,14 +33,9 @@
   "onboarding.next": "Далее",
   "onboarding.done": "Понятно",
   "onboarding.skip": "Пропустить",
-  "result.run": "Башня рухнула",
-  "result.score": "Очки: {score}",
-  "result.detail": "Блоков: {blocks} · Точных: {perfects}",
-  "result.newBest": "Новый рекорд!",
-  "result.closed": "Испытания партии",
-  "result.playAgain": "Ещё раз",
-  "result.menu": "В меню",
-  "result.leaderboard": "Таблица лидеров",
-  "error.network": "Нет соединения",
+  "result.height": "Высота {n}",
+  "result.points.one": "{n} очко",
+  "result.points.few": "{n} очка",
+  "result.points.many": "{n} очков",
   "pause.summary": "Счёт {score} · точных {perfects}"
 }

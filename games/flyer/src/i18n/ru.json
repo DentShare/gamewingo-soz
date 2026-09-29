@@ -32,14 +32,9 @@
   "onboarding.next": "Далее",
   "onboarding.done": "Понятно",
   "onboarding.skip": "Пропустить",
-  "result.run": "Полёт окончен",
-  "result.score": "Очки: {score}",
-  "result.detail": "Проёмов: {passed} · Время: {time}",
-  "result.newBest": "Новый рекорд!",
-  "result.closed": "Испытания полёта",
-  "result.playAgain": "Ещё раз",
-  "result.menu": "В меню",
-  "result.leaderboard": "Таблица лидеров",
-  "error.network": "Нет соединения",
+  "result.passed": "Проёмов {n}",
+  "result.points.one": "{n} очко",
+  "result.points.few": "{n} очка",
+  "result.points.many": "{n} очков",
   "pause.summary": "Проёмов {passed} · в воздухе {time}"
 }
