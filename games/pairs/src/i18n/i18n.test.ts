@@ -6,6 +6,7 @@ import { t } from './index';
 const REQUIRED = [
   'sound.on', 'sound.off',
   'app.title', 'menu.howto', 'menu.back',
+  'tutorial.firstMove', 'tutorial.note', 'rule.miss', 'rule.moveLimit', 'rule.timer',
   'chapter.1', 'chapter.2', 'chapter.3',
   'level.field.one', 'level.field.few', 'level.field.many', 'level.goldHint',
   'intro.field', 'intro.moveLimit', 'intro.moveLimitTighter', 'intro.timer', 'intro.timerTighter',

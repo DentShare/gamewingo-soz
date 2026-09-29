@@ -8,6 +8,7 @@ import { COLORS, FONT } from '../palette';
 import {
   applyTheme, darken, setupCamera, makeGlyph, type GlyphName, toast, shakeCamera,
   playSound, makeGameHeader, openPauseSheet, setBackHandler, uiText, TOP_BAR_H,
+  runFirstMoveTutorial, showRuleOnce, type FirstMoveTutorial, type Rect,
   type GameHeader, type PauseSheet,
 } from '../ui';
 import { DPR } from '../dpr';
@@ -16,7 +17,6 @@ import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
-import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
 
 const W = 400;
 const GRID_TOP = TOP_BAR_H + 16; // поле сразу под шапкой партии
@@ -39,15 +39,13 @@ export class Game extends Scene {
   private cards: CardView[] = [];
   private cardCenters: Array<{ cx: number; cy: number }> = [];
   private cardSize = 0;
-  private gridRect: Rect = { x: 0, y: 0, w: 0, h: 0 };
   private header?: GameHeader;
   private pause: PauseSheet | null = null;
   private timer?: RoundTimer;
   private locked = false;   // во время показа промаха
   private finished = false;
-  private tutorialActive = false;
-  /** Карточки, открытые ради демонстрации в обучении (закрываем по его окончании). */
-  private demoCards: number[] = [];
+  /** Обучение в один шаг: первая пара — настоящий ход (T6). */
+  private tutorial: FirstMoveTutorial | null = null;
 
   constructor() {
     super('Game');
@@ -57,10 +55,9 @@ export class Game extends Scene {
     // Сцена переиспользуется между рестартами — сбрасываем изменяемое состояние.
     this.cards = [];
     this.cardCenters = [];
-    this.demoCards = [];
     this.locked = false;
     this.finished = false;
-    this.tutorialActive = false;
+    this.tutorial = null;
     this.timer = undefined;
     this.header = undefined;
     this.pause = null;
@@ -77,12 +74,6 @@ export class Game extends Scene {
     this.params = levelAt(this.level).params;
     this.session = this.registry.get('session') as Session;
 
-    // «Как играть» из меню: обучение поверх настоящего поля, без сессии и таймера.
-    if (this.registry.get('howto')) {
-      this.runHowto();
-      return;
-    }
-
     this.buildRound();
 
     this.timer = createRoundTimer(() => performance.now());
@@ -91,11 +82,15 @@ export class Game extends Scene {
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') this.timer?.pause();
       // Приложение вернулось на передний план, а наша пауза открыта — часы стоят до «Продолжить».
-      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorialActive) this.timer?.resume();
+      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorial?.active) this.timer?.resume();
     });
     this.events.once('shutdown', off);
 
-    this.maybeShowOnboarding();
+    // «Как играть» из паузы — то же обучение на новой партии.
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
+    if (howto || !hasOnboarded()) this.startTutorial();
+    else this.announceLimits();
   }
 
   update() {
@@ -128,60 +123,35 @@ export class Game extends Scene {
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
 
-  /** «Как играть» из меню: строим настоящее поле, показываем обучение, по концу — в меню. */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-    this.buildRound();
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
-        setOnboarded();
-        this.scene.start('MainMenu');
-      });
-    });
-  }
-
-  /** Первая партия — показываем обучение один раз. Таймер на паузе, тапы заблокированы. */
-  private maybeShowOnboarding() {
-    if (hasOnboarded()) return;
-    this.tutorialActive = true;
-    this.timer?.pause();
-    // Даём кадру отрисоваться (и завершиться fade-in камеры), затем открываем оверлей.
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
-        setOnboarded();
-        this.closeDemoCards();
-        this.tutorialActive = false;
-        this.timer?.resume();
-      });
-    });
-  }
-
   /**
-   * Шаги обучения. Правила показываются на реальном поле: шаг 2 переворачивает
-   * настоящую пару одинаковых карточек, шаг 3 — две разные.
+   * Обучение в один шаг: поле видно, ближайшая пара обведена и пульсирует,
+   * внизу одна фраза. Тап по ней — настоящий ход; таймер и ходы включаются
+   * после первой найденной пары. Промах объясняется в момент промаха.
    */
-  private tutorialSteps(): OnboardingStep[] {
-    const match = this.pickMatchDemo();
-    const miss = this.pickMissDemo(match);
-    return [
-      { textKey: 'onboarding.board', target: () => this.gridRect, pad: 8, radius: 18 },
-      {
-        textKey: 'onboarding.match',
-        target: () => this.cardsRect(match),
-        pad: 8,
-        radius: 16,
-        prepare: () => this.demoOpen(match),
+  private startTutorial() {
+    this.timer?.pause();
+    this.header?.setChipsVisible(false);
+    const pair = this.pickMatchDemo();
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove'),
+      note: t(this.locale, 'tutorial.note'),
+      targets: () => pair.filter((i) => !this.core.isMatched(i)).map((i) => this.cardsRect([i])),
+      pad: 6,
+      radius: 14,
+      onDone: () => {
+        setOnboarded();
+        this.header?.setChipsVisible(true);
+        if (!this.pause?.open) this.timer?.resume();
+        this.announceLimits();
       },
-      {
-        textKey: 'onboarding.miss',
-        target: () => this.cardsRect(miss),
-        pad: 8,
-        radius: 16,
-        prepare: () => this.demoOpen(miss),
-      },
-      { textKey: 'onboarding.score', target: () => this.header?.chipRect('moves') ?? this.gridRect, pad: 8, radius: 16 },
-    ];
+    });
+  }
+
+  /** Лимиты уровня — одной строкой в начале первого уровня, где они появились. */
+  private announceLimits() {
+    if (this.params.moveLimit) showRuleOnce(this, 'pairs:moveLimit', t(this.locale, 'rule.moveLimit'));
+    else if (this.params.timeLimitSec) showRuleOnce(this, 'pairs:timer', t(this.locale, 'rule.timer'));
   }
 
   /** Пара одинаковых карточек, лежащих ближе всего друг к другу (компактная подсветка). */
@@ -192,22 +162,6 @@ export class Game extends Scene {
     for (let i = 0; i < deck.length; i++) {
       for (let j = i + 1; j < deck.length; j++) {
         if (deck[i].symbol !== deck[j].symbol) continue;
-        const d = this.dist(i, j);
-        if (d < bestDist) { bestDist = d; best = [i, j]; }
-      }
-    }
-    return best;
-  }
-
-  /** Две РАЗНЫЕ карточки рядом друг с другом, не занятые предыдущей демонстрацией. */
-  private pickMissDemo(used: [number, number]): [number, number] {
-    const deck = this.core.deck;
-    let best: [number, number] = [0, 1];
-    let bestDist = Infinity;
-    for (let i = 0; i < deck.length; i++) {
-      for (let j = i + 1; j < deck.length; j++) {
-        if (deck[i].symbol === deck[j].symbol) continue;
-        if (used.includes(i) || used.includes(j)) continue;
         const d = this.dist(i, j);
         if (d < bestDist) { bestDist = d; best = [i, j]; }
       }
@@ -229,23 +183,6 @@ export class Game extends Scene {
     const x = Math.min(...xs) - half;
     const y = Math.min(...ys) - half;
     return { x, y, w: Math.max(...xs) + half - x, h: Math.max(...ys) + half - y };
-  }
-
-  /** Демонстрация: переворачиваем карточки ЛИЦОМ, не трогая состояние партии. */
-  private demoOpen(indices: number[]) {
-    for (const i of indices) {
-      if (this.demoCards.includes(i)) continue;
-      this.demoCards.push(i);
-      this.flipOpen(i);
-    }
-  }
-
-  /** Возвращаем поле в исходное состояние после обучения. */
-  private closeDemoCards() {
-    for (const i of this.demoCards) {
-      if (!this.core.isMatched(i)) this.flipClosed(i);
-    }
-    this.demoCards = [];
   }
 
   // ── Шапка партии и пауза ─────────────────────────────────────────────────────
@@ -276,17 +213,13 @@ export class Game extends Scene {
   /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
   private openPause() {
     if (this.finished || this.pause?.open) return;
-    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
-    if (this.tutorialActive) {
-      this.exitToMenu();
-      return;
-    }
     this.timer?.pause();
     this.pause = openPauseSheet(this, {
       locale: this.locale,
       summary: this.pauseSummary(),
       sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
-      onResume: () => { this.pause = null; this.timer?.resume(); },
+      // В обучении часы стоят до первой пары — «Продолжить» их не запускает.
+      onResume: () => { this.pause = null; if (!this.tutorial?.active) this.timer?.resume(); },
       onRestart: () => this.scene.restart(),
       onExit: () => this.exitToMenu(),
       onHowto: () => {
@@ -334,7 +267,6 @@ export class Game extends Scene {
     const left = (W - gridW) / 2 + size / 2;
     const top = GRID_TOP + (GRID_BOTTOM - GRID_TOP - gridH) / 2 + size / 2;
     this.cardSize = size;
-    this.gridRect = { x: left - size / 2, y: top - size / 2, w: gridW, h: gridH };
 
     for (let i = 0; i < this.core.deck.length; i++) {
       const cx = left + (i % cols) * (size + GAP);
@@ -378,7 +310,7 @@ export class Game extends Scene {
   // ── Логика взаимодействия ────────────────────────────────────────────────────
 
   private onCardTap(index: number) {
-    if (this.finished || this.locked || this.tutorialActive) return;
+    if (this.finished || this.locked) return;
     const before = [...this.core.open];
     const result = this.core.flip(index);
     if (result === 'ignored') return;
@@ -388,6 +320,8 @@ export class Game extends Scene {
 
     if (result === 'match' || result === 'won') {
       playSound('ok');
+      // Первая пара закрывает обучение: дальше обычная партия с таймером и ходами.
+      this.tutorial?.done();
       const pairIdx = before[0];
       this.time.delayedCall(170, () => {
         this.pulseMatch(pairIdx);
@@ -399,6 +333,8 @@ export class Game extends Scene {
       }
     } else if (result === 'miss') {
       playSound('wrong');
+      // Правило про промах — в момент первого промаха, а не карточкой заранее.
+      showRuleOnce(this, 'pairs:miss', t(this.locale, 'rule.miss'));
       this.locked = true;
       const other = before[0];
       this.time.delayedCall(750, () => {
