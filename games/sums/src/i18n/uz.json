@@ -39,5 +39,6 @@
   "intro.negative": "manfiy sonlar",
   "level.goldHint": "3 yulduz — {n} yurishdan koʻp emas",
   "game.dailyLevel": "Kun darajasi",
-  "result.dailyLevel": "Kun darajasi"
+  "result.dailyLevel": "Kun darajasi",
+  "pause.moves": "yurishlar {moves}"
 }
