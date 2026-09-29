@@ -1,14 +1,16 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { setBackHandler, makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip, playSound, makePhoenix } from '../ui';
-import { COLORS, FONT } from '../palette';
-import { DPR } from '../dpr';
-import { levelAt, LADDER_SIZE } from '../../core/levels';
+import {
+  setBackHandler, applyTheme, setupCamera, makeBonusChip, playSound, makeLadderResult, uiText, pluralForm, motionAllowed,
+} from '../ui';
+import { COLORS } from '../palette';
+import { levelAt, levelInfo, LADDER_SIZE, type Phrase } from '../../core/levels';
 import { pictureById } from '../../core/pictures';
 import { BASE_FRAME, ensurePictureTexture } from '../picture';
-import { settleLadderRound, starsFor, loadProgress, isUnlocked } from '@gamewingo/game-progress';
-import type { Session } from '../../bridge/session';
+import {
+  settleLadderRound, starsFor, starGap, chapterOf, loadProgress, isUnlocked,
+} from '@gamewingo/game-progress';
 import confetti from 'canvas-confetti';
 
 interface LastGame {
@@ -23,11 +25,20 @@ interface LastGame {
   picture: string;
 }
 
-const CX = 200;
 const SLUG = 'jigsaw';
-/** Собранная картинка на экране истории. */
-const PIC = 168;
+/** Собранная картинка над итогом — то, чем ребёнок только что гордится. */
+const PIC = 76;
+const PIC_Y = 50;
+/** Верх колонки итога — под картинкой. */
+const TOP = PIC_Y + PIC / 2 + 12;
 
+/**
+ * Итог картинки (T4, раздел 1d аудита): собранная картинка, звёзды, «почти»
+ * до третьей звезды, история про картинку, расшифровка бонусов и кнопка,
+ * которая называет следующую картинку. Очков и лидерборда нет.
+ *
+ * Проиграть в пазле нельзя: собрал — значит прошёл. Звёзды меряются промахами.
+ */
 export class GameOver extends Scene {
   constructor() {
     super('GameOver');
@@ -39,122 +50,89 @@ export class GameOver extends Scene {
     applyTheme(this);
     setupCamera(this);
     this.cameras.main.fadeIn(220, ...COLORS.fade);
-    const session = this.registry.get('session') as Session | undefined;
     const last = this.registry.get('lastGame') as LastGame;
     const loc = last.locale;
     const picture = pictureById(last.picture);
 
-    // Проиграть в пазле нельзя: собрал — значит прошёл. Звёзды меряются промахами.
-    const stars = starsFor(levelAt(last.level).goals, last.wrongDrops);
-    // Итог одним вызовом: лестница, счётчики дня и бонусы — картинка, глава, уровень дня, задания.
-    const { bonus } = settleLadderRound({
+    const level = levelAt(last.level);
+    const stars = starsFor(level.goals, last.wrongDrops);
+    // Итог одним вызовом: лестница, счётчики дня и бонусы с разбивкой.
+    const { bonus, lines } = settleLadderRound({
       slug: SLUG, n: last.level, total: LADDER_SIZE,
       mode: last.daily ? 'dailyLevel' : 'level',
       cleared: true, stars, score: last.score,
     });
+
+    playSound('win');
     confetti({ disableForReducedMotion: true, particleCount: 90, spread: 70, origin: { y: 0.35 } });
+
+    // Картинка целиком — награда за сборку; под ней весь итог.
+    const key = ensurePictureTexture(this, last.picture);
+    const image = this.add.image(200, PIC_Y, key, BASE_FRAME).setDisplaySize(PIC, PIC);
+    if (motionAllowed()) {
+      const sx = image.scaleX;
+      const sy = image.scaleY;
+      image.setScale(0);
+      this.tweens.add({ targets: image, scaleX: sx, scaleY: sy, duration: 420, ease: 'Back.easeOut' });
+    }
+
+    // «Почти»: сколько промахов лишние до третьей звезды — повод собрать ещё раз.
+    const gap = starGap(level.goals, last.wrongDrops);
+
+    const nextN = last.level + 1;
+    const hasNext = !last.daily && nextN <= LADDER_SIZE && isUnlocked(loadProgress(SLUG), nextN);
+    const intro = hasNext ? levelInfo(nextN).intro : null;
+
+    const screen = makeLadderResult(this, {
+      locale: loc,
+      caption: last.daily
+        ? uiText(loc, 'result.dailyLevel')
+        : t(loc, 'result.pictureChapter', { n: last.level, k: chapterOf(last.level) }),
+      title: t(loc, 'result.title'),
+      stars,
+      // Провала в пазле не бывает, поэтому под звёздами — название и история картинки.
+      // Короткое название первой строкой ещё и держит длинную историю подальше от маскота.
+      note: `${picture.title[loc]}\n${picture.story[loc]}`,
+      almost: gap && {
+        title: uiText(loc, 'result.almostStar', {
+          gap: t(loc, `result.gapMisses.${pluralForm(gap.missing)}`, { n: gap.missing }),
+        }),
+        detail: gap.threshold > 0
+          ? t(loc, 'result.almostDetail', { misses: last.wrongDrops, need: gap.threshold })
+          : t(loc, 'result.almostDetailFlawless', { misses: last.wrongDrops }),
+        againLabel: uiText(loc, 'result.again'),
+        onAgain: () => this.play(last.level, last.daily),
+      },
+      lines,
+      total: bonus.total,
+      primary: hasNext
+        ? {
+          label: intro
+            ? t(loc, 'result.nextPictureIntro', { n: nextN, intro: this.phrase(loc, intro) })
+            : t(loc, 'game.level', { n: nextN }),
+          onClick: () => this.play(nextN),
+        }
+        : { label: uiText(loc, 'result.again'), onClick: () => this.play(last.level, last.daily) },
+      onMenu: () => this.scene.start('MainMenu'),
+      // Маскот в этой игре всегда радуется: проиграть нельзя.
+      mood: 'happy',
+    }, TOP);
 
     const bonusChip = makeBonusChip(this, 386, 30);
     if (bonus.total > 0) {
       // Чип создан после начисления — откатываем показ на баланс «до»,
       // чтобы прилёт «+N» докрутил его до нового, а не удвоил прибавку.
       bonusChip.setValue(bonus.balance - bonus.total);
-      this.time.delayedCall(1200, () => {
+      this.time.delayedCall(1100, () => {
         playSound('coin');
-        bonusChip.award(bonus.total, CX, 150);
+        bonusChip.award(bonus.total, screen.awardFrom.x, screen.awardFrom.y);
       });
     }
-
-    // Уровень дня подписан над картинкой: в лестницу он не пишется, следующую не открывает.
-    if (last.daily) {
-      this.add
-        .text(CX, 48, t(loc, 'result.dailyLevel'), {
-          fontFamily: FONT, fontSize: 15, color: COLORS.headMuted,
-        })
-        .setOrigin(0.5)
-        .setResolution(DPR);
-    }
-
-    // Собранная картинка целиком — то, чем ребёнок только что гордится.
-    const key = ensurePictureTexture(this, last.picture);
-    const image = this.add.image(CX, 150, key, BASE_FRAME).setDisplaySize(PIC, PIC).setScale(0);
-    this.tweens.add({
-      targets: image,
-      scaleX: PIC / image.width, scaleY: PIC / image.height,
-      duration: 420, ease: 'Back.easeOut',
-    });
-
-    const title = this.add
-      .text(CX, 262, picture.title[loc], {
-        fontFamily: FONT, fontSize: 24, color: COLORS.storyTitle, fontStyle: 'bold',
-        align: 'center', wordWrap: { width: 340 },
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR)
-      .setAlpha(0);
-    this.tweens.add({ targets: title, alpha: 1, duration: 320, delay: 320 });
-
-    // История про картинку — главная награда за сборку.
-    const story = this.add
-      .text(CX, 296, picture.story[loc], {
-        fontFamily: FONT, fontSize: 16, color: COLORS.storyInk,
-        align: 'center', wordWrap: { width: 328 }, lineSpacing: 4,
-      })
-      .setOrigin(0.5, 0)
-      .setResolution(DPR)
-      .setAlpha(0);
-    this.tweens.add({ targets: story, alpha: 1, duration: 380, delay: 480 });
-
-    const afterStory = 296 + story.height + 22;
-
-    // Проиграть в пазле нельзя: собранная картинка — всегда победа.
-    playSound('win');
-
-    // Маскот каталога: в этой игре проиграть нельзя, поэтому он всегда радуется.
-    const phoenix = makePhoenix(this, 322, 648, 84, { facing: 'left' });
-    this.time.delayedCall(320, () => phoenix.celebrate());
-    this.events.once('shutdown', () => phoenix.destroy());
-    for (let i = 0; i < stars; i++) {
-      this.time.delayedCall(680 + i * 160, () => playSound('star'));
-    }
-    const starRow = makeStarRow(this, CX, afterStory, stars, 20).setScale(0);
-    this.tweens.add({ targets: starRow, scale: 1, duration: 380, delay: 640, ease: 'Back.easeOut' });
-
-    this.add
-      .text(CX, afterStory + 30, t(loc, 'result.detail', {
-        pieces: last.pieces, misses: last.wrongDrops,
-      }), {
-        fontFamily: FONT, fontSize: 14, color: COLORS.headMuted,
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-
-    this.buildButtons(loc, last, afterStory + 60);
-    void session;
   }
 
-  /** Кнопки итога: следующая картинка (если открылась), собрать ещё раз, меню. */
-  private buildButtons(loc: Locale, last: LastGame, top: number) {
-    const nextN = last.level + 1;
-    const hasNext = !last.daily && nextN <= LADDER_SIZE && isUnlocked(loadProgress(SLUG), nextN);
-    let y = top;
-
-    if (hasNext) {
-      const next = makeButton(this, CX, y, t(loc, 'result.nextLevel', { n: nextN }), () => this.play(nextN), {
-        primary: true,
-      });
-      this.appear(next.root, 720);
-      y += 52;
-    }
-
-    const again = makeButton(this, CX, y, t(loc, 'result.playAgain'), () => this.play(last.level, last.daily), {
-      primary: !hasNext,
-    });
-    this.appear(again.root, hasNext ? 780 : 720);
-    y += 52;
-
-    const menu = makeButton(this, CX, y, t(loc, 'result.menu'), () => this.scene.start('MainMenu'));
-    this.appear(menu.root, hasNext ? 840 : 780);
+  /** Фраза из core → строка на языке игрока. */
+  private phrase(loc: Locale, p: Phrase): string {
+    return t(loc, p.key, p.vars);
   }
 
   private play(n: number, daily = false) {
@@ -162,13 +140,5 @@ export class GameOver extends Scene {
     // Уровень дня переигрывается тем же раскладом: зерно в реестре осталось с меню.
     this.registry.set('mode', daily ? 'dailyLevel' : 'level');
     this.scene.start('Game');
-  }
-
-  /** Появление снизу вверх с fade. */
-  private appear(obj: { y: number; setAlpha(a: number): unknown }, delay: number) {
-    const toY = obj.y;
-    obj.setAlpha(0);
-    obj.y = toY + 14;
-    this.tweens.add({ targets: obj as object, y: toY, alpha: 1, duration: 300, delay, ease: 'Quad.easeOut' });
   }
 }

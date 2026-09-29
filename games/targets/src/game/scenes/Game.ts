@@ -6,12 +6,12 @@ import {
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
 import {
-  applyTheme, setupCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler, uiText,
-  TOP_BAR_H, type GameHeader, type PauseSheet,
+  applyTheme, setupCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler, uiText, makeRecordGhost,
+  TOP_BAR_H, type GameHeader, type PauseSheet, type RecordGhost,
 } from '../ui';
 import { t } from '../../i18n';
 import { CHALLENGES } from '../../core/challenges';
-import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
+import { challengeStates, loadBests, type ChallengeDef } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
@@ -51,6 +51,8 @@ export class Game extends Scene {
   private timer?: RoundTimer;
 
   private header?: GameHeader;
+  /** «Призрак» рекорда очков под шапкой: каждый раунд — гонка с собой. */
+  private ghost?: RecordGhost;
   private pause: PauseSheet | null = null;
   /** Твины, замороженные паузой-шитом (всплытие/угасание целей, «+N», отсчёт) — их и продолжаем. */
   private frozenTweens: Phaser.Tweens.Tween[] = [];
@@ -97,6 +99,7 @@ export class Game extends Scene {
     this.appPaused = false;
     this.sheetPaused = false;
     this.header = undefined;
+    this.ghost = undefined;
     this.pause = null;
     this.frozenTweens = [];
     // Часы сцены переживают restart: «Начать заново» из паузы пришёл бы с замороженными таймерами.
@@ -175,6 +178,9 @@ export class Game extends Scene {
       ],
       onBack: () => this.openPause(),
     });
+    // Шкала — по очкам: они растут весь раунд плавно, а рекорд очков — главная цифра итога.
+    // Полоса y 56…65 — выше строки испытания (CHALLENGE_Y = 80, кегль 13): не пересекаются.
+    this.ghost = makeRecordGhost(this, TOP_BAR_H + 3, loadBests('targets').score ?? 0);
     // Активное испытание с живым прогрессом — под шапкой; когда всё пройдено, строки нет.
     if (this.challenge) {
       this.challengeText = this.add
@@ -274,6 +280,7 @@ export class Game extends Scene {
     if (this.core.score !== this.lastScore) {
       this.lastScore = this.core.score;
       this.header?.setChip('score', String(this.lastScore));
+      this.ghost?.update(this.lastScore);
       this.updateChallengeLine();
     }
 

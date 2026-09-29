@@ -7,7 +7,8 @@ const REQUIRED = [
   'sound.on', 'sound.off',
   'app.title', 'menu.daily', 'menu.practice', 'menu.howto', 'game.invalidWord', 'game.notInList',
   'result.won', 'result.lost', 'result.answerWas', 'result.share', 'result.claim', 'result.streak',
-  'result.leaderboard', 'error.network', 'a11y.highContrast',
+  'result.claimed', 'result.leaderboard', 'result.guesses', 'result.almostDetail',
+  'result.gapGuesses.one', 'result.gapGuesses.few', 'result.gapGuesses.many', 'a11y.highContrast',
 ];
 
 describe('i18n', () => {
@@ -22,5 +23,7 @@ describe('i18n', () => {
   });
   it('t() достаёт строку и подставляет параметры', () => {
     expect(t('ru', 'result.answerWas', { word: 'книга' })).toContain('книга');
+    expect(t('uz', 'result.guesses', { n: 3, max: 6 })).toContain('3');
+    expect(t('ru', 'result.almostDetail', { used: 4, need: 3 })).toContain('4');
   });
 });

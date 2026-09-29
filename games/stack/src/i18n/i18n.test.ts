@@ -6,9 +6,8 @@ import { t } from './index';
 const REQUIRED = [
   'sound.on', 'sound.off',
   'app.title', 'menu.play', 'menu.howto', 'menu.catalog', 'menu.record',
-  'menu.challenges', 'menu.nextMilestone', 'menu.milestonesDone', 'game.challenge',
-  'pause.summary', 'result.run', 'result.score', 'result.newBest', 'result.closed',
-  'result.playAgain', 'result.menu', 'result.leaderboard', 'error.network',
+  'menu.challenges', 'game.challenge',
+  'pause.summary', 'result.height', 'result.points.one', 'result.points.few', 'result.points.many',
   'onboarding.drop', 'onboarding.cut', 'onboarding.score',
   'onboarding.next', 'onboarding.done', 'onboarding.skip',
 ];
@@ -29,7 +28,8 @@ describe('i18n (stack)', () => {
     }
   });
   it('t() подставляет параметры', () => {
-    expect(t('ru', 'result.score', { score: 1234 })).toContain('1234');
+    expect(t('ru', 'result.points.many', { n: 1234 })).toContain('1234');
+    expect(t('uz', 'result.height', { n: 17 })).toContain('17');
     expect(t('uz', 'menu.challenges', { k: 4, n: 15 })).toContain('4');
   });
 });

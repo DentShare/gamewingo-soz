@@ -1,4 +1,4 @@
-import { buildChallenges, buildMilestones } from '@gamewingo/game-progress';
+import { buildChallenges } from '@gamewingo/game-progress';
 
 /**
  * Прогрессия змейки — от механики, а не от искусственных «уровней»:
@@ -43,14 +43,3 @@ export const CHALLENGES = buildChallenges([
 
 export const CHALLENGES_TOTAL = CHALLENGES.length;
 
-/** Вехи длины — естественная шкала змейки. Награда растёт со ступенью. */
-export const MILESTONES = buildMilestones([
-  ['len10', 'lengthMax', 10, 10],
-  ['len15', 'lengthMax', 15, 12],
-  ['len20', 'lengthMax', 20, 15],
-  ['len25', 'lengthMax', 25, 18],
-  ['len30', 'lengthMax', 30, 21],
-  ['len35', 'lengthMax', 35, 24],
-  ['len40', 'lengthMax', 40, 27],
-  ['len45', 'lengthMax', 45, 30],
-]);

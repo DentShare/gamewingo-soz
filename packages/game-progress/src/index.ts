@@ -15,6 +15,7 @@ export * from './records.js';
 export * from './challenges.js';
 export * from './chapters.js';
 export * from './hub.js';
+export * from './results.js';
 export * from './config/index.js';
 
 import type { Stars } from './ladder.js';
@@ -54,8 +55,12 @@ export function recordEndlessResult(slug: string, score: number): void {
 import { chapterLevels } from './ladder.js';
 import { dailyMissions, type Mission } from './missions.js';
 import {
-  bonusBalance, grantChapterClears, grantLevelOfDay, grantRoundBonuses, type RoundBonuses,
+  bonusBalance, grantArcadeBonuses, grantChapterClears, grantLevelOfDay, grantRecordWeek, grantRoundBonuses,
+  type RoundBonuses,
 } from './bonus.js';
+import { recordArcadeRound, type ArcadeRoundResult, type ChallengeDef } from './challenges.js';
+import { loadBests } from './records.js';
+import { bonusBreakdown, challengeOutlook, type BonusLine, type ChallengeOutlook } from './results.js';
 import { markDailyLevelDone } from './chapters.js';
 import { computeDayId } from './day.js';
 
@@ -78,6 +83,8 @@ export interface LadderRoundResult {
   /** Запись в лестницу; null — уровень дня или провал. */
   record: RecordResult | null;
   bonus: RoundBonuses;
+  /** Разбивка для экрана итогов: за что начислено и какие задания продвинулись. */
+  lines: BonusLine[];
 }
 
 /**
@@ -120,5 +127,53 @@ export function settleLadderRound(input: LadderRound): LadderRoundResult {
     bonus.total += extra.reduce((sum, g) => sum + g.amount, 0);
     bonus.balance = bonusBalance();
   }
-  return { record, bonus };
+  return { record, bonus, lines: bonusBreakdown({ granted: bonus.granted, missionsBefore, dayId }) };
+}
+
+export interface ArcadeRound {
+  slug: string;
+  defs: readonly ChallengeDef[];
+  /** Метрики забега — по ним судятся испытания, рекорды и «почти». */
+  metrics: Record<string, number>;
+  score: number;
+  missionsBefore?: Mission[];
+  dayId?: number;
+}
+
+export interface ArcadeRoundSettled {
+  round: ArcadeRoundResult;
+  bonus: RoundBonuses;
+  lines: BonusLine[];
+  outlook: ChallengeOutlook;
+  /** Рекорды до забега — для «рекорд 20» и «Новый рекорд · 23». */
+  bestsBefore: Record<string, number>;
+}
+
+/**
+ * Итог аркадного забега одним вызовом (T4): испытания каскадом, рекорды, счётчики
+ * дня, бонусы — испытания по тарифу уровня, неделя рекордов (побит свой, не первый
+ * рекорд очков), задания дня — и данные «почти / следом» для экрана итогов.
+ * Вехи бонусов больше не дают: одна шкала — испытания.
+ */
+export function settleArcadeRound(input: ArcadeRound): ArcadeRoundSettled {
+  const dayId = input.dayId ?? computeDayId();
+  const missionsBefore = input.missionsBefore ?? dailyMissions(dayId);
+  const bestsBefore = loadBests(input.slug);
+  const round = recordArcadeRound({ slug: input.slug, defs: input.defs, metrics: input.metrics, score: input.score });
+  const bonus = grantArcadeBonuses({ slug: input.slug, closed: round.closed, missionsBefore, dayId });
+  if (round.records.improved.includes('score') && (bestsBefore.score ?? 0) > 0) {
+    const week = grantRecordWeek(dayId);
+    if (week) {
+      bonus.granted.push(week);
+      bonus.total += week.amount;
+      bonus.balance = bonusBalance();
+    }
+  }
+  return {
+    round,
+    bonus,
+    lines: bonusBreakdown({ granted: bonus.granted, missionsBefore, arcade: true, dayId }),
+    outlook: challengeOutlook(input.slug, input.defs, { ...input.metrics, score: input.score }),
+    bestsBefore,
+  };
 }

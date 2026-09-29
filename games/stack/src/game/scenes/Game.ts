@@ -5,12 +5,12 @@ import { computeScore } from '../../core/score';
 import { COLORS, FONT, blockColor } from '../palette';
 import {
   applyTheme, darken, setupCamera, shakeCamera, playSound, makeGameHeader, openPauseSheet,
-  setBackHandler, TOP_BAR_H, type GameHeader, type PauseSheet,
+  setBackHandler, makeRecordGhost, TOP_BAR_H, type GameHeader, type PauseSheet, type RecordGhost,
 } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import { CHALLENGES } from '../../core/challenges';
-import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
+import { challengeStates, loadBests, type ChallengeDef } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
@@ -62,6 +62,8 @@ export class Game extends Scene {
 
   /** Шапка партии: стрелка (пауза), название игры, чипы счёта и точных попаданий. */
   private header?: GameHeader;
+  /** «Призрак» рекорда высоты под шапкой: каждая партия — гонка с собой. */
+  private ghost?: RecordGhost;
   private pause: PauseSheet | null = null;
   /** Мир стоит: блок не едет, таймеры и твины заморожены (пауза-шит открыт). */
   private paused = false;
@@ -81,6 +83,7 @@ export class Game extends Scene {
     this.frozen = false;
     this.timer = undefined;
     this.header = undefined;
+    this.ghost = undefined;
     this.pause = null;
     this.paused = false;
     this.frozenTweens = [];
@@ -230,6 +233,8 @@ export class Game extends Scene {
       ],
       onBack: () => this.openPause(),
     });
+    this.ghost = makeRecordGhost(this, TOP_BAR_H + 3, loadBests('stack').blocks ?? 0);
+    this.ghost.update(this.core.placed);
     // Активное испытание с живым прогрессом — под шапкой; когда всё пройдено, строки нет.
     if (this.challenge) {
       this.challengeText = this.add
@@ -250,10 +255,11 @@ export class Game extends Scene {
       .setDepth(20);
   }
 
-  /** Счёт и точные попадания — в чипы шапки. */
+  /** Счёт и точные попадания — в чипы шапки, высота — в «призрак» рекорда. */
   private updateChips() {
     this.header?.setChip('score', String(this.core.score));
     this.header?.setChip('perfects', perfectsLabel(this.core.perfects));
+    this.ghost?.update(this.core.placed);
   }
 
   /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */

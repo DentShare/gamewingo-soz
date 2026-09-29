@@ -4,14 +4,14 @@ import { createGrid2048, applyMove, SIZE, type Grid2048, type Dir } from '../../
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT, tileColor, tileTextColor, tileFontSize } from '../palette';
 import {
-  applyTheme, darken, toast, setupCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler,
-  TOP_BAR_H, type GameHeader, type PauseSheet,
+  applyTheme, darken, toast, setupCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler, makeRecordGhost,
+  TOP_BAR_H, type GameHeader, type PauseSheet, type RecordGhost,
 } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import { CHALLENGES } from '../../core/challenges';
-import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
+import { challengeStates, loadBests, type ChallengeDef } from '@gamewingo/game-progress';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import {
@@ -55,6 +55,8 @@ export class Game extends Scene {
   private core!: Grid2048;
   private tileLayer!: Phaser.GameObjects.Container;
   private header?: GameHeader;
+  /** «Призрак» рекорда очков под шапкой: каждая партия — гонка с собой. */
+  private ghost?: RecordGhost;
   private pause: PauseSheet | null = null;
   private best = 0;
   private timer!: RoundTimer;
@@ -73,6 +75,7 @@ export class Game extends Scene {
     this.tutorialActive = false;
     this.swipeFrom = null;
     this.header = undefined;
+    this.ghost = undefined;
     this.pause = null;
     // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
     setBackHandler(() => this.onSystemBack());
@@ -103,7 +106,7 @@ export class Game extends Scene {
       clearSave(); // старая партия больше не нужна
       this.core = createGrid2048(this.freshRng());
     }
-    this.best = loadBest();
+    this.best = this.recordScore();
 
     this.buildHud();
     this.buildBoard();
@@ -138,7 +141,7 @@ export class Game extends Scene {
   private runHowto() {
     this.registry.set('howto', false); // одноразовый вход
     this.tutorialActive = true;
-    this.best = loadBest();
+    this.best = this.recordScore();
     this.core = createGrid2048(this.freshRng(), { cells: TUTORIAL_CELLS });
 
     this.buildHud();
@@ -248,6 +251,14 @@ export class Game extends Scene {
       ],
       onBack: () => this.openPause(),
     });
+    // Шкала — по очкам, а не по номиналу: очки растут с каждым слиянием плавно,
+    // плитка удваивается ступенями — шкала бы стояла и прыгала. Полоса y 56…65 —
+    // выше строки испытания (CHALLENGE_Y = 78, кегль 13): не пересекаются.
+    // В «Как играть» шкалы нет: показательные ходы — не партия.
+    if (!this.tutorialActive) {
+      this.ghost = makeRecordGhost(this, TOP_BAR_H + 3, loadBests('2048').score ?? 0);
+      this.ghost.update(this.core.score); // продолженная партия стартует не с нуля
+    }
     if (this.challenge) {
       this.challengeText = this.add
         .text(W / 2, CHALLENGE_Y, this.challengeLabel(), {
@@ -258,6 +269,14 @@ export class Game extends Scene {
     } else {
       this.challengeText = undefined;
     }
+  }
+
+  /**
+   * Рекорд очков — из общей прогрессии (его пишет итог партии и показывает меню);
+   * старый ключ `2048:best` учитываем, чтобы не потерять рекорд прежних версий.
+   */
+  private recordScore(): number {
+    return Math.max(loadBests('2048').score ?? 0, loadBest());
   }
 
   private scoreLabel(): string {
@@ -273,6 +292,7 @@ export class Game extends Scene {
     this.header?.setChip('score', this.scoreLabel());
     // Показательный ход обучения — не игровой: рекорд он двигать не должен.
     if (this.tutorialActive) return;
+    this.ghost?.update(this.core.score);
     if (this.core.score > this.best) {
       this.best = this.core.score;
       this.header?.setChip('best', this.bestLabel());

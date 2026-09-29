@@ -9,14 +9,14 @@ const REQUIRED = [
   'chapter.1', 'chapter.2', 'chapter.3',
   'level.field.one', 'level.field.few', 'level.field.many', 'level.goldHint',
   'intro.field', 'intro.clues', 'intro.mistakes', 'intro.mistakesTighter', 'intro.timer', 'intro.timerTighter',
-  'game.dailyLevel', 'result.dailyLevel',
+  'game.dailyLevel',
   'menu.catalog', 'game.hints', 'game.level', 'game.mistakes',
   'game.fail.mistakes', 'game.fail.time',
-  'result.failed', 'result.level', 'result.nextLevel', 'result.unlocked', 'result.tryAgain',
+  'result.failed', 'result.filledOf',
   'onboarding.grid', 'onboarding.row', 'onboarding.block', 'onboarding.input', 'onboarding.hint',
   'onboarding.next', 'onboarding.done', 'onboarding.skip',
-  'result.title', 'result.score', 'result.time', 'result.hintsUsed',
-  'result.newBest', 'result.playAgain', 'result.menu', 'result.leaderboard', 'error.network',
+  'result.title', 'result.gapSeconds.one', 'result.gapSeconds.few', 'result.gapSeconds.many',
+  'result.almostDetail',
 ];
 
 describe('i18n (sudoku-kids)', () => {
@@ -30,7 +30,8 @@ describe('i18n (sudoku-kids)', () => {
     }
   });
   it('t() подставляет параметры', () => {
-    expect(t('ru', 'result.score', { score: 1234 })).toContain('1234');
+    expect(t('ru', 'result.almostDetail', { time: '1:15', need: '1:10' })).toContain('1:10');
+    expect(t('uz', 'result.filledOf', { k: 7, n: 9 })).toBe('Toʻldirilgan kataklar: 9 dan 7');
     expect(t('uz', 'game.hints', { n: 2 })).toContain('2');
   });
 });

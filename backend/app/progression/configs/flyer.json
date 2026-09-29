@@ -158,55 +158,5 @@
       "metric": "passed",
       "target": 45
     }
-  ],
-  "milestones": [
-    {
-      "id": "pass5",
-      "metric": "passed",
-      "target": 5,
-      "reward": 10
-    },
-    {
-      "id": "pass10",
-      "metric": "passed",
-      "target": 10,
-      "reward": 12
-    },
-    {
-      "id": "pass15",
-      "metric": "passed",
-      "target": 15,
-      "reward": 15
-    },
-    {
-      "id": "pass20",
-      "metric": "passed",
-      "target": 20,
-      "reward": 18
-    },
-    {
-      "id": "pass26",
-      "metric": "passed",
-      "target": 26,
-      "reward": 21
-    },
-    {
-      "id": "pass33",
-      "metric": "passed",
-      "target": 33,
-      "reward": 24
-    },
-    {
-      "id": "pass40",
-      "metric": "passed",
-      "target": 40,
-      "reward": 27
-    },
-    {
-      "id": "pass50",
-      "metric": "passed",
-      "target": 50,
-      "reward": 30
-    }
   ]
 }

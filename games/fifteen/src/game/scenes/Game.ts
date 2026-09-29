@@ -1,6 +1,6 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
-import { createBoard, type Board } from '../../core/board';
+import { createBoard, tilesInPlace, type Board } from '../../core/board';
 import { levelAt, type FifteenParams } from '../../core/levels';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
@@ -469,6 +469,8 @@ export class Game extends Scene {
 
     this.registry.set('lastGame', {
       level: this.level, daily: this.daily, locale: this.locale, moves, durationMs, cleared,
+      // Для провала — докуда дошли: «На месте плиток: 11 из 15».
+      inPlace: tilesInPlace(this.board.tiles), tiles: this.board.size * this.board.size - 1,
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));

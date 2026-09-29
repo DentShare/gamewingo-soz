@@ -8,15 +8,14 @@ import {
   makeTopBar,
   makeGameIcon,
   makeRecordBadge,
-  makeMilestoneBar,
   makeChallengeList,
   type ChallengeRowState,
   setBackHandler,
 } from '../ui';
 import { COLORS } from '../palette';
-import { CHALLENGES, CHALLENGES_TOTAL, MILESTONES } from '../../core/challenges';
+import { CHALLENGES, CHALLENGES_TOTAL } from '../../core/challenges';
 import {
-  challengeStates, milestoneStates, nextMilestone, loadBests,
+  challengeStates, loadBests,
 } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 
@@ -55,16 +54,6 @@ export class MainMenu extends Scene {
       label: t(this.locale, 'menu.record'),
     });
 
-    // Полоса до следующей вехи длины.
-    const miles = milestoneStates(SLUG, MILESTONES);
-    const next = nextMilestone(miles);
-    makeMilestoneBar(this, CX, 196, {
-      label: next
-        ? t(this.locale, 'menu.nextMilestone', { n: next.target, r: next.reward })
-        : t(this.locale, 'menu.milestonesDone'),
-      value: next ? Math.round(bests.score ?? 0) : 1,
-      target: next ? next.target : 1,
-    });
 
     // Испытания: выполненные, активное и пара следующих.
     const states = challengeStates(SLUG, CHALLENGES);
@@ -75,12 +64,12 @@ export class MainMenu extends Scene {
       done: s.done,
       active: s.active,
     }));
-    const list = makeChallengeList(this, CX, 226, {
+    const list = makeChallengeList(this, CX, 196, {
       header: t(this.locale, 'menu.challenges', { k: doneCount, n: CHALLENGES_TOTAL }),
       rows,
     });
 
-    const belowList = 226 + list.height + 34;
+    const belowList = 196 + list.height + 34;
     makeButton(this, CX, belowList, t(this.locale, 'menu.play'), () => this.startRun(), {
       primary: true,
     });

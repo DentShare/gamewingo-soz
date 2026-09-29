@@ -165,55 +165,5 @@
       "metric": "blocks",
       "target": 60
     }
-  ],
-  "milestones": [
-    {
-      "id": "blocks10",
-      "metric": "blocks",
-      "target": 10,
-      "reward": 10
-    },
-    {
-      "id": "blocks15",
-      "metric": "blocks",
-      "target": 15,
-      "reward": 12
-    },
-    {
-      "id": "blocks20",
-      "metric": "blocks",
-      "target": 20,
-      "reward": 15
-    },
-    {
-      "id": "blocks26",
-      "metric": "blocks",
-      "target": 26,
-      "reward": 18
-    },
-    {
-      "id": "blocks33",
-      "metric": "blocks",
-      "target": 33,
-      "reward": 21
-    },
-    {
-      "id": "blocks40",
-      "metric": "blocks",
-      "target": 40,
-      "reward": 24
-    },
-    {
-      "id": "blocks50",
-      "metric": "blocks",
-      "target": 50,
-      "reward": 27
-    },
-    {
-      "id": "blocks60",
-      "metric": "blocks",
-      "target": 60,
-      "reward": 30
-    }
   ]
 }

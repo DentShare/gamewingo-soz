@@ -161,55 +161,5 @@
       "metric": "eaten",
       "target": 45
     }
-  ],
-  "milestones": [
-    {
-      "id": "len10",
-      "metric": "lengthMax",
-      "target": 10,
-      "reward": 10
-    },
-    {
-      "id": "len15",
-      "metric": "lengthMax",
-      "target": 15,
-      "reward": 12
-    },
-    {
-      "id": "len20",
-      "metric": "lengthMax",
-      "target": 20,
-      "reward": 15
-    },
-    {
-      "id": "len25",
-      "metric": "lengthMax",
-      "target": 25,
-      "reward": 18
-    },
-    {
-      "id": "len30",
-      "metric": "lengthMax",
-      "target": 30,
-      "reward": 21
-    },
-    {
-      "id": "len35",
-      "metric": "lengthMax",
-      "target": 35,
-      "reward": 24
-    },
-    {
-      "id": "len40",
-      "metric": "lengthMax",
-      "target": 40,
-      "reward": 27
-    },
-    {
-      "id": "len45",
-      "metric": "lengthMax",
-      "target": 45,
-      "reward": 30
-    }
   ]
 }

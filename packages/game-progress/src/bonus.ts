@@ -279,13 +279,15 @@ function grantClosedMissions(
 
 /**
  * Бонусы аркадного забега: каждое закрытое испытание оплачивается по тарифу
- * уровня (испытание n — это уровень n), достигнутые вехи — по своей цене,
- * плюс задания дня. Ключи идемпотентны — повторов не бывает.
+ * уровня (испытание n — это уровень n), плюс задания дня. Ключи идемпотентны —
+ * повторов не бывает. Вехи (T4) бонусов не дают: испытания и вехи мерили одну
+ * шкалу, осталась одна — испытания; поле `milestones` принимается и игнорируется.
  */
 export function grantArcadeBonuses(input: {
   slug: string;
   closed: ReadonlyArray<{ n: number }>;
-  milestones: ReadonlyArray<{ id: string; reward: number; achieved: boolean }>;
+  /** @deprecated вехи больше не оплачиваются — см. выше. */
+  milestones?: ReadonlyArray<{ id: string; reward: number; achieved: boolean }>;
   missionsBefore: Mission[];
   dayId?: number;
 }): RoundBonuses {
@@ -297,9 +299,6 @@ export function grantArcadeBonuses(input: {
 
   for (const ch of input.closed) {
     tryAward(`level-${input.slug}-${ch.n}`, TARIFF.level(ch.n));
-  }
-  for (const m of input.milestones) {
-    if (m.achieved) tryAward(`milestone-${input.slug}-${m.id}`, m.reward);
   }
   grantClosedMissions(tryAward, input.missionsBefore, dayId);
 
