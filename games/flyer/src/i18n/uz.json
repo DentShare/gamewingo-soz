@@ -32,9 +32,11 @@
   "onboarding.next": "Keyingi",
   "onboarding.done": "Tushunarli",
   "onboarding.skip": "Oʻtkazib yuborish",
-  "result.passed": "Teshiklar {n}",
   "result.points.one": "{n} ochko",
   "result.points.few": "{n} ochko",
   "result.points.many": "{n} ochko",
-  "pause.summary": "Teshiklar {passed} · havoda {time}"
+  "pause.summary": "Teshiklar {passed} · havoda {time}",
+  "result.passed.one": "{n} ta teshik",
+  "result.passed.few": "{n} ta teshik",
+  "result.passed.many": "{n} ta teshik"
 }

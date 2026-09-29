@@ -86,7 +86,7 @@ export class GameOver extends Scene {
       caption: uiText(loc, 'result.run', { t: clock(last.durationMs) }),
       title: passedRecord
         ? uiText(loc, 'result.newRecord', { v: last.passed })
-        : t(loc, 'result.passed', { n: last.passed }),
+        : t(loc, `result.passed.${pluralForm(last.passed)}`, { n: last.passed }),
       chips: [
         t(loc, `result.points.${pluralForm(last.score)}`, { n: last.score }),
         uiText(loc, 'result.recordChip', { v: round.records.bests.passed ?? last.passed }),

@@ -32,9 +32,11 @@
   "onboarding.next": "Далее",
   "onboarding.done": "Понятно",
   "onboarding.skip": "Пропустить",
-  "result.passed": "Проёмов {n}",
   "result.points.one": "{n} очко",
   "result.points.few": "{n} очка",
   "result.points.many": "{n} очков",
-  "pause.summary": "Проёмов {passed} · в воздухе {time}"
+  "pause.summary": "Проёмов {passed} · в воздухе {time}",
+  "result.passed.one": "{n} проём",
+  "result.passed.few": "{n} проёма",
+  "result.passed.many": "{n} проёмов"
 }

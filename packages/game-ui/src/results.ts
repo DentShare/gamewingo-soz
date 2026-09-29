@@ -74,15 +74,16 @@ export interface AlmostCardOpts {
   title: string;
   /** «Вы: 9 ходов · нужно 8 · время 0:42». */
   detail?: string;
-  againLabel: string;
+  /** Без подписи — кнопки нет (главная кнопка экрана уже «Ещё раз»). */
+  againLabel?: string;
   onAgain(): void;
 }
 
 /** Карточка «почти»: дельта до третьей звезды и «Ещё раз» прямо рядом с ней. */
 export function makeAlmostCard(scene: Scene, x: number, y: number, o: AlmostCardOpts): Block {
   const root = scene.add.container(x - CARD_W / 2, y);
-  const btnW = 96;
-  const textW = CARD_W - PAD * 2 - btnW - 12;
+  const btnW = o.againLabel ? 96 : 0;
+  const textW = CARD_W - PAD * 2 - (btnW ? btnW + 12 : 0);
   const title = text(scene, PAD, PAD, o.title, TYPE.body, S.ink, WEIGHT.semibold).setWordWrapWidth(textW, true);
   let h = PAD + title.height;
   const items: Phaser.GameObjects.GameObject[] = [title];
@@ -91,9 +92,11 @@ export function makeAlmostCard(scene: Scene, x: number, y: number, o: AlmostCard
     items.push(d);
     h += 4 + d.height;
   }
-  h = Math.max(h + PAD, 68);
-  const btn = makeButton(scene, CARD_W - PAD - btnW / 2, h / 2, o.againLabel, () => o.onAgain(), { width: btnW, height: 36 });
-  root.add([card(scene, CARD_W, h), ...items, btn.root]);
+  h = Math.max(h + PAD, o.againLabel ? 68 : 0);
+  root.add([card(scene, CARD_W, h), ...items]);
+  if (o.againLabel) {
+    root.add(makeButton(scene, CARD_W - PAD - btnW / 2, h / 2, o.againLabel, () => o.onAgain(), { width: btnW, height: 36 }).root);
+  }
   return { root, height: h };
 }
 
@@ -260,7 +263,11 @@ export function makeFollowingList(scene: Scene, x: number, y: number, o: Followi
     g.lineStyle(1, C.divider, 0.6).strokeRoundedRect(0, 0, CARD_W, ROW_H, RADIUS.card);
     const count = text(scene, CARD_W - 14, 12, `${Math.min(r.value, r.target)} / ${r.target}`, TYPE.caption + 1, S.muted, WEIGHT.semibold)
       .setOrigin(1, 0);
-    const label = fit(text(scene, 14, 11, r.text, TYPE.body - 1, S.ink), CARD_W - 14 - count.width - 24);
+    // Длинное испытание («Набери 15000 очков за партию») сначала мельче, потом многоточие.
+    const room = CARD_W - 14 - count.width - 24;
+    const label = text(scene, 14, 11, r.text, TYPE.body - 1, S.ink);
+    for (let size = TYPE.body - 2; label.width > room && size >= TYPE.caption; size--) label.setFontSize(size);
+    fit(label, room);
     row.add([g, label, count, bar(scene, 14, 35, CARD_W - 28, 4, r.value / r.target, C.primarySoft)]);
     items.push(row);
     cy += ROW_H + 8;
@@ -337,9 +344,9 @@ function header(scene: Scene, cx: number, top: number, caption: string, title: s
   const cap = text(scene, cx, top, caption, TYPE.body, S.muted).setOrigin(0.5, 0);
   const t = text(scene, cx, top + 24, title, 30, S.ink, WEIGHT.bold).setOrigin(0.5, 0);
   // Справа от заголовка сидит феникс: длинный заголовок («Yangi rekord · 23»)
-  // сначала уменьшаем до 22, и только потом режем.
+  // сначала уменьшаем до 18 («Новый рекорд · 3500» целиком), и только потом режем.
   const maxW = LOGICAL_W - 150;
-  for (let size = 29; t.width > maxW && size >= 22; size--) t.setFontSize(size);
+  for (let size = 29; t.width > maxW && size >= 18; size--) t.setFontSize(size);
   fit(t, maxW);
   appear(scene, cap, 60);
   if (motionAllowed()) {
@@ -392,7 +399,9 @@ export function makeLadderResult(scene: Scene, o: LadderResultOpts, top = 56): R
   }
 
   if (o.almost) {
-    const a = makeAlmostCard(scene, cx, y, o.almost);
+    // «Ещё раз» дважды не показываем: если главная кнопка уже переигрывает, в карточке её нет.
+    const dup = o.almost.againLabel === o.primary.label;
+    const a = makeAlmostCard(scene, cx, y, dup ? { ...o.almost, againLabel: undefined } : o.almost);
     appear(scene, a.root, 480);
     y += a.height + GAP;
   }
