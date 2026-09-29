@@ -6,19 +6,20 @@ import { tokenizeWord } from '../../core/tokenizer';
 import { loadDictionary, type Dictionary } from '../../core/dictionary';
 import { createGame, type Game as CoreGame } from '../../core/gameState';
 import { pickDailyWord, dailyIndex } from '../../core/dailyWord';
-import { saveDaily, loadDaily, hasOnboarded, setOnboarded } from '../../core/persistence';
+import { saveDaily, loadDaily, hasOnboarded, setOnboarded, recordDailyStats } from '../../core/persistence';
+import { rareAnswers } from '../../core/rare';
 import { keyboardFor, ENTER, BACKSPACE, UZ_DIGRAPH_KEYS, type Key } from '../keyboards';
 import { paletteFor, statusColor, COLORS, FONT, HIGH_CONTRAST, type Palette } from '../palette';
 import {
   toast, applyTheme, setupCamera, makeKeyCap, type KeyCap, playSound, makeGameHeader, openPauseSheet,
-  setBackHandler, TOP_BAR_H, VIEW_BOTTOM, runFirstMoveTutorial, showRuleOnce,
+  setBackHandler, TOP_BAR_H, VIEW_BOTTOM, runFirstMoveTutorial, showRuleOnce, uiText,
   type FirstMoveTutorial, type Rect, type GameHeader, type PauseSheet,
 } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
-import { createRoundTimer, type RoundTimer } from '../roundTimer';
+import { createRoundTimer, formatClock, type RoundTimer } from '../roundTimer';
 import confetti from 'canvas-confetti';
 
 import ansRu from '../../data/answers.ru.json';
@@ -30,6 +31,17 @@ const DATA: Record<Locale, { answers: string[]; allowed: string[] }> = {
   ru: { answers: ansRu, allowed: alwRu },
   uz: { answers: ansUz, allowed: alwUz },
 };
+
+/** Поднабор редких слов по языку — считается один раз за сеанс (частоты по всему словарю). */
+const RARE = new Map<Locale, string[]>();
+function rarePool(locale: Locale): string[] {
+  let pool = RARE.get(locale);
+  if (!pool) {
+    pool = rareAnswers(DATA[locale].answers, DATA[locale].allowed, locale);
+    RARE.set(locale, pool);
+  }
+  return pool;
+}
 
 const TILE = 54;
 const GAP = 6;
@@ -149,6 +161,53 @@ export class Game extends Scene {
 
     this.bindPhysicalKeyboard();
     if (howto || (!hasOnboarded() && this.coreGame.guessesUsed === 0)) this.startTutorial();
+    else this.announceRules();
+  }
+
+  update() {
+    const limit = this.params.timeLimitSec;
+    if (!limit || !this.header || !this.timer || this.finished) return;
+    const left = this.secondsLeft();
+    // Последние десять секунд — белый чип с красным текстом.
+    this.header.setChip('time', formatClock(left), left <= 10);
+    if (left <= 0) this.timeUp();
+  }
+
+  /** Сколько секунд осталось на слово (таймер стоит в паузе и в обучении). */
+  private secondsLeft(): number {
+    const elapsed = Math.floor((this.timer?.elapsedMs() ?? 0) / 1000);
+    return Math.max(0, this.params.timeLimitSec - elapsed);
+  }
+
+  /** Время вышло: слово не отгадано, как после последней попытки. */
+  private timeUp() {
+    if (this.finished || this.coreGame.status !== 'in_progress') return;
+    playSound('wrong');
+    this.say(t(this.locale, 'game.fail.time'));
+    this.coreGame.status = 'lost';
+    this.endGame(false);
+  }
+
+  /**
+   * Правила уровня — строкой перед стартом первого уровня, где они появились
+   * (строгий режим, редкие слова, таймер). Каждое — один раз за всё время;
+   * если на уровне новых два, второе идёт после первого, а не поверх.
+   */
+  private announceRules() {
+    if (this.mode !== 'practice') return;
+    const p = this.params;
+    const rules: Array<[string, string]> = [];
+    if (p.strict) rules.push(['soz:strict', t(this.locale, 'rule.strict')]);
+    if (p.rare) rules.push(['soz:rare', t(this.locale, 'rule.rare')]);
+    if (p.timeLimitSec) rules.push(['soz:timer', t(this.locale, 'rule.timer', { t: formatClock(p.timeLimitSec) })]);
+    const next = (i: number) => {
+      if (i >= rules.length || this.finished) return;
+      const [id, text] = rules[i];
+      // Показанная строка держится ≥ 2 с — следующую ставим после неё, уже виденную пропускаем.
+      if (showRuleOnce(this, id, text)) this.time.delayedCall(Math.max(2000, text.length * 45) + 500, () => next(i + 1));
+      else next(i + 1);
+    };
+    next(0);
   }
 
   /**
@@ -172,6 +231,7 @@ export class Game extends Scene {
         setOnboarded();
         this.header?.setChipsVisible(true);
         if (!this.pause?.open) this.timer.resume();
+        this.announceRules();
       },
     });
   }
@@ -212,11 +272,16 @@ export class Game extends Scene {
     showRuleOnce(this, 'soz:colors', t(this.locale, key), { y: this.rowCenterY(row) + TILE / 2 + 10 });
   }
 
+  /**
+   * Слово тренировки: случайное из ответов (на уровнях с редкими словами — из
+   * редкого поднабора), но не сегодняшнее слово дня — его не подсмотреть заранее.
+   */
   private randomPracticeWord(): string {
-    const dailyIdx = dailyIndex(this.dayId, this.dict.answers.length);
-    let idx = Math.floor(Math.random() * this.dict.answers.length);
-    if (this.dict.answers.length > 1 && idx === dailyIdx) idx = (idx + 1) % this.dict.answers.length;
-    return this.dict.answers[idx];
+    const answers = this.dict.answers;
+    const daily = answers[dailyIndex(this.dayId, answers.length)];
+    const pool = this.params.rare ? rarePool(this.locale) : answers;
+    const choices = pool.length > 1 ? pool.filter((w) => w !== daily) : pool;
+    return choices[Math.floor(Math.random() * choices.length)];
   }
 
   private colCenterX(col: number) { return BOARD_X + TILE / 2 + col * (TILE + GAP); }
@@ -342,6 +407,10 @@ export class Game extends Scene {
       title: this.mode === 'daily' ? t(this.locale, 'menu.daily') : t(this.locale, 'game.level', { n: this.level }),
       chips: [
         { id: 'attempt', text: this.attemptLabel(), widest: `${this.params.guesses} / ${this.params.guesses}` },
+        // Таймер уровня — обратный отсчёт; без лимита часов в шапке нет.
+        ...(this.params.timeLimitSec
+          ? [{ id: 'time', text: formatClock(this.params.timeLimitSec), widest: '88:88' }]
+          : []),
       ],
       onBack: () => this.openPause(),
     });
@@ -390,6 +459,10 @@ export class Game extends Scene {
   /** «попытка 3 / 6» и для слова дня — что сыгранные ряды не пропадут. */
   private pauseSummary(): string {
     const parts = [t(this.locale, 'pause.attempt', { a: this.attemptLabel() })];
+    if (this.params.timeLimitSec) {
+      parts.push(uiText(this.locale, 'pause.timerStopped'));
+      parts.push(uiText(this.locale, 'pause.left', { t: formatClock(this.secondsLeft()) }));
+    }
     if (this.mode === 'daily' && this.coreGame.guessesUsed > 0) parts.push(t(this.locale, 'pause.dailySaved'));
     return parts.join(' · ');
   }
@@ -582,8 +655,7 @@ export class Game extends Scene {
   }
 
   private refreshKeyColors() {
-    // На поздних уровнях подсветку отбирают: статусы букв приходится держать в голове.
-    if (!this.params.keyboardHints) return;
+    // Подсветка клавиатуры есть на всех уровнях: без неё верх лестницы держался на памяти и везении.
     for (const [key, obj] of this.keyObjects) {
       const st = this.coreGame.letterStatus(key);
       if (st) {
@@ -605,6 +677,8 @@ export class Game extends Scene {
 
     if (this.mode === 'daily') {
       saveDaily(this.locale, this.dayId, { rows, status: this.coreGame.status, rewardClaimed: false });
+      // Статистика слова дня — в момент завершения (запись идемпотентна по dayId).
+      recordDailyStats(this.locale, { dayId: this.dayId, solved, guessesUsed });
     }
 
     // Победу показываем дольше (отскок + конфетти), проигрыш — быстрее.

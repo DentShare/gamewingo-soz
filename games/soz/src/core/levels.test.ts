@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { starsFor } from '@gamewingo/game-progress';
-import { LADDER, LADDER_SIZE, levelAt, DAILY_PARAMS } from './levels';
+import { harderLevers, starsFor } from '@gamewingo/game-progress';
+import { LADDER, LADDER_SIZE, LEVERS, levelAt, newLever, DAILY_PARAMS } from './levels';
 import { MAX_GUESSES } from './locale';
 import { createGame } from './gameState';
 import { tokenizeWord } from './tokenizer';
@@ -11,42 +11,67 @@ describe('лестница «5 букв»', () => {
     LADDER.forEach((lv, i) => expect(lv.n).toBe(i + 1));
   });
 
-  it('попыток становится только меньше', () => {
+  it('на каждом уровне жёстче становится ровно один рычаг', () => {
     for (let i = 1; i < LADDER.length; i++) {
-      expect(LADDER[i].params.guesses).toBeLessThanOrEqual(LADDER[i - 1].params.guesses);
+      const harder = harderLevers(LADDER[i - 1].params, LADDER[i].params, LEVERS);
+      expect(harder, `уровень ${i + 1}`).toHaveLength(1);
     }
-    expect(LADDER[0].params.guesses).toBe(MAX_GUESSES);
-    expect(LADDER[LADDER_SIZE - 1].params.guesses).toBeLessThan(MAX_GUESSES);
   });
 
-  it('цель на звёзды достижима в рамках выданных попыток', () => {
+  it('попыток никогда не меньше пяти; начало — классические шесть', () => {
+    expect(LADDER[0].params.guesses).toBe(MAX_GUESSES);
+    for (const { n, params } of LADDER) expect(params.guesses, `уровень ${n}`).toBeGreaterThanOrEqual(5);
+  });
+
+  it('уровни 11–15 мягче прежнего: 5 попыток, золото за 3, серебро за 4', () => {
+    for (const n of [11, 12, 13, 14, 15]) {
+      const { params, goals } = levelAt(n);
+      expect(params.guesses).toBe(5);
+      expect(goals.gold).toBe(3);
+      expect(goals.silver).toBe(4);
+    }
+  });
+
+  it('золото достижимо аккуратной игрой: не строже трёх попыток', () => {
+    for (const { goals } of LADDER) expect(goals.gold).toBeGreaterThanOrEqual(3);
+  });
+
+  it('лимит попыток не строже серебра, золото лучше серебра', () => {
     for (const { params, goals } of LADDER) {
       expect(goals.gold).toBeLessThan(goals.silver);
       expect(goals.silver).toBeLessThanOrEqual(params.guesses);
-      expect(goals.gold).toBeGreaterThanOrEqual(1);
     }
   });
 
-  it('ограничения появляются по одному и не отменяются', () => {
-    // Первый уровень — классические правила, последний — все ограничения разом.
-    expect(LADDER[0].params).toMatchObject({ strict: false, keyboardHints: true, timeLimitSec: 0 });
-    const last = LADDER[LADDER_SIZE - 1].params;
-    expect(last.strict).toBe(true);
-    expect(last.keyboardHints).toBe(false);
-    expect(last.timeLimitSec).toBeGreaterThan(0);
+  it('таймер, раз появившись, только ужимается и не жёстче трёх минут', () => {
+    const first = LADDER.findIndex((lv) => lv.params.timeLimitSec > 0);
+    expect(first).toBeGreaterThan(0);
+    for (let i = first + 1; i < LADDER.length; i++) {
+      expect(LADDER[i].params.timeLimitSec).toBeGreaterThan(0);
+      expect(LADDER[i].params.timeLimitSec).toBeLessThanOrEqual(LADDER[i - 1].params.timeLimitSec);
+    }
+    for (const { params } of LADDER) {
+      if (params.timeLimitSec) expect(params.timeLimitSec).toBeGreaterThanOrEqual(180);
+    }
   });
 
-  it('подсветку клавиатуры отбирают позже строгого режима', () => {
-    const firstStrict = LADDER.findIndex((lv) => lv.params.strict);
-    const firstNoHints = LADDER.findIndex((lv) => !lv.params.keyboardHints);
-    expect(firstStrict).toBeGreaterThanOrEqual(0);
-    expect(firstNoHints).toBeGreaterThan(firstStrict);
+  it('новое ограничение появляется на знакомой партии; финал — все рычаги', () => {
+    expect(LADDER[0].params).toEqual({ guesses: 6, strict: false, rare: false, timeLimitSec: 0 });
+    expect(LADDER[LADDER_SIZE - 1].params).toMatchObject({ guesses: 5, strict: true, rare: true });
+    expect(LADDER[LADDER_SIZE - 1].params.timeLimitSec).toBeGreaterThan(0);
+  });
+
+  it('newLever называет рычаг, ставший жёстче', () => {
+    expect(newLever(1)).toBeNull();
+    expect(newLever(2)).toBe('strict');
+    expect(newLever(3)).toBe('rare');
+    expect(newLever(5)).toBe('guesses');
+    expect(newLever(9)).toBe('timeLimitSec');
+    expect(newLever(15)).toBe('timeLimitSec');
   });
 
   it('слово дня играется по классическим правилам', () => {
-    expect(DAILY_PARAMS).toEqual({
-      guesses: MAX_GUESSES, strict: false, keyboardHints: true, timeLimitSec: 0,
-    });
+    expect(DAILY_PARAMS).toEqual({ guesses: MAX_GUESSES, strict: false, rare: false, timeLimitSec: 0 });
   });
 
   it('levelAt зажимает номер в границы лестницы', () => {
