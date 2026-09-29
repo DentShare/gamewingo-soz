@@ -4,13 +4,6 @@
   "menu.back": "Orqaga",
   "menu.catalog": "Oʻyinlarga",
   "game.moves": "Yurishlar: {n}",
-  "onboarding.board": "Raqamlar aralashtirilgan, bitta katak boʻsh.",
-  "onboarding.tile": "Boʻsh katak yonidagi plitkani bosing — u oʻsha katakka suriladi.",
-  "onboarding.move": "Plitkalar ana shunday harakatlanadi — bittadan, boʻsh katakka.",
-  "onboarding.goal": "Raqamlarni tartib bilan yigʻing — 1, 2, 3 … boʻsh katak esa oxirida. Yurish qancha kam boʻlsa, yulduz shuncha koʻp.",
-  "onboarding.next": "Keyingi",
-  "onboarding.done": "Tushunarli",
-  "onboarding.skip": "Oʻtkazib yuborish",
   "result.title": "Yigʻildi!",
   "sound.on": "Ovoz: yoqilgan",
   "sound.off": "Ovoz: oʻchirilgan",
@@ -38,5 +31,11 @@
   "result.gapMoves.few": "{n} ta yurish",
   "result.gapMoves.many": "{n} ta yurish",
   "result.almostDetail": "Yurishlar: {moves} · kerak {need} · vaqt {time}",
-  "result.inPlaceOf": "Joyidagi plitkalar: {n} dan {k}"
+  "result.inPlaceOf": "Joyidagi plitkalar: {n} dan {k}",
+  "tutorial.firstMove": "Ramkadagi plitkani bosing — u boʻsh katakka suriladi",
+  "tutorial.note": "Yurishlar va taymer birinchi yurishdan keyin yoqiladi",
+  "rule.goal": "Raqamlarni tartib bilan yigʻing: 1, 2, 3… — boʻsh katak oxirida",
+  "rule.stuck": "Faqat boʻsh katak yonidagi plitka suriladi",
+  "rule.moveLimit": "Endi yurishlar soni cheklangan — hisoblagichni kuzating",
+  "rule.timer": "Endi darajaga vaqt berilgan — taymerni kuzating"
 }
