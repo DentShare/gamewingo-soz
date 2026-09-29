@@ -35,14 +35,11 @@
   "onboarding.next": "Далее",
   "onboarding.done": "Понятно",
   "onboarding.skip": "Пропустить",
-  "result.run": "Время вышло!",
-  "result.score": "Очки: {score}",
-  "result.hits": "Попаданий: {hits} · Серия: {combo}",
-  "result.newBest": "Новый рекорд!",
-  "result.closed": "Испытания раунда",
-  "result.playAgain": "Ещё раз",
-  "result.menu": "В меню",
-  "result.leaderboard": "Таблица лидеров",
-  "error.network": "Нет соединения",
-  "pause.score": "очки {n}"
+  "pause.score": "очки {n}",
+  "result.points.one": "{n} очко",
+  "result.points.few": "{n} очка",
+  "result.points.many": "{n} очков",
+  "result.hits.one": "{n} попадание",
+  "result.hits.few": "{n} попадания",
+  "result.hits.many": "{n} попаданий"
 }

@@ -8,9 +8,8 @@ const REQUIRED = [
   'app.title', 'menu.play', 'menu.howto', 'menu.catalog', 'menu.record',
   'menu.challenges',
   'game.combo', 'game.time', 'game.challenge',
-  'result.run', 'result.score', 'result.hits', 'result.newBest', 'result.closed',
-  'result.playAgain', 'result.menu', 'result.leaderboard',
-  'error.network',
+  'result.points.one', 'result.points.few', 'result.points.many',
+  'result.hits.one', 'result.hits.few', 'result.hits.many',
   'onboarding.aim', 'onboarding.combo', 'onboarding.time',
   'onboarding.next', 'onboarding.done', 'onboarding.skip',
 ];
@@ -45,8 +44,9 @@ describe('i18n (targets)', () => {
   });
 
   it('t() подставляет параметры и знает обе локали', () => {
-    expect(t('ru', 'result.score', { score: 1234 })).toContain('1234');
+    expect(t('ru', 'result.points.many', { n: 1234 })).toBe('1234 очков');
     expect(t('uz', 'game.combo', { n: 4 })).toContain('4');
-    expect(t('ru', 'result.hits', { hits: 12, combo: 7 })).toBe('Попаданий: 12 · Серия: 7');
+    expect(t('ru', 'result.hits.few', { n: 32 })).toBe('32 попадания');
+    expect(t('uz', 'result.hits.many', { n: 12 })).toContain('12');
   });
 });

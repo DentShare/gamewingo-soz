@@ -33,15 +33,13 @@
   "onboarding.next": "Далее",
   "onboarding.done": "Понятно",
   "onboarding.skip": "Пропустить",
-  "result.run": "Партия окончена",
-  "result.score": "Очки: {score}",
-  "result.detail": "Плитка: {tile} · Ходов: {moves}",
-  "result.newBest": "Новый рекорд!",
-  "result.closed": "Испытания партии",
-  "result.playAgain": "Ещё раз",
-  "result.menu": "В меню",
-  "result.leaderboard": "Таблица лидеров",
-  "error.network": "Нет соединения",
   "onboarding.score": "Счёт растёт с каждым слиянием. Рекорд сохраняется.",
-  "onboarding.goal": "Цель — собрать плитку 2048. Игра кончается, когда ходов больше нет."
+  "onboarding.goal": "Цель — собрать плитку 2048. Игра кончается, когда ходов больше нет.",
+  "result.game": "Партия · {t}",
+  "result.tile": "Плитка {n}",
+  "result.newGame": "Новая партия",
+  "result.points.one": "{n} очко",
+  "result.points.few": "{n} очка",
+  "result.points.many": "{n} очков",
+  "result.thisGameMissing": "В этой партии: {v} · не хватило {m}"
 }
