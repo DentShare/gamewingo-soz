@@ -571,8 +571,12 @@ export class Game extends Scene {
       .finish({ level: this.level, mode: this.daily ? 'dailyLevel' : 'level', hints, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
+    // Докуда дошли — для итога проваленного уровня: верно заполненные клетки из пустых.
+    const open = this.given.map((g, i) => (g ? -1 : i)).filter((i) => i !== -1);
+    const filled = open.filter((i) => this.grid[i] === this.solution[i]).length;
     this.registry.set('lastGame', {
       level: this.level, daily: this.daily, locale: this.locale, hints, durationMs, mistakes: this.mistakes, cleared,
+      filled, toFill: open.length,
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));

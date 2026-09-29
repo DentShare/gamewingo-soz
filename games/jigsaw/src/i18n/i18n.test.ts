@@ -9,12 +9,13 @@ const REQUIRED = [
   'chapter.1', 'chapter.2', 'chapter.3',
   'level.field.one', 'level.field.few', 'level.field.many', 'level.goldHint', 'level.goldHintFlawless',
   'intro.field', 'intro.hintFainter', 'intro.noHint', 'intro.tray',
-  'game.dailyLevel', 'result.dailyLevel',
+  'game.dailyLevel', 'game.level',
   'game.progress', 'game.take', 'game.almost',
   'onboarding.take', 'onboarding.place', 'onboarding.story',
   'onboarding.next', 'onboarding.done', 'onboarding.skip',
-  'result.title', 'result.score', 'result.detail', 'result.level', 'result.nextLevel',
-  'result.unlocked', 'result.newBest', 'result.playAgain', 'result.menu', 'error.network',
+  'result.title', 'result.pictureChapter', 'result.nextPictureIntro',
+  'result.gapMisses.one', 'result.gapMisses.few', 'result.gapMisses.many',
+  'result.almostDetail', 'result.almostDetailFlawless',
 ];
 
 describe('i18n (jigsaw)', () => {
@@ -38,8 +39,8 @@ describe('i18n (jigsaw)', () => {
   });
 
   it('t() подставляет параметры в обеих локалях', () => {
-    expect(t('ru', 'result.score', { score: 1300 })).toContain('1300');
-    expect(t('uz', 'result.detail', { pieces: 12, misses: 2 })).toContain('12');
+    expect(t('ru', 'result.pictureChapter', { n: 7, k: 2 })).toBe('Картинка 7 · Глава 2');
+    expect(t('uz', 'result.almostDetail', { misses: 3, need: 1 })).toContain('3');
     expect(t('ru', 'game.progress', { n: 3, total: 10 })).toBe('3 из 10');
     expect(t('uz', 'game.progress', { n: 3, total: 10 })).toBe('10 dan 3');
   });
