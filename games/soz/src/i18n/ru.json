@@ -18,8 +18,6 @@
   "result.claimed": "Начислено: {points}",
   "result.streak": "Серия: {n}",
   "result.leaderboard": "Таблица лидеров",
-  "result.playAgain": "Ещё раз",
-  "error.network": "Нет соединения",
   "a11y.highContrast": "Высокий контраст",
   "onboarding.board": "У вас 6 попыток, чтобы угадать слово из 5 букв.",
   "onboarding.keyboard": "Здесь видно, какие буквы уже угаданы, а каких нет в слове.",
@@ -38,10 +36,6 @@
   "game.strictPosition": "{n}-я буква — {unit}",
   "game.strictMissing": "Используйте букву {unit}",
   "game.fail.time": "Время вышло",
-  "result.level": "Уровень {n} из {total}",
-  "result.nextLevel": "Уровень {n}",
-  "result.unlocked": "Открыт уровень {n}!",
-  "result.tryAgain": "Попробуйте ещё раз",
   "menu.strict": "Строгий режим",
   "menu.noHints": "Без подсветки",
   "menu.guessesOne": "{n} попытка",
@@ -50,5 +44,10 @@
   "sound.on": "Звук: вкл",
   "sound.off": "Звук: выкл",
   "pause.attempt": "попытка {a}",
-  "pause.dailySaved": "ряды слова дня сохранятся"
+  "pause.dailySaved": "ряды слова дня сохранятся",
+  "result.guesses": "Попытки: {n} из {max}",
+  "result.gapGuesses.one": "на {n} попытку меньше",
+  "result.gapGuesses.few": "на {n} попытки меньше",
+  "result.gapGuesses.many": "на {n} попыток меньше",
+  "result.almostDetail": "Попыток: {used} · нужно не больше {need}"
 }

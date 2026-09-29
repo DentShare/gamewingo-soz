@@ -18,8 +18,6 @@
   "result.claimed": "Hisoblandi: {points}",
   "result.streak": "Ketma-ket: {n}",
   "result.leaderboard": "Reyting",
-  "result.playAgain": "Yana",
-  "error.network": "Aloqa yoʻq",
   "a11y.highContrast": "Yuqori kontrast",
   "onboarding.board": "Soʻzni topish uchun sizda 6 ta urinish bor.",
   "onboarding.keyboard": "Bu yerda qaysi harflar topilgani, qaysilari soʻzda yoʻqligi koʻrinadi.",
@@ -38,10 +36,6 @@
   "game.strictPosition": "{n}-harf — {unit}",
   "game.strictMissing": "{unit} harfidan foydalaning",
   "game.fail.time": "Vaqt tugadi",
-  "result.level": "{total} dan {n}-daraja",
-  "result.nextLevel": "{n}-daraja",
-  "result.unlocked": "{n}-daraja ochildi!",
-  "result.tryAgain": "Yana urinib koʻring",
   "menu.strict": "Qatʼiy rejim",
   "menu.noHints": "Yoritishsiz",
   "menu.guessesOne": "{n} urinish",
@@ -50,5 +44,10 @@
   "sound.on": "Ovoz: yoqilgan",
   "sound.off": "Ovoz: oʻchirilgan",
   "pause.attempt": "urinish {a}",
-  "pause.dailySaved": "kun soʻzi qatorlari saqlanadi"
+  "pause.dailySaved": "kun soʻzi qatorlari saqlanadi",
+  "result.guesses": "Urinishlar: {max} dan {n}",
+  "result.gapGuesses.one": "{n} ta urinish kamroq",
+  "result.gapGuesses.few": "{n} ta urinish kamroq",
+  "result.gapGuesses.many": "{n} ta urinish kamroq",
+  "result.almostDetail": "Urinishlar: {used} · koʻpi bilan {need} ta"
 }
