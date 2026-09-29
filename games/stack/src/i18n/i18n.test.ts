@@ -8,8 +8,7 @@ const REQUIRED = [
   'app.title', 'menu.play', 'menu.howto', 'menu.catalog', 'menu.record',
   'menu.challenges', 'game.challenge',
   'pause.summary', 'result.height', 'result.points.one', 'result.points.few', 'result.points.many',
-  'onboarding.drop', 'onboarding.cut', 'onboarding.score',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
+  'tutorial.firstMove', 'rule.aim', 'rule.cut', 'rule.perfect',
 ];
 
 describe('i18n (stack)', () => {

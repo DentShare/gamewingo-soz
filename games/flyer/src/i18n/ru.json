@@ -26,17 +26,14 @@
   "challenge.survive120": "Продержись 2 минуты в воздухе",
   "challenge.pass40": "Пройди 40 проёмов за полёт",
   "challenge.pass45": "Пройди 45 проёмов за полёт",
-  "onboarding.flap": "Тапайте по экрану — герой взлетает. Не тапаете — падает.",
-  "onboarding.gap": "Пролетайте в проём. Задели стену, пол или потолок — конец.",
-  "onboarding.score": "Каждый пройденный проём — очко. Дальше — быстрее.",
-  "onboarding.next": "Далее",
-  "onboarding.done": "Понятно",
-  "onboarding.skip": "Пропустить",
   "result.points.one": "{n} очко",
   "result.points.few": "{n} очка",
   "result.points.many": "{n} очков",
   "pause.summary": "Проёмов {passed} · в воздухе {time}",
   "result.passed.one": "{n} проём",
   "result.passed.few": "{n} проёма",
-  "result.passed.many": "{n} проёмов"
+  "result.passed.many": "{n} проёмов",
+  "tutorial.firstMove": "Тапайте, чтобы лететь, и проведите ракету через проём",
+  "rule.score": "Каждый проём — очко. Дальше стены едут быстрее",
+  "rule.crash": "Задели стену, землю или верх — полёт окончен"
 }
