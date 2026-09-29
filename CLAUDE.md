@@ -92,6 +92,7 @@ npm run check:content                    # словари RU/UZ и хардко�
 npm run check:weight                     # вес прод-билдов против бюджета (после build:all)
 npm run check:audio                      # звук: вес, формат, лицензии, обвязка
 npm run check:smoke                      # прокликать все игры в браузере: падения сцен
+npm run check:back                       # системный «назад»: партия → пауза → меню → каталог
 ```
 
 ## Локализация

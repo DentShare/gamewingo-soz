@@ -312,6 +312,11 @@ let installed = false;
  * снова придёт к нам. Каждая сцена в `create()` ставит свой обработчик;
  * `null` — отдать «назад» браузеру (например, перед уходом на хаб).
  */
+/** Текущий обработчик — чтобы шит мог перехватить «назад» и вернуть прежний. */
+export function getBackHandler(): (() => void) | null {
+  return backHandler;
+}
+
 export function setBackHandler(handler: (() => void) | null): void {
   backHandler = handler;
   if (typeof window === 'undefined') return;
