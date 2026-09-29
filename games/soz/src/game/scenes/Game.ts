@@ -366,12 +366,10 @@ export class Game extends Scene {
       summary: this.pauseSummary(),
       sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
       onResume: () => this.resumeFromPause(),
-      // Слово дня одно на день: «заново» не стирает сыгранные ряды (иначе это бесплатные
-      // лишние попытки), а сохраняет их и собирает поле снова — сбрасывается только набор.
-      onRestart: () => {
-        if (daily) this.saveDailyProgress();
-        this.scene.restart();
-      },
+      // Слово дня одно на день: «заново» ему не нужно (сыгранные ряды остаются), а выход
+      // ничего не теряет — ряды сохраняются, поэтому и подпись выхода спокойная.
+      kind: daily ? 'saved' : 'level',
+      onRestart: daily ? undefined : () => this.scene.restart(),
       onExit: () => this.exitToMenu(),
       onHowto: () => {
         if (daily) this.saveDailyProgress();

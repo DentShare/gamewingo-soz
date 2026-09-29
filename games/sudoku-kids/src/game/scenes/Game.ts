@@ -283,7 +283,7 @@ export class Game extends Scene {
     this.header = makeGameHeader(this, {
       title: this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }),
       chips: [
-        ...(limit ? [{ id: 'mistakes', text: this.mistakesLabel(), widest: `${limit} / ${limit}` }] : []),
+        ...(limit ? [{ id: 'mistakes', text: this.mistakesLabel(), widest: `× ${limit} / ${limit}` }] : []),
         { id: 'time', text: formatClock(this.params.timeLimitSec), widest: '88:88' },
       ],
       onBack: () => this.openPause(),
@@ -292,7 +292,8 @@ export class Game extends Scene {
 
   /** Ошибки в чипе: «сделано / лимит». */
   private mistakesLabel(): string {
-    return `${this.mistakes} / ${this.params.mistakeLimit}`;
+    // «×» — что это ошибки, видно без подписи: как чип ошибок в «Викторине».
+    return `× ${this.mistakes} / ${this.params.mistakeLimit}`;
   }
 
   /** Стрелка в шапке: пауза с выбором, а не мгновенный выход. */

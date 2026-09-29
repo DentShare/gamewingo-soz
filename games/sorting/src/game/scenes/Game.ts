@@ -385,6 +385,7 @@ export class Game extends Scene {
     this.flashBin(bin);
     this.clearHint();
     this.header?.setChip('progress', this.progressLabel());
+    this.header?.pulseChip('progress');
 
     if (done) {
       this.finished = true;

@@ -1,7 +1,10 @@
 import { Scene, Math as PhaserMath } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, darken, setupCamera, makeBackButton, playSound } from '../ui';
+import {
+  applyTheme, darken, setupCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler,
+  TOP_BAR_H, VIEW_BOTTOM, type GameHeader, type PauseSheet,
+} from '../ui';
 import { t } from '../../i18n';
 import { CHALLENGES } from '../../core/challenges';
 import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
@@ -22,7 +25,17 @@ const CELL = 24;
 const BOARD_W = COLS * CELL;
 const BOARD_H = ROWS * CELL;
 const BOARD_LEFT = (W - BOARD_W) / 2;
-const BOARD_TOP = 168;
+/**
+ * Поле — по центру видимой области под шапкой партии (счёт переехал в чип шапки,
+ * крупной цифры над полем больше нет). Не выше «шапка + строка испытания»,
+ * и так, чтобы под полем влезла подсказка «Свайпните…» на самом низком экране.
+ */
+const BOARD_TOP = Math.round(Math.min(
+  VIEW_BOTTOM - BOARD_H - 72,
+  Math.max(TOP_BAR_H + 56, TOP_BAR_H + (VIEW_BOTTOM - TOP_BAR_H - BOARD_H) / 2),
+));
+/** Строка активного испытания — прямо над полем. */
+const CHALLENGE_Y = BOARD_TOP - 26;
 /** Порог свайпа в px (доминирующая ось). */
 const SWIPE_MIN = 24;
 
@@ -62,8 +75,10 @@ export class Game extends Scene {
   private segs: Phaser.GameObjects.Image[] = [];
   private headC!: Phaser.GameObjects.Container;
   private foodC!: Phaser.GameObjects.Container;
-  private scoreText!: Phaser.GameObjects.Text;
-  private lengthText!: Phaser.GameObjects.Text;
+  private header?: GameHeader;
+  private pause: PauseSheet | null = null;
+  /** Твины, замороженные паузой-шитом (пульс еды, вспышки) — их и только их продолжаем. */
+  private frozenTweens: Phaser.Tweens.Tween[] = [];
   private hintText!: Phaser.GameObjects.Text;
 
   /** Тело на предыдущем тике — для плавной интерполяции между клетками. */
@@ -72,6 +87,7 @@ export class Game extends Scene {
   private started = false;   // ждём первый свайп/стрелку
   private finished = false;
   private paused = false;    // PAUSE от приложения
+  private sheetPaused = false; // пауза-шит от стрелки или системного «назад»
   private tutorialActive = false;
   private timer?: RoundTimer;
   private swipeFrom: { x: number; y: number } | null = null;
@@ -93,6 +109,14 @@ export class Game extends Scene {
     this.tutorialActive = false;
     this.timer = undefined;
     this.swipeFrom = null;
+    this.sheetPaused = false;
+    this.header = undefined;
+    this.pause = null;
+    this.frozenTweens = [];
+    // Часы сцены переживают restart: «Начать заново» из паузы пришёл бы с замороженными таймерами.
+    this.time.paused = false;
+    // Системный «назад» ведёт туда же, куда стрелка: забег → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
@@ -123,7 +147,8 @@ export class Game extends Scene {
 
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') { this.paused = true; this.timer?.pause(); }
-      else if (e.type === 'RESUME') { this.paused = false; this.timer?.resume(); }
+      // Пока открыт шит, RESUME приложения забег не запускает — это решает игрок кнопкой.
+      else if (e.type === 'RESUME') { this.paused = false; if (!this.sheetPaused) this.timer?.resume(); }
     });
     this.events.once('shutdown', off);
 
@@ -131,8 +156,9 @@ export class Game extends Scene {
   }
 
   update(_time: number, delta: number) {
-    if (this.finished || !this.started || this.paused || this.tutorialActive) {
-      this.renderSnake(1);
+    if (this.finished || !this.started || this.paused || this.sheetPaused || this.tutorialActive) {
+      // На паузе змейка стоит ровно там, где её застала пауза (доля тика сохраняется в acc).
+      this.renderSnake(this.started && !this.finished ? Math.min(1, this.acc / this.core.speedMs()) : 1);
       return;
     }
     // Испытания на выживание тикают от времени — обновляем строку раз в кадр недорого.
@@ -169,9 +195,9 @@ export class Game extends Scene {
       onComplete: () => fx.destroy(),
     });
 
-    this.scoreText.setText(String(this.core.score));
-    this.tweens.add({ targets: this.scoreText, scale: 1.18, duration: 110, yoyo: true, ease: 'Quad.easeOut' });
-    this.lengthText.setText(t(this.locale, 'game.length', { n: this.core.length }));
+    this.header?.setChip('score', String(this.core.score));
+    this.header?.pulseChip('score');
+    this.header?.setChip('length', t(this.locale, 'game.length', { n: this.core.length }));
 
     // «Жор»: сколько еды съедено в скользящее окно 12 секунд.
     const now = this.timer?.elapsedMs() ?? 0;
@@ -268,7 +294,8 @@ export class Game extends Scene {
 
   /** Команда поворота: первая — запускает партию (до неё змейка стоит и ждёт). */
   private command(dir: Dir) {
-    if (this.finished || this.tutorialActive) return;
+    // Под шитом паузы свайпы и стрелки клавиатуры не должны ни поворачивать, ни стартовать.
+    if (this.finished || this.tutorialActive || this.sheetPaused) return;
     if (!this.started) this.startRun();
     this.core.turn(dir);
   }
@@ -343,25 +370,24 @@ export class Game extends Scene {
 
   // ── HUD ──────────────────────────────────────────────────────────────────────
 
+  /**
+   * Шапка каталога: стрелка (пауза), название игры и чипы счёта и длины.
+   * Раньше здесь были белая пилюля «Назад» (сразу терявшая забег) и крупный счёт
+   * по центру над полем; теперь счёт — в чипе шапки, дубля на поле нет.
+   */
   private buildHud() {
-    this.buildBackButton();
-    this.lengthText = this.add
-      .text(W - 20, 34, t(this.locale, 'game.length', { n: this.core.length }), {
-        fontFamily: FONT, fontSize: 15, color: COLORS.headMuted,
-      })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
-    // Счёт — крупно: аркада, его видно боковым зрением.
-    this.scoreText = this.add
-      .text(W / 2, 108, String(this.core.score), {
-        fontFamily: FONT, fontSize: 46, color: COLORS.headText, fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-    // Активное испытание с живым прогрессом — под счётом; когда всё пройдено, строки нет.
+    this.header = makeGameHeader(this, {
+      title: t(this.locale, 'app.title'),
+      chips: [
+        { id: 'score', text: String(this.core.score), widest: '8888' },
+        { id: 'length', text: t(this.locale, 'game.length', { n: this.core.length }), widest: t(this.locale, 'game.length', { n: 288 }) },
+      ],
+      onBack: () => this.openPause(),
+    });
+    // Активное испытание с живым прогрессом — под шапкой; когда всё пройдено, строки нет.
     if (this.challenge) {
       this.challengeText = this.add
-        .text(W / 2, 146, this.challengeLabel(), {
+        .text(W / 2, CHALLENGE_Y, this.challengeLabel(), {
           fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
         })
         .setOrigin(0.5)
@@ -380,9 +406,65 @@ export class Game extends Scene {
     });
   }
 
-  /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
-  private buildBackButton() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+  // ── Пауза ────────────────────────────────────────────────────────────────────
+
+  /** Стрелка в шапке: пауза с честным выбором, а не мгновенная потеря забега. */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
+    if (this.tutorialActive) {
+      this.exitToMenu();
+      return;
+    }
+    this.freezeWorld();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      kind: 'run',
+      summary: t(this.locale, 'pause.summary', { score: this.core.score, n: this.core.length }),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => { this.pause = null; this.thawWorld(); },
+      onRestart: () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
+  }
+
+  /**
+   * Мир забега стоит: тик змейки (update не копит acc), часы забега (survivedSec,
+   * окно «жора»), таймеры сцены и уже идущие твины (пульс еды, вспышка съеденного).
+   * Твины шита создаются после заморозки и едут как обычно.
+   */
+  private freezeWorld() {
+    this.sheetPaused = true;
+    this.timer?.pause();
+    this.time.paused = true;
+    this.frozenTweens = this.tweens.getTweens().filter((tw) => tw.isPlaying());
+    for (const tw of this.frozenTweens) tw.pause();
+  }
+
+  private thawWorld() {
+    this.sheetPaused = false;
+    this.time.paused = false;
+    for (const tw of this.frozenTweens) tw.resume();
+    this.frozenTweens = [];
+    // Отсчёт свайпа начат до паузы — после неё начинаем заново.
+    this.swipeFrom = null;
+    // Если приложение тоже на паузе (PAUSE без RESUME), часы запустит его RESUME.
+    if (!this.paused) this.timer?.resume();
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.pause = null;
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
   }
 
   /** «Съешь 12 яблок за забег · 7/12» — активное испытание с прогрессом. */
@@ -411,9 +493,11 @@ export class Game extends Scene {
     this.challengeText?.setText(this.challengeLabel());
   }
 
-  private goBack() {
-    if (this.finished || this.tutorialActive) return;
+  private exitToMenu() {
+    if (this.finished) return;
     this.finished = true;
+    // Выход из паузы: часы и таймеры сцены снова идут, иначе fadeOut камеры не доиграет.
+    this.time.paused = false;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
   }

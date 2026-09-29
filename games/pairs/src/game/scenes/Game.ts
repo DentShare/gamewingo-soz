@@ -90,7 +90,8 @@ export class Game extends Scene {
     this.timer.start();
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') this.timer?.pause();
-      else if (e.type === 'RESUME') this.timer?.resume();
+      // Приложение вернулось на передний план, а наша пауза открыта — часы стоят до «Продолжить».
+      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorialActive) this.timer?.resume();
     });
     this.events.once('shutdown', off);
 

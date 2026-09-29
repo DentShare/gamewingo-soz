@@ -80,6 +80,7 @@ export class MainMenu extends Scene {
     const card = makeNextLevelCard(this, CX, y, {
       locale: this.locale,
       n: next,
+      title: t(this.locale, 'game.level', { n: next }),
       stars: totalStars(progress),
       maxStars: LADDER_SIZE * 3,
       field: this.phrase(info.field, true),

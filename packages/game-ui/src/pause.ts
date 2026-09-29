@@ -4,6 +4,7 @@ import { DPR, LOGICAL_W, VIEW_TOP, VIEW_BOTTOM } from './viewport.js';
 import { hideSplash, makeButton, makeChip, makeSoundToggle } from './widgets.js';
 import { playSound } from './audio.js';
 import { uiText } from './strings.js';
+import { motionAllowed } from './motion.js';
 
 /**
  * Партия в WebView (T3 UX-волны, раздел 1i аудита): одна шапка на весь каталог,
@@ -31,6 +32,8 @@ export interface GameHeader {
   /** Обновить чип; `warn` — последние секунды таймера: белая плашка, красный текст. */
   setChip(id: string, text: string, warn?: boolean): void;
   setTitle(s: string): void;
+  /** Короткий «пульс» чипа — отклик на верный ход, как раньше подпрыгивал текст HUD. */
+  pulseChip(id: string): void;
   /** Прямоугольник чипа в мировых координатах — для подсветки в обучении. */
   chipRect(id: string): { x: number; y: number; w: number; h: number } | null;
   destroy(): void;
@@ -119,6 +122,13 @@ export function makeGameHeader(
       if (r === undefined || w === undefined) return null;
       return { x: r - w, y: cy - 13, w, h: 26 };
     },
+    pulseChip: (id) => {
+      const c = chips.get(id);
+      if (!c || !motionAllowed()) return;
+      scene.tweens.killTweensOf(c.t);
+      c.t.setScale(1);
+      scene.tweens.add({ targets: c.t, scale: 1.18, duration: 110, yoyo: true, ease: 'Quad.easeOut' });
+    },
     setTitle: (s) => heading.setText(s),
     destroy: () => root.destroy(),
   };
@@ -131,12 +141,17 @@ export interface PauseSheetOpts {
   /** Подписи звука — из словаря игры, как у переключателя в меню. */
   sound: { on: string; off: string };
   onResume(): void;
-  onRestart(): void;
+  /** Нет — кнопки «заново» нет (слово дня: попытки на то же слово не множим). */
+  onRestart?(): void;
   onExit(): void;
   /** «Как играть» — если у игры есть обучение. */
   onHowto?(): void;
-  /** Уровень лестницы или забег аркады — от этого зависят подписи «заново» и «выйти». */
-  kind?: 'level' | 'run';
+  /**
+   * От этого зависят подписи «заново» и «выйти»: уровень лестницы, забег аркады
+   * или партия, которая сохраняется сама (2048, слово дня) — тогда выход ничего
+   * не теряет, и пугать им нечестно.
+   */
+  kind?: 'level' | 'run' | 'saved';
 }
 
 export interface PauseSheet {
@@ -158,12 +173,21 @@ export function openPauseSheet(scene: Scene, o: PauseSheetOpts): PauseSheet {
     .rectangle(LOGICAL_W / 2, (VIEW_TOP + VIEW_BOTTOM) / 2, LOGICAL_W, VIEW_BOTTOM - VIEW_TOP, C.ink, 0.5)
     .setInteractive();
   // Тап мимо шита — то же, что «Продолжить»: самый безопасный из вариантов.
-  dim.on('pointerup', () => resume());
+  // Только короткий тап, начатый на затемнении: свайп по полю (2048) или
+  // отпускание пальца после открытия паузы шит не закрывают.
+  let downAt: { x: number; y: number } | null = null;
+  dim.on('pointerdown', (p: Phaser.Input.Pointer) => { downAt = { x: p.x, y: p.y }; });
+  dim.on('pointerup', (p: Phaser.Input.Pointer) => {
+    const d = downAt;
+    downAt = null;
+    if (d && Math.hypot(p.x - d.x, p.y - d.y) < 12) resume();
+  });
 
   const W = LOGICAL_W;
   const pad = 20;
   const summaryH = o.summary ? 22 : 0;
-  const H = 20 + 26 + summaryH + 20 + 48 + 12 + 44 + 12 + 44 + 18 + 26 + 24;
+  const restartH = o.onRestart ? 44 + 12 : 0;
+  const H = 20 + 26 + summaryH + 20 + 48 + 12 + restartH + 44 + 18 + 26 + 24;
   const top = VIEW_BOTTOM - H;
 
   const sheet = scene.add.graphics();
@@ -184,7 +208,7 @@ export function openPauseSheet(scene: Scene, o: PauseSheetOpts): PauseSheet {
   if (o.summary) {
     items.push(
       scene.add
-        .text(W / 2, y + 11, o.summary, { fontFamily: FONT, fontSize: 13, color: S.muted })
+        .text(W / 2, y + 11, o.summary.charAt(0).toUpperCase() + o.summary.slice(1), { fontFamily: FONT, fontSize: 13, color: S.muted })
         .setOrigin(0.5)
         .setResolution(DPR),
     );
@@ -196,30 +220,47 @@ export function openPauseSheet(scene: Scene, o: PauseSheetOpts): PauseSheet {
     primary: true, width: bw, height: 48,
   });
   y += 48 + 12;
-  const restartBtn = makeButton(scene, W / 2, y + 22, uiText(o.locale, o.kind === 'run' ? 'pause.restartRun' : 'pause.restart'), () => act(o.onRestart), {
-    width: bw, height: 44,
-  });
-  y += 44 + 12;
-  const exitBtn = makeButton(scene, W / 2, y + 22, uiText(o.locale, o.kind === 'run' ? 'pause.exitRun' : 'pause.exit'), () => act(o.onExit), {
-    width: bw, height: 44, danger: true,
+  items.push(resumeBtn.root);
+  if (o.onRestart) {
+    const onRestart = o.onRestart;
+    const restartBtn = makeButton(scene, W / 2, y + 22, uiText(o.locale, o.kind === 'level' || !o.kind ? 'pause.restart' : 'pause.restartRun'), () => act(onRestart), {
+      width: bw, height: 44,
+    });
+    items.push(restartBtn.root);
+    y += 44 + 12;
+  }
+  const exitKey = o.kind === 'run' ? 'pause.exitRun' : o.kind === 'saved' ? 'pause.exitSaved' : 'pause.exit';
+  // Выход, который ничего не теряет, — обычная кнопка, не красная.
+  const exitBtn = makeButton(scene, W / 2, y + 22, uiText(o.locale, exitKey), () => act(o.onExit), {
+    width: bw, height: 44, danger: o.kind !== 'saved',
   });
   y += 44 + 18;
-  items.push(resumeBtn.root, restartBtn.root, exitBtn.root);
+  items.push(exitBtn.root);
 
   // Ряд чипов: звук и «Как играть» — переехали сюда из меню игры.
-  const sound = makeSoundToggle(scene, 0, y + 13, o.sound, 112);
+  // Ширина чипов — по самой длинной подписи: узбекское «Ovoz: yoqilgan» шире 112.
+  const measure = (s: string) => {
+    const t = scene.add.text(0, 0, s, { fontFamily: FONT, fontSize: TYPE.caption, fontStyle: WEIGHT.bold });
+    const w = t.width;
+    t.destroy();
+    return w;
+  };
+  const howtoLabel = uiText(o.locale, 'pause.howto');
+  const labels = [o.sound.on, o.sound.off, ...(o.onHowto ? [howtoLabel] : [])];
+  const gap = 8;
+  const count = o.onHowto ? 2 : 1;
+  const chipW = Math.min((W - pad * 2 - gap * (count - 1)) / count, Math.max(112, ...labels.map((s) => measure(s) + 32)));
+  const sound = makeSoundToggle(scene, 0, y + 13, o.sound, chipW);
   const row: Phaser.GameObjects.Container[] = [sound.root];
-  let howto: ReturnType<typeof makeChip> | null = null;
   if (o.onHowto) {
-    howto = makeChip(scene, 0, y + 13, uiText(o.locale, 'pause.howto'), 112);
-    const hh = scene.add.rectangle(0, 0, 112, 38, 0x000000, 0).setInteractive({ useHandCursor: true });
+    const howto = makeChip(scene, 0, y + 13, howtoLabel, chipW);
+    const hh = scene.add.rectangle(0, 0, chipW, 38, 0x000000, 0).setInteractive({ useHandCursor: true });
     hh.on('pointerup', () => act(() => o.onHowto?.()));
     howto.root.add(hh);
     row.push(howto.root);
   }
-  const gap = 8;
-  const rowW = row.length * 112 + (row.length - 1) * gap;
-  row.forEach((r, i) => r.setX(W / 2 - rowW / 2 + 56 + i * (112 + gap)));
+  const rowW = count * chipW + (count - 1) * gap;
+  row.forEach((r, i) => r.setX(W / 2 - rowW / 2 + chipW / 2 + i * (chipW + gap)));
   items.push(...row);
 
   // Всё, кроме затемнения, — в одной панели: она выезжает снизу целиком.

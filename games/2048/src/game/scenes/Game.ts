@@ -291,7 +291,8 @@ export class Game extends Scene {
     this.timer.pause();
     this.pause = openPauseSheet(this, {
       locale: this.locale,
-      kind: 'run',
+      // Партия сохраняется после каждого хода: выход ничего не теряет.
+      kind: 'saved',
       summary: this.pauseSummary(),
       sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
       onResume: () => { this.pause = null; this.timer.resume(); },
