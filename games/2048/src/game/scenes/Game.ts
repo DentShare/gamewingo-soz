@@ -3,7 +3,10 @@ import type { Locale } from '../../core/locale';
 import { createGrid2048, applyMove, SIZE, type Grid2048, type Dir } from '../../core/grid';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT, tileColor, tileTextColor, tileFontSize } from '../palette';
-import { applyTheme, darken, toast, setupCamera, makeBackButton, playSound } from '../ui';
+import {
+  applyTheme, darken, toast, setupCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler,
+  TOP_BAR_H, type GameHeader, type PauseSheet,
+} from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -22,7 +25,10 @@ const GAP = 10;
 const PAD = 12;
 const BOARD = SIZE * TILE + (SIZE - 1) * GAP + 2 * PAD; // 374
 const BOARD_LEFT = (W - BOARD) / 2;
-const BOARD_TOP = 140;
+/** Строка активного испытания — на поле, сразу под шапкой партии. */
+const CHALLENGE_Y = TOP_BAR_H + 22;
+/** Поле — под строкой испытания; под шапку не залезает. */
+const BOARD_TOP = TOP_BAR_H + 48;
 const SWIPE_MIN = 24; // порог свайпа, px
 
 /**
@@ -39,7 +45,7 @@ const TUTORIAL_CELLS: number[][] = [
 export class Game extends Scene {
   private locale: Locale = 'ru';
   private session!: Session;
-  /** Активное испытание — его прогресс висит в шапке поля. */
+  /** Активное испытание — его прогресс висит строкой под шапкой партии. */
   private challenge: ChallengeDef | null = null;
   private challengeText?: Phaser.GameObjects.Text;
   /** Номиналы, уже отпразднованные тостом в этой партии. */
@@ -48,8 +54,8 @@ export class Game extends Scene {
   private tileMoves = new Map<number, number>();
   private core!: Grid2048;
   private tileLayer!: Phaser.GameObjects.Container;
-  private scoreText!: Phaser.GameObjects.Text;
-  private bestText!: Phaser.GameObjects.Text;
+  private header?: GameHeader;
+  private pause: PauseSheet | null = null;
   private best = 0;
   private timer!: RoundTimer;
   private finished = false;
@@ -66,6 +72,10 @@ export class Game extends Scene {
     this.finished = false;
     this.tutorialActive = false;
     this.swipeFrom = null;
+    this.header = undefined;
+    this.pause = null;
+    // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
@@ -106,7 +116,8 @@ export class Game extends Scene {
     this.timer.start();
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') this.timer.pause();
-      else if (e.type === 'RESUME') this.timer.resume();
+      // Приложение вернулось, а у игрока открыта пауза (или идёт обучение) — часы стоят дальше.
+      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorialActive) this.timer.resume();
     });
     this.events.once('shutdown', off);
 
@@ -191,13 +202,14 @@ export class Game extends Scene {
     return { x: BOARD_LEFT, y: BOARD_TOP, w: BOARD, h: BOARD };
   }
 
-  /** Зона счёта и рекорда в шапке — для подсветки на третьем шаге обучения. */
+  /** Чипы счёта и рекорда в шапке — для подсветки на третьем шаге обучения. */
   private hudRect(): Rect {
-    const a = this.scoreText.getBounds();
-    const b = this.bestText.getBounds();
+    const a = this.header?.chipRect('score');
+    const b = this.header?.chipRect('best');
+    if (!a || !b) return this.boardRect();
     const x = Math.min(a.x, b.x);
     const y = Math.min(a.y, b.y);
-    return { x, y, w: Math.max(a.right, b.right) - x, h: Math.max(a.bottom, b.bottom) - y };
+    return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
   }
 
   /**
@@ -218,51 +230,103 @@ export class Game extends Scene {
     return { x: x - TILE / 2, y: y - TILE / 2, w: TILE, h: TILE };
   }
 
-  // ── HUD: кнопка назад + счёт + рекорд ────────────────────────────────────────
+  // ── Шапка партии и пауза ─────────────────────────────────────────────────────
 
+  /**
+   * Шапка каталога: стрелка (пауза), «2048» и чипы счёта и рекорда.
+   * Раньше здесь были белая пилюля «Назад» и текстовый HUD справа.
+   * Активное испытание — строкой на поле под шапкой, а не в ней.
+   */
   private buildHud() {
-    this.buildBackButton();
-    this.scoreText = this.add
-      .text(W - 20, 24, t(this.locale, 'game.score', { n: this.core.score }), {
-        fontFamily: FONT, fontSize: 16, color: COLORS.headText, fontStyle: 'bold',
-      })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
-    this.bestText = this.add
-      .text(W - 20, 46, t(this.locale, 'game.best', { n: this.best }), {
-        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
-      })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
-    // Активное испытание с живым прогрессом — слева, напротив счёта.
+    // Ширина чипа — под шестизначное число: растущий счёт не наезжает на соседа.
+    const widest = 888888;
+    this.header = makeGameHeader(this, {
+      title: t(this.locale, 'app.title'),
+      chips: [
+        { id: 'score', text: this.scoreLabel(), widest: t(this.locale, 'game.score', { n: widest }) },
+        { id: 'best', text: this.bestLabel(), widest: t(this.locale, 'game.best', { n: widest }) },
+      ],
+      onBack: () => this.openPause(),
+    });
     if (this.challenge) {
       this.challengeText = this.add
-        .text(112, 46, this.challengeLabel(), {
-          fontFamily: FONT, fontSize: 12, color: COLORS.headMuted,
+        .text(W / 2, CHALLENGE_Y, this.challengeLabel(), {
+          fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
         })
-        .setOrigin(0, 0.5)
+        .setOrigin(0.5)
         .setResolution(DPR);
+    } else {
+      this.challengeText = undefined;
     }
+  }
+
+  private scoreLabel(): string {
+    return t(this.locale, 'game.score', { n: this.core.score });
+  }
+
+  private bestLabel(): string {
+    return t(this.locale, 'game.best', { n: this.best });
   }
 
   /** Обновляет счёт и, при необходимости, рекорд в шапке по состоянию ядра. */
   private refreshScore() {
-    this.scoreText.setText(t(this.locale, 'game.score', { n: this.core.score }));
+    this.header?.setChip('score', this.scoreLabel());
     // Показательный ход обучения — не игровой: рекорд он двигать не должен.
     if (this.tutorialActive) return;
     if (this.core.score > this.best) {
       this.best = this.core.score;
-      this.bestText.setText(t(this.locale, 'game.best', { n: this.best }));
+      this.header?.setChip('best', this.bestLabel());
     }
   }
 
-  /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
-  private buildBackButton() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+  /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
+    if (this.tutorialActive) {
+      this.exitToMenu();
+      return;
+    }
+    this.swipeFrom = null; // начатый до паузы свайп не должен доехать до поля
+    this.timer.pause();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      kind: 'run',
+      summary: this.pauseSummary(),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => { this.pause = null; this.timer.resume(); },
+      // Новая партия: create() без флага resume стирает сохранение и раздаёт поле заново.
+      onRestart: () => {
+        this.registry.set('resume', false);
+        this.scene.restart();
+      },
+      // Сохранение не трогаем: в меню останется «Продолжить».
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
   }
 
-  private goBack() {
-    if (this.finished || this.tutorialActive) return;
+  /** «Счёт: 1240 · Рекорд: 3400». */
+  private pauseSummary(): string {
+    return `${this.scoreLabel()} · ${this.bestLabel()}`;
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.pause = null;
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
+  }
+
+  private exitToMenu() {
+    if (this.finished) return;
     this.finished = true;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
@@ -338,11 +402,16 @@ export class Game extends Scene {
     kb?.on('keydown-UP', () => this.tryMove('up'));
     kb?.on('keydown-DOWN', () => this.tryMove('down'));
 
+    // Слушатели на всю сцену: они слышат и тапы по затемнению паузы, поэтому
+    // пока пауза открыта, свайп не начинается и не завершается.
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      this.swipeFrom = this.pointerXY(p);
+      this.swipeFrom = this.pause?.open ? null : this.pointerXY(p);
     });
     this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
-      if (!this.swipeFrom) return;
+      if (!this.swipeFrom || this.pause?.open) {
+        this.swipeFrom = null;
+        return;
+      }
       const to = this.pointerXY(p);
       const dx = to.x - this.swipeFrom.x;
       const dy = to.y - this.swipeFrom.y;
@@ -376,7 +445,8 @@ export class Game extends Scene {
   }
 
   private tryMove(dir: Dir) {
-    if (this.finished || this.tutorialActive) return;
+    // Пауза блокирует и свайпы, и стрелки клавиатуры.
+    if (this.finished || this.tutorialActive || this.pause?.open) return;
     const before = this.core.cells.map((row) => [...row]);
     const res = this.core.move(dir);
     if (!res.moved) return;
