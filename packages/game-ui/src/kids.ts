@@ -7,6 +7,7 @@ import { motionAllowed } from './motion.js';
 import { makeStarRow } from './levels.js';
 import { makePhoenix } from './phoenix.js';
 import { uiText } from './strings.js';
+import { getBackHandler, setBackHandler } from './pause.js';
 import type { Block } from './chapters.js';
 
 /**
@@ -143,6 +144,14 @@ export function makeKidsTopBar(scene: Scene, o: KidsTopBarOpts): Phaser.GameObje
 /** Меню родителей: выйти в каталог, звук, закрыть. Язык выбирается в каталоге. */
 function openParentsSheet(scene: Scene, o: KidsTopBarOpts): void {
   const root = scene.add.container(0, 0).setDepth(1000);
+  // Системный «назад» при открытом меню родителей закрывает его, а не игру.
+  const prevBack = getBackHandler();
+  const close = () => {
+    if (!root.active) return;
+    root.destroy();
+    setBackHandler(prevBack);
+  };
+  setBackHandler(close);
   const dim = scene.add
     .rectangle(LOGICAL_W / 2, (VIEW_TOP + VIEW_BOTTOM) / 2, LOGICAL_W, VIEW_BOTTOM - VIEW_TOP, C.ink, 0.5)
     .setInteractive();
@@ -150,7 +159,7 @@ function openParentsSheet(scene: Scene, o: KidsTopBarOpts): void {
   // отпускается уже над затемнением — меню не должно тут же закрыться.
   let downOnDim = false;
   dim.on('pointerdown', () => { downOnDim = true; });
-  dim.on('pointerup', () => { if (downOnDim) root.destroy(); downOnDim = false; });
+  dim.on('pointerup', () => { if (downOnDim) close(); downOnDim = false; });
   const H = 20 + 26 + 22 + 18 + 48 + 12 + 44 + 12 + 44 + 28;
   const top = VIEW_BOTTOM - H;
   const sheet = scene.add.graphics();
@@ -166,23 +175,23 @@ function openParentsSheet(scene: Scene, o: KidsTopBarOpts): void {
     .setResolution(DPR);
   const bw = LOGICAL_W - 40;
   let y = top + 20 + 26 + 22 + 18;
-  const close = makeButton(scene, LOGICAL_W / 2, y + 24, uiText(o.locale, 'kids.back'), () => root.destroy(), {
+  const backBtn = makeButton(scene, LOGICAL_W / 2, y + 24, uiText(o.locale, 'kids.back'), () => close(), {
     primary: true, width: bw, height: 48,
   });
   y += 48 + 12;
   const soundLabel = () => uiText(o.locale, isMuted() ? 'kids.soundOn' : 'kids.soundOff');
   const sound = makeButton(scene, LOGICAL_W / 2, y + 22, soundLabel(), () => {
     setMuted(!isMuted());
-    root.destroy();
+    close();
     scene.scene.restart();
   }, { width: bw, height: 44 });
   y += 44 + 12;
   const exit = makeButton(scene, LOGICAL_W / 2, y + 22, uiText(o.locale, 'kids.exit'), () => {
-    root.destroy();
+    close();
     o.onExit();
   }, { width: bw, height: 44, danger: true });
-  root.add([dim, sheet, sheetHit, title, sub, close.root, sound.root, exit.root]);
-  scene.events.once('shutdown', () => root.destroy());
+  root.add([dim, sheet, sheetHit, title, sub, backBtn.root, sound.root, exit.root]);
+  scene.events.once('shutdown', () => { if (root.active) root.destroy(); });
 }
 
 /* ── Дорожка уровней ──────────────────────────────────────────────────────── */
@@ -200,8 +209,9 @@ const CURRENT = 72;
 /** Пять кружков одной главы: пройденные со звёздами, текущий пульсирует, будущие — контуром. */
 function makeKidsPath(scene: Scene, cx: number, cy: number, stops: readonly KidsStop[], onPick: (n: number) => void) {
   const root = scene.add.container(cx, cy);
-  // Шаг — чтобы текущий (72) и соседний (56) не касались: 76 × 4 + 72 = 376 из 400.
-  const step = 76;
+  // Шаг — чтобы текущий (72) и соседний (56) не касались и крайний не жался
+  // к краю экрана: 72 × 4 + 72 = 360 из 400, по 20 с каждой стороны.
+  const step = 72;
   const x0 = -(step * (stops.length - 1)) / 2;
   const line = scene.add.graphics();
   line.lineStyle(4, C.divider, 1).lineBetween(x0, 0, x0 + step * (stops.length - 1), 0);
