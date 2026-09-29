@@ -82,3 +82,58 @@ export function chapterLevels(total: number, size: number = CHAPTER_SIZE): numbe
   }
   return out;
 }
+
+/**
+ * Какие рычаги сложности изменились между соседними уровнями. Для тестов
+ * лестниц: правило «один новый рычаг за раз» (docs/PROGRESSION.md) проверяется
+ * как `changedLevers(prev, cur, LEVERS).length <= 1`. Производные параметры
+ * (раскладка поля от числа пар) в `keys` не передаются.
+ */
+export function changedLevers<P>(prev: P, cur: P, keys: readonly (keyof P)[]): (keyof P)[] {
+  return keys.filter((k) => prev[k] !== cur[k]);
+}
+
+/**
+ * Как рычаг делает уровень сложнее:
+ * - `more` — чем больше, тем сложнее (пары, клетки, варианты ответа);
+ * - `less` — чем меньше, тем сложнее (подсказки, попытки);
+ * - `limit` — ограничение, где 0 значит «без ограничения»: появиться или
+ *   ужаться — сложнее (лимит ходов, таймер, лимит ошибок).
+ */
+export type LeverDirection = 'more' | 'less' | 'limit';
+
+/**
+ * Рычаги, которые стали жёстче между соседними уровнями. Правило лестницы:
+ * ровно один на уровень. Остальные могут смягчаться — так новый размер поля
+ * начинается с мягкого лимита, а не со стены (docs/PROGRESSION.md).
+ */
+export function harderLevers<P>(prev: P, cur: P, spec: { [K in keyof P]?: LeverDirection }): (keyof P)[] {
+  return (Object.keys(spec) as (keyof P)[]).filter((k) => {
+    const a = Number(prev[k]);
+    const b = Number(cur[k]);
+    switch (spec[k]) {
+      case 'more': return b > a;
+      case 'less': return b < a;
+      case 'limit': return b > 0 && (a === 0 || b < a);
+      default: return false;
+    }
+  });
+}
+
+export interface StarGap {
+  /** Порог трёх звёзд — «нужно 8». */
+  threshold: number;
+  /** Сколько не хватило до третьей звезды — «до третьей звезды — 1 ход». */
+  missing: number;
+}
+
+/**
+ * «Почти»: сколько не хватило до трёх звёзд (T4, карточка на экране итога).
+ * `null` — три звезды уже есть, объяснять нечего. Что это за величина (ходы,
+ * секунды, ошибки) — знает игра: она и подписывает дельту своим словом.
+ */
+export function starGap(goals: StarGoals, value: number): StarGap | null {
+  if (starsFor(goals, value) === 3) return null;
+  const missing = goals.higherIsBetter ? goals.gold - value : value - goals.gold;
+  return { threshold: goals.gold, missing: Math.max(1, Math.ceil(missing)) };
+}

@@ -1,10 +1,8 @@
 {
   "app.title": "Викторина",
-  "menu.play": "Играть · уровень {n}",
   "menu.howto": "Как играть",
   "menu.back": "Назад",
   "menu.catalog": "К играм",
-  "menu.ladder": "Уровень {n} из {total}",
   "menu.topics": "Темы: космос, животные, Узбекистан, наука, тело, деньги",
   "sound.on": "Звук: вкл",
   "sound.off": "Звук: выкл",
@@ -40,5 +38,20 @@
   "result.playAgain": "Ещё раз",
   "result.menu": "В меню",
   "result.leaderboard": "Таблица лидеров",
-  "error.network": "Нет соединения"
+  "error.network": "Нет соединения",
+  "chapter.1": "Знакомство",
+  "chapter.2": "Точность",
+  "chapter.3": "На время",
+  "level.field.one": "{n} вопрос",
+  "level.field.few": "{n} вопроса",
+  "level.field.many": "{n} вопросов",
+  "intro.questions": "больше вопросов",
+  "intro.options": "больше вариантов",
+  "intro.mistakes": "лимит ошибок {n}",
+  "intro.timer": "{n} с на вопрос",
+  "intro.timerTighter": "меньше времени: {n} с",
+  "level.goldHint": "3 звезды — ошибок не больше {n}",
+  "level.goldHintPerfect": "3 звезды — без ошибок",
+  "game.dailyLevel": "Уровень дня",
+  "result.dailyLevel": "Уровень дня"
 }

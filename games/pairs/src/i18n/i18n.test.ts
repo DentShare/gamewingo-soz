@@ -5,7 +5,11 @@ import { t } from './index';
 
 const REQUIRED = [
   'sound.on', 'sound.off',
-  'app.title', 'menu.ladder', 'menu.play', 'menu.howto', 'menu.back',
+  'app.title', 'menu.howto', 'menu.back',
+  'chapter.1', 'chapter.2', 'chapter.3',
+  'level.field.one', 'level.field.few', 'level.field.many', 'level.goldHint',
+  'intro.field', 'intro.moveLimit', 'intro.moveLimitTighter', 'intro.timer', 'intro.timerTighter',
+  'game.dailyLevel', 'result.dailyLevel',
   'game.level', 'game.moves', 'game.movesLimit', 'game.fail.moves', 'game.fail.time',
   'result.title', 'result.failed', 'result.level', 'result.nextLevel', 'result.unlocked',
   'result.score', 'result.playAgain', 'result.leaderboard', 'error.network',

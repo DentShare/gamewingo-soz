@@ -2,8 +2,6 @@
   "app.title": "Суммы",
   "menu.howto": "Как играть",
   "menu.back": "Назад",
-  "menu.ladder": "Уровень {n} из {total}",
-  "menu.play": "Играть · уровень {n}",
   "sound.on": "Звук: вкл",
   "sound.off": "Звук: выкл",
   "game.level": "Уровень {n}",
@@ -28,5 +26,18 @@
   "result.playAgain": "Ещё раз",
   "result.menu": "В меню",
   "result.leaderboard": "Таблица лидеров",
-  "error.network": "Нет соединения"
+  "error.network": "Нет соединения",
+  "chapter.1": "Знакомство",
+  "chapter.2": "Двузначные",
+  "chapter.3": "С минусом",
+  "level.field.one": "{n}×{n}",
+  "level.field.few": "{n}×{n}",
+  "level.field.many": "{n}×{n}",
+  "intro.field": "поле больше",
+  "intro.crosses": "лишних больше: {n}",
+  "intro.maxValue": "числа до {n}",
+  "intro.negative": "отрицательные числа",
+  "level.goldHint": "3 звезды — ходов не больше {n}",
+  "game.dailyLevel": "Уровень дня",
+  "result.dailyLevel": "Уровень дня"
 }

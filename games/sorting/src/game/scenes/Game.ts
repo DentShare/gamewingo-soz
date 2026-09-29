@@ -53,6 +53,8 @@ export class Game extends Scene {
   private session?: Session;
   private core!: SortingGame;
   private level = 1;
+  /** Уровень дня: параметры уровня лестницы, но расклад по зерну от даты. */
+  private daily = false;
   /** Раскладка корзин текущего уровня: их три или четыре. */
   private binW = 0;
   private binXs: number[] = [];
@@ -97,6 +99,8 @@ export class Game extends Scene {
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.level = (this.registry.get('level') as number) ?? 1;
+    // Уровень дня: параметры уровня лестницы, но расклад по зерну от даты — один на всех.
+    this.daily = this.registry.get('mode') === 'dailyLevel';
     this.session = this.registry.get('session') as Session | undefined;
 
     // «Как играть» из меню: обучение поверх настоящего поля, без сессии и таймера.
@@ -127,7 +131,10 @@ export class Game extends Scene {
     const layout = binLayout(bins);
     this.binW = layout.w;
     this.binXs = layout.xs;
-    this.core = createSortingGame(mode, mulberry32(Math.floor(Math.random() * 2 ** 31)), { total, bins });
+    const seed = this.daily
+      ? (this.registry.get('dailySeed') as number)
+      : Math.floor(Math.random() * 2 ** 31);
+    this.core = createSortingGame(mode, mulberry32(seed), { total, bins });
     this.buildHud();
     this.buildTray();
     this.buildDragHint();
@@ -144,6 +151,16 @@ export class Game extends Scene {
       })
       .setOrigin(1, 0.5)
       .setResolution(DPR);
+    // Номер уровня в шапке не пишем — ребёнку он ни к чему; уровень дня подписываем,
+    // чтобы партия не путалась с лестницей.
+    if (this.daily) {
+      this.add
+        .text(W / 2 + 26, 34, t(this.locale, 'game.dailyLevel'), {
+          fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
+        })
+        .setOrigin(0.5)
+        .setResolution(DPR);
+    }
     this.add
       .text(W / 2, 84, t(this.locale, this.mode === 'color' ? 'mode.color' : 'mode.shape'), {
         fontFamily: FONT, fontSize: 15, color: COLORS.headMuted,
@@ -512,11 +529,13 @@ export class Game extends Scene {
     const { placed, mistakes } = this.core;
 
     void this.session
-      ?.finish({ level: this.level, mode: this.mode, placed, mistakes, durationMs })
+      ?.finish({
+        level: this.level, mode: this.daily ? 'dailyLevel' : 'level', feature: this.mode, placed, mistakes, durationMs,
+      })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
-      level: this.level, mode: this.mode, locale: this.locale, placed, mistakes, durationMs,
+      level: this.level, daily: this.daily, mode: this.mode, locale: this.locale, placed, mistakes, durationMs,
       total: this.core.total,
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);

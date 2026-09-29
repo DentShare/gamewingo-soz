@@ -5,7 +5,16 @@ import { computeScore } from '../core/score';
 import type { Mode } from '../core/sorting';
 import type { Locale } from '../core/locale';
 
-export interface FinishInput { level: number; mode: Mode; placed: number; mistakes: number; durationMs: number; }
+export interface FinishInput {
+  level: number;
+  /** level — ступень лестницы; dailyLevel — уровень дня (свой тариф на сервере). */
+  mode?: 'level' | 'dailyLevel';
+  /** Признак сортировки партии: цвет или форма. */
+  feature: Mode;
+  placed: number;
+  mistakes: number;
+  durationMs: number;
+}
 
 export interface Session {
   locale: Locale; theme?: BrandTheme; sessionId: string; ready(): void;
@@ -44,12 +53,13 @@ export function createSession(
     async finish(input) {
       const score = computeScore(input);
       bridge.gameOver(score, sessionId, input.durationMs);
-      bridge.track('round_finished', { mode: input.mode, mistakes: input.mistakes });
+      const mode = input.mode ?? 'level';
+      bridge.track('round_finished', { mode, feature: input.feature, mistakes: input.mistakes });
       if (!api) return null;
       try {
         return await api.submitScore({
           sessionId, gameId: 'sorting', score, durationMs: input.durationMs,
-          meta: { mode: input.mode, mistakes: input.mistakes },
+          meta: { level: input.level, mode, feature: input.feature, mistakes: input.mistakes },
         });
       } catch (err) {
         bridge.error(String(err));

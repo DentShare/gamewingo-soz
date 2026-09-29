@@ -31,6 +31,7 @@ interface CardView {
 export class Game extends Scene {
   private locale: Locale = 'ru';
   private level = 1;
+  private daily = false;
   private params!: PairsParams;
   private session!: Session;
   private core!: PairsGame;
@@ -66,6 +67,8 @@ export class Game extends Scene {
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.level = (this.registry.get('level') as number) ?? 1;
+    // Уровень дня: параметры уровня лестницы, но расклад по зерну от даты — один на всех.
+    this.daily = this.registry.get('mode') === 'dailyLevel';
     this.params = levelAt(this.level).params;
     this.session = this.registry.get('session') as Session;
 
@@ -107,7 +110,10 @@ export class Game extends Scene {
   /** Колода уровня + HUD + сетка карточек. */
   private buildRound() {
     const spec = this.params;
-    const deck = buildDeck(spec.pairs, mulberry32(Math.floor(Math.random() * 2 ** 31)));
+    const seed = this.daily
+      ? (this.registry.get('dailySeed') as number)
+      : Math.floor(Math.random() * 2 ** 31);
+    const deck = buildDeck(spec.pairs, mulberry32(seed));
     this.core = createPairsGame(deck);
     this.buildHud();
     this.buildGrid(spec.cols, spec.rows);
@@ -240,7 +246,7 @@ export class Game extends Scene {
   private buildHud() {
     this.buildBackButton();
     this.add
-      .text(W / 2 + 26, 20, t(this.locale, 'game.level', { n: this.level }), {
+      .text(W / 2 + 26, 20, this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }), {
         fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
       })
       .setOrigin(0.5)
@@ -419,11 +425,11 @@ export class Game extends Scene {
     const { moves, totalPairs, pairsFound } = this.core;
 
     void this.session
-      .finish({ level: this.level, pairs: pairsFound, moves, durationMs })
+      .finish({ level: this.level, mode: this.daily ? 'dailyLevel' : 'level', pairs: pairsFound, moves, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
-      level: this.level, locale: this.locale, pairs: totalPairs, pairsFound, moves, durationMs, cleared,
+      level: this.level, daily: this.daily, locale: this.locale, pairs: totalPairs, pairsFound, moves, durationMs, cleared,
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));

@@ -1,6 +1,5 @@
 {
   "app.title": "Sanoq",
-  "menu.play": "Oʻynash · {n}-daraja",
   "menu.howto": "Qanday oʻynash",
   "menu.back": "Orqaga",
   "menu.catalog": "Oʻyinlarga",
@@ -22,10 +21,22 @@
   "result.menu": "Menyuga",
   "result.leaderboard": "Reyting",
   "error.network": "Aloqa yoʻq",
-  "menu.ladder": "{total} dan {n}-daraja",
   "sound.on": "Ovoz: yoqilgan",
   "sound.off": "Ovoz: oʻchirilgan",
   "result.level": "{total} dan {n}-daraja",
   "result.nextLevel": "{n}-daraja",
-  "result.unlocked": "{n}-daraja ochildi!"
+  "result.unlocked": "{n}-daraja ochildi!",
+  "chapter.1": "Tanishuv",
+  "chapter.2": "Keng tanlov",
+  "chapter.3": "Marafon",
+  "level.field.one": "{n} tagacha narsa",
+  "level.field.few": "{n} tagacha narsa",
+  "level.field.many": "{n} tagacha narsa",
+  "intro.field": "sanoq uzoqroq",
+  "intro.options": "tugmalar: {n}",
+  "intro.questions": "savollar: {n}",
+  "level.goldHint": "3 yulduz — {n} xatodan koʻp emas",
+  "level.goldHintClean": "3 yulduz — xatosiz",
+  "game.dailyLevel": "Kun darajasi",
+  "result.dailyLevel": "Kun darajasi"
 }

@@ -4,7 +4,11 @@ import uz from './uz.json';
 import { t } from './index';
 
 const REQUIRED = [
-  'app.title', 'menu.howto', 'menu.back', 'menu.ladder', 'menu.play',
+  'app.title', 'menu.howto', 'menu.back',
+  'chapter.1', 'chapter.2', 'chapter.3',
+  'level.field.one', 'level.field.few', 'level.field.many', 'level.goldHint',
+  'intro.field', 'intro.crosses', 'intro.maxValue', 'intro.negative',
+  'game.dailyLevel', 'result.dailyLevel',
   'sound.on', 'sound.off',
   'game.level', 'game.moves', 'game.goal', 'game.reset',
   'onboarding.board', 'onboarding.row', 'onboarding.cross', 'onboarding.reset',

@@ -1,10 +1,8 @@
 {
   "app.title": "Rasm yigʻish",
-  "menu.play": "Oʻynash · {n}-rasm",
   "menu.howto": "Qanday oʻynash",
   "menu.back": "Orqaga",
   "menu.catalog": "Oʻyinlarga",
-  "menu.ladder": "{total} dan {n}-rasm",
   "menu.hint": "Rasmni yigʻ — u haqida hikoya bilib olasan",
   "sound.on": "Ovoz: yoqilgan",
   "sound.off": "Ovoz: oʻchirilgan",
@@ -27,5 +25,19 @@
   "result.playAgain": "Yana yigʻish",
   "result.menu": "Menyuga",
   "result.leaderboard": "Reyting",
-  "error.network": "Aloqa yoʻq"
+  "error.network": "Aloqa yoʻq",
+  "chapter.1": "Tanishuv",
+  "chapter.2": "Xotiradan",
+  "chapter.3": "Oʻzing tanla",
+  "level.field.one": "{n} boʻlak",
+  "level.field.few": "{n} boʻlak",
+  "level.field.many": "{n} boʻlak",
+  "intro.field": "koʻproq boʻlak",
+  "intro.hintFainter": "ishora xiraroq",
+  "intro.noHint": "ishorasiz",
+  "intro.tray": "patnisda {n} tadan",
+  "level.goldHint": "3 yulduz — xatolar {n} tadan koʻp emas",
+  "level.goldHintFlawless": "3 yulduz — xatosiz yigʻish",
+  "game.dailyLevel": "Kun darajasi",
+  "result.dailyLevel": "Kun darajasi"
 }

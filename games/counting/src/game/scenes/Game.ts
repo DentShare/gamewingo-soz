@@ -58,6 +58,8 @@ export class Game extends Scene {
   private session?: Session;
   private core!: CountingGame;
   private level = 1;
+  /** Уровень дня: параметры уровня лестницы, но вопросы по зерну от даты — одни на всех. */
+  private daily = false;
   /** Сторона кнопки-цифры: зависит от того, сколько вариантов у уровня. */
   private padSize = PAD_SIZE;
   private timer?: RoundTimer;
@@ -100,6 +102,7 @@ export class Game extends Scene {
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.session = this.registry.get('session') as Session | undefined;
     this.level = (this.registry.get('level') as number) ?? 1;
+    this.daily = this.registry.get('mode') === 'dailyLevel';
 
     this.buildHud();
     this.buildBoard();
@@ -130,6 +133,11 @@ export class Game extends Scene {
   private newCore(minCount = 0): CountingGame {
     const { questions, maxCount, options } = levelAt(this.level).params;
     const opts = { questions, maxCount, options };
+    // Уровень дня — одно зерно на всех, поэтому и вопросы одинаковые. Подбор под
+    // minCount нужен только обучению, а оно всегда идёт на случайном зерне.
+    if (this.daily && !this.tutorialActive) {
+      return createCountingGame(mulberry32(this.registry.get('dailySeed') as number), opts);
+    }
     const seed = () => Math.floor(Math.random() * 2 ** 31);
     for (let i = 0; i < 30; i++) {
       const g = createCountingGame(mulberry32(seed()), opts);
@@ -206,6 +214,16 @@ export class Game extends Scene {
       .text(W - 20, 34, '', { fontFamily: FONT, fontSize: 16, color: COLORS.headMuted })
       .setOrigin(1, 0.5)
       .setResolution(DPR);
+
+    // Обычный уровень номера в шапке не показывает; уровень дня подписан — чтобы было видно, что это он.
+    if (this.daily) {
+      this.add
+        .text(W / 2, 34, t(this.locale, 'game.dailyLevel'), {
+          fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
+        })
+        .setOrigin(0.5)
+        .setResolution(DPR);
+    }
 
     this.add
       .text(W / 2, 92, t(this.locale, 'game.question'), {
@@ -293,10 +311,13 @@ export class Game extends Scene {
     // Кнопки ужимаются под их число, но не мельче 56 px — иначе тяжело попасть пальцем.
     const size = Math.max(56, Math.min(PAD_SIZE, Math.floor((W - 32 - (count - 1) * PAD_GAP) / count)));
     this.padSize = size;
-    const total = count * size + (count - 1) * PAD_GAP;
+    // Шесть кнопок по 56 px со штатным зазором шире экрана (406 > 400) — крайние
+    // обрезались. Зазор ужимаем так, чтобы ряд оставлял по 8 px с краёв.
+    const gap = Math.min(PAD_GAP, Math.floor((W - 16 - count * size) / Math.max(1, count - 1)));
+    const total = count * size + (count - 1) * gap;
     const left = (W - total) / 2 + size / 2;
     for (let i = 0; i < count; i++) {
-      this.pads.push(this.makePad(left + i * (size + PAD_GAP), PAD_Y, size));
+      this.pads.push(this.makePad(left + i * (size + gap), PAD_Y, size));
     }
   }
 
@@ -459,10 +480,12 @@ export class Game extends Scene {
     const { correct, mistakes } = this.core;
 
     void this.session
-      ?.finish({ level: this.level, correct, mistakes, durationMs })
+      ?.finish({ level: this.level, mode: this.daily ? 'dailyLevel' : 'level', correct, mistakes, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
-    this.registry.set('lastGame', { level: this.level, locale: this.locale, correct, mistakes, durationMs });
+    this.registry.set('lastGame', {
+      level: this.level, daily: this.daily, locale: this.locale, correct, mistakes, durationMs,
+    });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }

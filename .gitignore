@@ -46,3 +46,6 @@ Thumbs.db
 /howler.js-master/
 /phaser3-rex-notes-master/
 /template-vite-ts-main/
+
+# Бандл game-progress для хаба — кладёт scripts/build-catalog.mjs, в репозиторий не коммитится.
+hub/progress.js

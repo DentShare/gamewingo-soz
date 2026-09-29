@@ -149,20 +149,6 @@
     {
       "n": 4,
       "params": {
-        "pairs": 6,
-        "cols": 3,
-        "rows": 4,
-        "moveLimit": 14,
-        "timeLimitSec": 0
-      },
-      "goals": {
-        "gold": 8,
-        "silver": 11
-      }
-    },
-    {
-      "n": 5,
-      "params": {
         "pairs": 8,
         "cols": 4,
         "rows": 4,
@@ -175,21 +161,7 @@
       }
     },
     {
-      "n": 6,
-      "params": {
-        "pairs": 8,
-        "cols": 4,
-        "rows": 4,
-        "moveLimit": 18,
-        "timeLimitSec": 0
-      },
-      "goals": {
-        "gold": 11,
-        "silver": 15
-      }
-    },
-    {
-      "n": 7,
+      "n": 5,
       "params": {
         "pairs": 9,
         "cols": 3,
@@ -203,17 +175,45 @@
       }
     },
     {
-      "n": 8,
+      "n": 6,
+      "params": {
+        "pairs": 9,
+        "cols": 3,
+        "rows": 6,
+        "moveLimit": 22,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 12,
+        "silver": 16
+      }
+    },
+    {
+      "n": 7,
       "params": {
         "pairs": 9,
         "cols": 3,
         "rows": 6,
         "moveLimit": 20,
-        "timeLimitSec": 90
+        "timeLimitSec": 0
       },
       "goals": {
         "gold": 12,
         "silver": 16
+      }
+    },
+    {
+      "n": 8,
+      "params": {
+        "pairs": 10,
+        "cols": 4,
+        "rows": 5,
+        "moveLimit": 24,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 14,
+        "silver": 18
       }
     },
     {
@@ -222,26 +222,26 @@
         "pairs": 10,
         "cols": 4,
         "rows": 5,
-        "moveLimit": 0,
+        "moveLimit": 22,
         "timeLimitSec": 0
       },
       "goals": {
         "gold": 14,
-        "silver": 20
+        "silver": 18
       }
     },
     {
       "n": 10,
       "params": {
-        "pairs": 10,
+        "pairs": 12,
         "cols": 4,
-        "rows": 5,
-        "moveLimit": 22,
-        "timeLimitSec": 80
+        "rows": 6,
+        "moveLimit": 28,
+        "timeLimitSec": 0
       },
       "goals": {
-        "gold": 14,
-        "silver": 18
+        "gold": 16,
+        "silver": 21
       }
     },
     {
@@ -250,12 +250,12 @@
         "pairs": 12,
         "cols": 4,
         "rows": 6,
-        "moveLimit": 0,
-        "timeLimitSec": 0
+        "moveLimit": 28,
+        "timeLimitSec": 110
       },
       "goals": {
-        "gold": 17,
-        "silver": 24
+        "gold": 16,
+        "silver": 21
       }
     },
     {
@@ -264,8 +264,8 @@
         "pairs": 12,
         "cols": 4,
         "rows": 6,
-        "moveLimit": 26,
-        "timeLimitSec": 90
+        "moveLimit": 28,
+        "timeLimitSec": 95
       },
       "goals": {
         "gold": 16,
@@ -278,12 +278,12 @@
         "pairs": 15,
         "cols": 5,
         "rows": 6,
-        "moveLimit": 0,
-        "timeLimitSec": 0
+        "moveLimit": 36,
+        "timeLimitSec": 140
       },
       "goals": {
-        "gold": 21,
-        "silver": 30
+        "gold": 20,
+        "silver": 26
       }
     },
     {
@@ -293,7 +293,7 @@
         "cols": 5,
         "rows": 6,
         "moveLimit": 32,
-        "timeLimitSec": 100
+        "timeLimitSec": 140
       },
       "goals": {
         "gold": 20,
@@ -306,12 +306,12 @@
         "pairs": 15,
         "cols": 5,
         "rows": 6,
-        "moveLimit": 28,
-        "timeLimitSec": 80
+        "moveLimit": 32,
+        "timeLimitSec": 115
       },
       "goals": {
-        "gold": 19,
-        "silver": 24
+        "gold": 20,
+        "silver": 26
       }
     }
   ]

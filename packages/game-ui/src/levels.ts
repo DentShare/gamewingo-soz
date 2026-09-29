@@ -70,7 +70,7 @@ export function makeStarRow(
 }
 
 /** Дужка и корпус замка — закрытый уровень. */
-function drawLock(g: Phaser.GameObjects.Graphics, size: number): void {
+export function drawLock(g: Phaser.GameObjects.Graphics, size: number): void {
   const w = size * 0.62, h = size * 0.5, r = size * 0.26;
   g.lineStyle(size * 0.14, C.muted, 1);
   g.beginPath();
@@ -106,6 +106,7 @@ export function makeLevelGrid(
   y: number,
   levels: readonly LevelTileState[],
   onPick: (n: number) => void,
+  opts: { lockedStyle?: 'lock' | 'number' } = {},
 ): LevelGrid {
   const root = scene.add.container(0, 0);
   const rowWidth = PER_ROW * TILE + (PER_ROW - 1) * TILE_GAP;
@@ -114,7 +115,7 @@ export function makeLevelGrid(
   levels.forEach((lv, i) => {
     const cx = left + (i % PER_ROW) * (TILE + TILE_GAP);
     const cy = y + TILE / 2 + Math.floor(i / PER_ROW) * (TILE + TILE_GAP);
-    root.add(makeLevelTile(scene, cx, cy, lv, onPick));
+    root.add(makeLevelTile(scene, cx, cy, lv, onPick, opts.lockedStyle ?? 'lock'));
   });
 
   return {
@@ -130,6 +131,7 @@ function makeLevelTile(
   y: number,
   lv: LevelTileState,
   onPick: (n: number) => void,
+  lockedStyle: 'lock' | 'number',
 ): Phaser.GameObjects.Container {
   const half = TILE / 2;
   const face = lv.current ? C.primary : C.surface;
@@ -143,7 +145,9 @@ function makeLevelTile(
 
   const items: Phaser.GameObjects.GameObject[] = [g];
 
-  if (lv.unlocked) {
+  // Закрытый уровень «номером»: путь виден целиком, но плитка приглушена и не нажимается.
+  const preview = !lv.unlocked && lockedStyle === 'number';
+  if (lv.unlocked || preview) {
     // Номер поднят на 6 px: под ним живёт ряд звёзд.
     items.push(
       scene.add
@@ -167,6 +171,7 @@ function makeLevelTile(
   }
 
   const root = scene.add.container(x, y, items);
+  if (preview) root.setAlpha(0.45);
   if (!lv.unlocked) return root;
 
   const hit = scene.add.rectangle(0, 0, TILE, TILE, 0x000000, 0).setInteractive({ useHandCursor: true });
