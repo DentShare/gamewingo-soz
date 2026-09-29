@@ -9,6 +9,7 @@ import { COLORS, FONT } from '../palette';
 import {
   applyTheme, setupCamera, type Button, makeButton, makeKeyCap, toast, shakeCamera,
   playSound, makeGameHeader, openPauseSheet, setBackHandler, uiText, TOP_BAR_H,
+  runFirstMoveTutorial, showRuleOnce, type FirstMoveTutorial, type Rect,
   type GameHeader, type PauseSheet,
 } from '../ui';
 import { DPR } from '../dpr';
@@ -16,7 +17,6 @@ import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
-import { startOnboarding, type OnboardingTargets, type Rect } from '../onboarding';
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
 
 const W = 400;
@@ -44,8 +44,8 @@ export class Game extends Scene {
   private selected: number | null = null;
   private hintsLeft = MAX_HINTS;
   private finished = false;
-  /** Идёт обучение: игровой ввод и выход заблокированы. */
-  private tutorialActive = false;
+  /** Обучение в один шаг: первая верная цифра — настоящий ход (T6). */
+  private tutorial: FirstMoveTutorial | null = null;
 
   // Вью.
   private cellRects: Phaser.GameObjects.Rectangle[] = [];
@@ -61,8 +61,7 @@ export class Game extends Scene {
   private boardTop = 0;
   private cellSize = 0;
   private keyCenters: { v: number; x: number; y: number }[] = []; // v=0 — ластик
-  private keypadRect: Rect = { x: 0, y: 0, w: 0, h: 0 };
-  private hintRect: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private keyW = 0;
 
   constructor() {
     super('Game');
@@ -76,7 +75,7 @@ export class Game extends Scene {
     this.selected = null;
     this.hintsLeft = MAX_HINTS;
     this.finished = false;
-    this.tutorialActive = false;
+    this.tutorial = null;
     this.header = undefined;
     this.pause = null;
     // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
@@ -93,12 +92,6 @@ export class Game extends Scene {
     this.mistakes = 0;
     this.session = this.registry.get('session') as Session;
 
-    // «Как играть» из паузы: обучение на настоящей сетке, без сессии, таймера и ввода.
-    if (this.registry.get('howto')) {
-      this.runHowto();
-      return;
-    }
-
     this.buildPuzzle();
     this.buildScreen();
 
@@ -108,11 +101,16 @@ export class Game extends Scene {
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') this.timer.pause();
       // Приложение вернулось, но шит паузы открыт — таймер ждёт «Продолжить».
-      else if (e.type === 'RESUME' && !this.pause?.open) this.timer.resume();
+      // В обучении часы стоят до первой верной цифры.
+      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorial?.active) this.timer.resume();
     });
     this.events.once('shutdown', off);
 
-    this.maybeShowOnboarding();
+    // «Как играть» из паузы — то же обучение на новой партии.
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
+    if (howto || !hasOnboarded()) this.startTutorial();
+    else this.announceLimits();
   }
 
   update() {
@@ -133,7 +131,7 @@ export class Game extends Scene {
 
   /** Уровень не пройден: набрали лимит ошибок или кончилось время. */
   private failRound(cause: 'mistakes' | 'time') {
-    if (this.finished || this.tutorialActive) return;
+    if (this.finished || this.tutorial?.active) return;
     this.finished = true;
     this.timer?.pause();
     toast(this, 200, 640, t(this.locale, `game.fail.${cause}`));
@@ -167,107 +165,87 @@ export class Game extends Scene {
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
 
-  /** «Как играть» из паузы: настоящая сетка 4×4 с данными, но без партии; по концу — в меню. */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-    // На 4×4 правила нагляднее — обучение всегда идёт на первом уровне лестницы.
-    this.level = 1;
-    this.daily = false;
-    this.params = levelAt(1).params;
-    this.buildPuzzle();
-    this.buildScreen();
-    this.timer = createRoundTimer(() => performance.now()); // не стартует: на экране 00:00
-    this.time.delayedCall(360, () =>
-      this.launchOnboarding(() => {
-        setOnboarded();
-        this.scene.start('MainMenu');
-      }),
-    );
-  }
-
-  /** Первая партия — показываем обучение один раз: таймер на паузе, ввод заблокирован. */
-  private maybeShowOnboarding() {
-    if (hasOnboarded()) return;
-    this.tutorialActive = true;
+  /**
+   * Обучение в один шаг: поле видно, пустая клетка уже выбрана, она и нужная
+   * цифра внизу обведены и пульсируют. Нажать цифру — настоящий ход; таймер и
+   * чипы включаются после первой верной цифры. Правило «цифры не повторяются»
+   * объясняется в момент первой ошибки, лимиты — после обучения.
+   */
+  private startTutorial() {
+    const cell = this.pickTutorialCell();
+    if (cell < 0) return;
     this.timer.pause();
-    // Даём кадру отрисоваться (и завершиться fade-in камеры), затем открываем оверлей.
-    this.time.delayedCall(360, () =>
-      this.launchOnboarding(() => {
+    this.header?.setChipsVisible(false);
+    // Клетка уже выбрана — малышу остаётся одно действие: нажать цифру.
+    this.selected = cell;
+    this.refresh();
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove'),
+      targets: () => this.tutorialTargets(),
+      pad: 3,
+      radius: 10,
+      onDone: () => {
         setOnboarded();
-        this.tutorialActive = false;
-        this.timer.resume();
-      }),
-    );
+        this.header?.setChipsVisible(true);
+        if (!this.pause?.open) this.timer.resume();
+        this.announceLimits();
+      },
+    });
   }
 
-  private launchOnboarding(onDone: () => void) {
-    const demoCell = this.grid.indexOf(0); // верхняя-левая пустая клетка
-    const prevValue = demoCell >= 0 ? this.grid[demoCell] : 0;
-    const prevSelected = this.selected;
-    startOnboarding(this, this.locale, this.onboardingTargets(demoCell), {
-      select: () => {
-        if (demoCell < 0) return;
-        this.selected = demoCell;
-        this.refresh();
-      },
-      fill: () => {
-        if (demoCell < 0) return;
-        this.grid[demoCell] = this.solution[demoCell];
-        this.refresh();
-        this.pulseCell(demoCell);
-      },
-      reset: () => {
-        // Сетку игрока возвращаем как была: обучение не даёт форы.
-        if (demoCell >= 0) this.grid[demoCell] = prevValue;
-        this.selected = prevSelected;
-        this.refresh();
-      },
-    }, onDone);
-  }
-
-  /** Настоящие зоны экрана для подсветки: доска, строка, блок, клетка, панель, подсказка. */
-  private onboardingTargets(demoCell: number): OnboardingTargets {
+  /**
+   * Пустая клетка, которую проще всего угадать: больше всего данных цифр в её
+   * строке, столбце и блоке. При равенстве — верхняя левая.
+   */
+  private pickTutorialCell(): number {
     const n = this.size;
-    const cell = this.cellSize;
-    const board: Rect = { x: this.boardLeft, y: this.boardTop, w: n * cell, h: n * cell };
-
-    // Строка и блок с наибольшим числом данных — на них правило видно лучше всего.
     const { rows: bRows, cols: bCols } = blockDims(n);
-    const rowScore = (r: number) => this.given.slice(r * n, r * n + n).filter(Boolean).length;
-    let bestRow = 0;
-    for (let r = 1; r < n; r++) if (rowScore(r) > rowScore(bestRow)) bestRow = r;
-
-    let bestBlock = { r0: 0, c0: 0, score: -1 };
-    for (let r0 = 0; r0 < n; r0 += bRows) {
-      for (let c0 = 0; c0 < n; c0 += bCols) {
-        let score = 0;
-        for (let r = r0; r < r0 + bRows; r++) {
-          for (let c = c0; c < c0 + bCols; c++) if (this.given[r * n + c]) score++;
-        }
-        if (score > bestBlock.score) bestBlock = { r0, c0, score };
+    let best = -1;
+    let bestScore = -1;
+    for (let i = 0; i < n * n; i++) {
+      if (this.grid[i] !== 0) continue;
+      const r = Math.floor(i / n), c = i % n;
+      const r0 = r - (r % bRows), c0 = c - (c % bCols);
+      const seen = new Set<number>();
+      for (let k = 0; k < n; k++) {
+        if (this.grid[r * n + k]) seen.add(this.grid[r * n + k]);
+        if (this.grid[k * n + c]) seen.add(this.grid[k * n + c]);
       }
+      for (let y = r0; y < r0 + bRows; y++) {
+        for (let x = c0; x < c0 + bCols; x++) if (this.grid[y * n + x]) seen.add(this.grid[y * n + x]);
+      }
+      if (seen.size > bestScore) { bestScore = seen.size; best = i; }
     }
+    return best;
+  }
 
-    const idx = demoCell >= 0 ? demoCell : 0;
-    return {
-      board,
-      row: { x: this.boardLeft, y: this.boardTop + bestRow * cell, w: n * cell, h: cell },
-      block: {
-        x: this.boardLeft + bestBlock.c0 * cell,
-        y: this.boardTop + bestBlock.r0 * cell,
-        w: bCols * cell,
-        h: bRows * cell,
-      },
-      cell: {
-        x: this.boardLeft + (idx % n) * cell,
-        y: this.boardTop + Math.floor(idx / n) * cell,
-        w: cell,
-        h: cell,
-      },
-      keypad: this.keypadRect,
-      hint: this.hintRect,
+  /**
+   * Подсветка идёт за выбором: выбранная пустая клетка и её верная цифра.
+   * Малыш ткнул в другую клетку — рамки переезжают туда же.
+   */
+  private tutorialTargets(): Rect[] {
+    const i = this.selected;
+    if (i === null || this.given[i]) return [];
+    const n = this.size;
+    const cellRect: Rect = {
+      x: this.boardLeft + (i % n) * this.cellSize,
+      y: this.boardTop + Math.floor(i / n) * this.cellSize,
+      w: this.cellSize,
+      h: this.cellSize,
     };
+    const key = this.keyCenters.find((k) => k.v === this.solution[i]);
+    if (!key) return [cellRect];
+    return [cellRect, { x: key.x - this.keyW / 2, y: key.y - KEY_H / 2, w: this.keyW, h: KEY_H }];
+  }
+
+  /** Лимиты уровня — одной строкой в начале первого уровня, где они появились. */
+  private announceLimits() {
+    if (this.params.timeLimitSec) {
+      showRuleOnce(this, 'sudoku-kids:timer', t(this.locale, 'rule.timer'));
+    } else if (this.params.mistakeLimit) {
+      showRuleOnce(this, 'sudoku-kids:mistakeLimit', t(this.locale, 'rule.mistakeLimit', { n: this.params.mistakeLimit }));
+    }
   }
 
   // ── Шапка партии и пауза ─────────────────────────────────────────────────────
@@ -299,17 +277,13 @@ export class Game extends Scene {
   /** Стрелка в шапке: пауза с выбором, а не мгновенный выход. */
   private openPause() {
     if (this.finished || this.pause?.open) return;
-    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
-    if (this.tutorialActive) {
-      this.exitToMenu();
-      return;
-    }
     this.timer?.pause();
     this.pause = openPauseSheet(this, {
       locale: this.locale,
       summary: this.pauseSummary(),
       sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
-      onResume: () => { this.pause = null; this.timer?.resume(); },
+      // В обучении часы стоят до первой верной цифры — «Продолжить» их не запускает.
+      onResume: () => { this.pause = null; if (!this.tutorial?.active) this.timer?.resume(); },
       onRestart: () => this.scene.restart(),
       onExit: () => this.exitToMenu(),
       onHowto: () => {
@@ -412,7 +386,7 @@ export class Game extends Scene {
     const totalW = kw * count + KEY_GAP * (count - 1);
     let x = (W - totalW) / 2;
     const cy = PAD_TOP + KEY_H / 2;
-    this.keypadRect = { x, y: PAD_TOP, w: totalW, h: KEY_H };
+    this.keyW = kw;
     for (let v = 1; v <= count; v++) {
       const digit = v <= n ? v : 0; // последняя клавиша — ластик
       const cx = x + kw / 2;
@@ -439,9 +413,8 @@ export class Game extends Scene {
   }
 
   private buildHintButton() {
-    const w = 232, h = 48, lip = 6;
+    const w = 232, h = 48;
     this.hintButton = makeButton(this, W / 2, HINT_Y, this.hintLabel(), () => this.useHint(), { width: w, height: h });
-    this.hintRect = { x: (W - w) / 2, y: HINT_Y - h / 2 - lip, w, h: h + lip };
   }
 
   private hintLabel(): string {
@@ -451,20 +424,33 @@ export class Game extends Scene {
   // ── Взаимодействие ───────────────────────────────────────────────────────────
 
   private onCellTap(i: number) {
-    if (this.finished || this.tutorialActive || this.given[i]) return; // данные не выделяем
+    if (this.finished || this.given[i]) return; // данные не выделяем
     this.selected = i;
     this.refresh();
+    this.tutorial?.refresh();
   }
 
   private onDigit(v: number) {
-    if (this.finished || this.tutorialActive || this.selected === null || this.given[this.selected]) return;
+    if (this.finished || this.selected === null || this.given[this.selected]) return;
     const cell = this.selected;
     const wrong = v !== this.solution[cell];
     playSound(wrong ? 'wrong' : 'ok');
     this.grid[cell] = v;
     this.refresh();
 
-    if (wrong && this.params.mistakeLimit) {
+    if (wrong) {
+      // Правило — в момент первой ошибки, а не карточкой заранее.
+      // Правило уже знакомо, а у уровня лимит — напомнить про лимит (тоже один раз).
+      const shown = showRuleOnce(this, 'sudoku-kids:mistake', t(this.locale, 'rule.mistake'));
+      if (!shown && this.params.mistakeLimit) {
+        showRuleOnce(this, 'sudoku-kids:mistakeLimit', t(this.locale, 'rule.mistakeLimit', { n: this.params.mistakeLimit }));
+      }
+    } else {
+      // Первая верная цифра закрывает обучение: дальше обычная партия.
+      this.tutorial?.done();
+    }
+    // Ошибка во время обучения не идёт в лимит: сначала научиться, потом считать.
+    if (wrong && this.params.mistakeLimit && !this.tutorial?.active) {
       this.mistakes++;
       this.header?.setChip('mistakes', this.mistakesLabel());
       if (this.mistakes >= this.params.mistakeLimit) {
@@ -476,14 +462,14 @@ export class Game extends Scene {
   }
 
   private onErase() {
-    if (this.finished || this.tutorialActive || this.selected === null || this.given[this.selected]) return;
+    if (this.finished || this.selected === null || this.given[this.selected]) return;
     this.grid[this.selected] = 0;
     this.refresh();
   }
 
   /** Подсказка: правильная цифра в выделенную клетку (или случайную пустую). Максимум 3. */
   private useHint() {
-    if (this.finished || this.tutorialActive || this.hintsLeft <= 0) return;
+    if (this.finished || this.hintsLeft <= 0) return;
     let target = this.selected !== null && !this.given[this.selected] ? this.selected : -1;
     if (target === -1) {
       const empty = this.grid.map((v, i) => (v === 0 ? i : -1)).filter((i) => i !== -1);
@@ -498,6 +484,8 @@ export class Game extends Scene {
     if (this.hintsLeft === 0) this.hintButton.root.setAlpha(0.55);
     this.pulseCell(target);
     this.refresh();
+    // Подсказка вписала верную цифру — это тоже удачный первый ход.
+    this.tutorial?.done();
     this.checkWin();
   }
 

@@ -9,12 +9,6 @@
   "game.progress": "{n} из {total}",
   "game.take": "Возьми кусочек и перетащи на своё место",
   "game.almost": "Почти! Попробуй другое место",
-  "onboarding.take": "Возьми кусочек пальцем и тяни его наверх.",
-  "onboarding.place": "Отпусти кусочек на своём месте — он сам встанет ровно.",
-  "onboarding.story": "Соберёшь всю картинку — прочитаем про неё историю.",
-  "onboarding.next": "Далее",
-  "onboarding.done": "Понятно",
-  "onboarding.skip": "Пропустить",
   "result.title": "Картинка собрана!",
   "chapter.1": "Знакомство",
   "chapter.2": "По памяти",
@@ -37,5 +31,7 @@
   "result.gapMisses.few": "на {n} промаха меньше",
   "result.gapMisses.many": "на {n} промахов меньше",
   "result.almostDetail": "Промахов: {misses} · можно не больше {need}",
-  "result.almostDetailFlawless": "Промахов: {misses} · нужно без промахов"
+  "result.almostDetailFlawless": "Промахов: {misses} · нужно без промахов",
+  "tutorial.firstMove": "Перетащи кусочек на светящееся место",
+  "rule.wrong": "Не то место — кусочек вернётся. Попробуй другое"
 }

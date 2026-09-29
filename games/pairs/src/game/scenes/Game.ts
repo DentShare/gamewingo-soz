@@ -148,10 +148,16 @@ export class Game extends Scene {
     });
   }
 
-  /** Лимиты уровня — одной строкой в начале первого уровня, где они появились. */
+  /**
+   * Лимиты уровня — одной строкой в начале первого уровня, где они появились.
+   * Если на уровне оба, второе правило идёт после первого, а не теряется.
+   */
   private announceLimits() {
-    if (this.params.moveLimit) showRuleOnce(this, 'pairs:moveLimit', t(this.locale, 'rule.moveLimit'));
-    else if (this.params.timeLimitSec) showRuleOnce(this, 'pairs:timer', t(this.locale, 'rule.timer'));
+    const shown = Boolean(this.params.moveLimit) && showRuleOnce(this, 'pairs:moveLimit', t(this.locale, 'rule.moveLimit'));
+    if (!this.params.timeLimitSec) return;
+    const timer = () => showRuleOnce(this, 'pairs:timer', t(this.locale, 'rule.timer'));
+    if (shown) this.time.delayedCall(2500, timer);
+    else timer();
   }
 
   /** Пара одинаковых карточек, лежащих ближе всего друг к другу (компактная подсветка). */

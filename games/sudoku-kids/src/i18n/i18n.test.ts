@@ -13,8 +13,7 @@ const REQUIRED = [
   'menu.catalog', 'game.hints', 'game.level', 'game.mistakes',
   'game.fail.mistakes', 'game.fail.time',
   'result.failed', 'result.filledOf',
-  'onboarding.grid', 'onboarding.row', 'onboarding.block', 'onboarding.input', 'onboarding.hint',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
+  'tutorial.firstMove', 'rule.mistake', 'rule.mistakeLimit', 'rule.timer',
   'result.title', 'result.gapSeconds.one', 'result.gapSeconds.few', 'result.gapSeconds.many',
   'result.almostDetail',
 ];

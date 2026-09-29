@@ -11,7 +11,7 @@ import { keyboardFor, ENTER, BACKSPACE, UZ_DIGRAPH_KEYS, type Key } from '../key
 import { paletteFor, statusColor, COLORS, FONT, HIGH_CONTRAST, type Palette } from '../palette';
 import {
   toast, applyTheme, setupCamera, makeKeyCap, type KeyCap, playSound, makeGameHeader, openPauseSheet,
-  setBackHandler, TOP_BAR_H, runFirstMoveTutorial, showRuleOnce,
+  setBackHandler, TOP_BAR_H, VIEW_BOTTOM, runFirstMoveTutorial, showRuleOnce,
   type FirstMoveTutorial, type Rect, type GameHeader, type PauseSheet,
 } from '../ui';
 import { DPR } from '../dpr';
@@ -161,46 +161,36 @@ export class Game extends Scene {
     this.timer.pause();
     this.header?.setChipsVisible(false);
     const row = this.coreGame.guessesUsed;
-    const created = this.spawned(() => {
-      this.tutorial = runFirstMoveTutorial(this, {
-        locale: this.locale,
-        text: t(this.locale, 'tutorial.firstMove'),
-        targets: () => [this.rowRect(this.coreGame.guessesUsed), this.keyboardBounds],
-        pad: 6,
-        radius: 12,
-        onDone: () => {
-          setOnboarded();
-          this.header?.setChipsVisible(true);
-          if (!this.pause?.open) this.timer.resume();
-        },
-      });
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove'),
+      targets: () => [this.rowRect(this.coreGame.guessesUsed), this.keyboardBounds],
+      pad: 6,
+      radius: 12,
+      barTop: (h) => this.tutorialBarTop(h, row),
+      onDone: () => {
+        setOnboarded();
+        this.header?.setChipsVisible(true);
+        if (!this.pause?.open) this.timer.resume();
+      },
     });
-    this.keepBarOffKeyboard(created, row);
   }
 
   /**
    * Полоса обучения живёт у нижнего края. На экранах 16:9 (логическая высота 720)
    * узбекская клавиатура в четыре ряда уходит под неё — и «галочка» перекрыта.
-   * Тогда поднимаем полосу (всё, кроме вуали и рамок) на пустые строки поля
-   * между текущей строкой и клавиатурой: они всё равно приглушены.
+   * Тогда ставим полосу на пустые строки поля между текущей строкой и клавиатурой:
+   * они всё равно приглушены.
    */
-  private keepBarOffKeyboard(created: Phaser.GameObjects.GameObject[], row: number) {
-    const root = created.find((o) => o.type === 'Container') as Phaser.GameObjects.Container | undefined;
-    if (!root) return;
-    const parts = root.list.slice(2) as Array<Phaser.GameObjects.GameObject & { y: number }>; // [вуаль, рамки, …полоса]
-    const hit = parts.find((o) => o.type === 'Rectangle') as Phaser.GameObjects.Rectangle | undefined;
-    if (!hit) return;
-    const barTop = hit.y - hit.height / 2;
+  private tutorialBarTop(h: number, row: number): number {
+    const bottomTop = VIEW_BOTTOM - 16 - h - 8;
     const kb = this.keyboardBounds;
-    if (kb.y + kb.h + 8 <= barTop) return;
-    const rowBottom = this.rowCenterY(row) + TILE / 2 + 8;
-    const gapTop = rowBottom;
+    if (kb.y + kb.h + 8 <= bottomTop) return bottomTop;
+    const gapTop = this.rowCenterY(row) + TILE / 2 + 8;
     const gapBottom = kb.y - 8;
-    const center = gapBottom - gapTop >= hit.height
-      ? (gapTop + gapBottom) / 2
-      : this.rowCenterY(row) - TILE / 2 - 8 - hit.height / 2; // последняя строка — над ней
-    const dy = center - hit.y;
-    for (const o of parts) o.y += dy;
+    return gapBottom - gapTop >= h
+      ? (gapTop + gapBottom) / 2 - h / 2
+      : this.rowCenterY(row) - TILE / 2 - 8 - h; // последняя строка — над ней
   }
 
   /** Строка поля в координатах сцены. */
@@ -208,37 +198,18 @@ export class Game extends Scene {
     return { x: BOARD_X, y: this.rowCenterY(row) - TILE / 2, w: BOARD_W, h: TILE };
   }
 
-  /**
-   * Подсказка поверх обучения: общий `toast` живёт на глубине 100 и тонет под
-   * вуалью (900) — пока обучение идёт, поднимаем его плашку над ней.
-   */
+  /** Подсказка: во время обучения — над вуалью (900), иначе на обычной глубине. */
   private say(message: string) {
-    const created = this.spawned(() => toast(this, 200, 640, message));
-    if (this.tutorial?.active) created.forEach((o) => (o as unknown as Phaser.GameObjects.Components.Depth).setDepth?.(960));
-  }
-
-  /** Что добавилось в список отображения за время `fn` (плашки из game-ui не возвращают объект). */
-  private spawned(fn: () => unknown): Phaser.GameObjects.GameObject[] {
-    const before = new Set(this.children.list);
-    fn();
-    return this.children.list.filter((o) => !before.has(o));
+    toast(this, 200, 640, message, this.tutorial?.active ? { depth: 960 } : {});
   }
 
   /**
-   * Цвета плиток — одной строкой, когда они впервые появились. Общая плашка
-   * правила встаёт под шапку, то есть ровно на первую строку поля, которую она
-   * объясняет, — переносим её под раскрытый ряд.
+   * Цвета плиток — одной строкой, когда они впервые появились. Под шапкой
+   * плашка закрыла бы первую строку, которую объясняет, — ставим её под раскрытый ряд.
    */
   private explainColors(row: number) {
     const key = this.palette === HIGH_CONTRAST ? 'rule.colorsContrast' : 'rule.colors';
-    let shown = false;
-    const created = this.spawned(() => { shown = showRuleOnce(this, 'soz:colors', t(this.locale, key)); });
-    if (!shown) return;
-    for (const o of created) {
-      if (o.type !== 'Container') continue;
-      const box = o as Phaser.GameObjects.Container;
-      box.setY(this.rowCenterY(row) + TILE / 2 + 10 + box.getBounds().height / 2);
-    }
+    showRuleOnce(this, 'soz:colors', t(this.locale, key), { y: this.rowCenterY(row) + TILE / 2 + 10 });
   }
 
   private randomPracticeWord(): string {

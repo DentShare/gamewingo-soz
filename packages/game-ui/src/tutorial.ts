@@ -35,6 +35,11 @@ export interface FirstMoveTutorialOpts {
   shape?: 'rect' | 'circle';
   /** Насколько приглушать остальное (0…1). Аркадам в движении — мягче, например 0.4. */
   veilAlpha?: number;
+  /**
+   * Где поставить полосу: по её высоте вернуть верх. По умолчанию — у нижнего края.
+   * Нужна, когда внизу то, что надо нажать (клавиатура «5 букв» на экране 16:9).
+   */
+  barTop?(height: number): number;
   /** Обучение закончено — ходом (`done`) или «Пропустить». */
   onDone(skipped: boolean): void;
 }
@@ -109,7 +114,7 @@ export function runFirstMoveTutorial(scene: Scene, o: FirstMoveTutorialOpts): Fi
     .setWordWrapWidth(textW, true)
     .setResolution(DPR);
   const barH = Math.max(64, msg.height + 28);
-  const barTop = VIEW_BOTTOM - 16 - barH - 8;
+  const barTop = o.barTop ? o.barTop(barH) : VIEW_BOTTOM - 16 - barH - 8;
   const bar = scene.add.graphics();
   bar.fillStyle(C.ink, 0.94).fillRoundedRect(16, barTop, barW, barH, RADIUS.card);
   msg.setPosition(32, barTop + (barH - msg.height) / 2);
@@ -124,8 +129,11 @@ export function runFirstMoveTutorial(scene: Scene, o: FirstMoveTutorialOpts): Fi
   let note: Phaser.GameObjects.Text | null = null;
   if (o.note) {
     note = scene.add
-      .text(LOGICAL_W / 2, barTop - 10, o.note, { fontFamily: FONT, fontSize: TYPE.caption, fontStyle: WEIGHT.semibold, color: S.muted })
+      .text(LOGICAL_W / 2, barTop - 10, o.note, {
+        fontFamily: FONT, fontSize: TYPE.caption, fontStyle: WEIGHT.semibold, color: S.muted, align: 'center',
+      })
       .setOrigin(0.5, 1)
+      .setWordWrapWidth(LOGICAL_W - 48, true)
       .setResolution(DPR);
     root.add(note);
   }
@@ -188,11 +196,17 @@ function seenRules(): string[] {
 
 /**
  * Правило — в момент события и один раз: первый промах, первый лимит.
- * Тёмная строка-тост под шапкой на 2 с: внизу живёт полоса обучения и кнопки
+ * Тёмная строка-тост под шапкой на 2 с (длинная — дольше): внизу живёт полоса обучения и кнопки
  * игры, а верх поля в момент события свободен. `id` — «<игра>:<правило>».
  * Возвращает true, если показано (ещё не видели).
  */
-export function showRuleOnce(scene: Scene, id: string, text: string): boolean {
+export function showRuleOnce(
+  scene: Scene,
+  id: string,
+  text: string,
+  /** `y` — верх плашки, если под шапкой она закроет то, что объясняет (цвета плиток). */
+  opts: { y?: number } = {},
+): boolean {
   const seen = seenRules();
   if (seen.includes(id)) return false;
   try {
@@ -211,9 +225,11 @@ export function showRuleOnce(scene: Scene, id: string, text: string): boolean {
   const g = scene.add.graphics();
   g.fillStyle(C.ink, 0.94).fillRoundedRect(-w / 2, -h / 2, w, h, RADIUS.card);
   root.add([g, txt]);
-  root.setY(TOP_BAR_H + 12 + h / 2);
+  root.setY((opts.y ?? TOP_BAR_H + 12) + h / 2);
   root.setAlpha(0);
   scene.tweens.add({ targets: root, alpha: 1, duration: 160 });
-  scene.tweens.add({ targets: root, alpha: 0, delay: 2000, duration: 300, onComplete: () => root.destroy() });
+  // 2 с на короткую строку; длинную (цвета плиток в три строки) держим дольше — успеть прочитать.
+  const hold = Math.max(2000, text.length * 45);
+  scene.tweens.add({ targets: root, alpha: 0, delay: hold, duration: 300, onComplete: () => root.destroy() });
   return true;
 }
