@@ -41,6 +41,8 @@ function card(scene: Scene, w: number, h: number, fill: number = C.surface): Pha
 export interface NextLevelCardOpts {
   locale: string;
   n: number;
+  /** Своё название уровня, если игра зовёт их иначе: «Картинка 3» в пазле. */
+  title?: string;
   /** Собрано звёзд и максимум по лестнице — «★ 14 / 45» справа вверху. */
   stars: number;
   maxStars: number;
@@ -71,7 +73,7 @@ export function makeNextLevelCard(scene: Scene, x: number, y: number, o: NextLev
       .setOrigin(1, 0),
   );
   cy += 22;
-  items.push(text(scene, pad, cy, uiText(o.locale, 'next.level', { n: o.n }), TYPE.title + 2, S.ink, WEIGHT.bold));
+  items.push(text(scene, pad, cy, o.title ?? uiText(o.locale, 'next.level', { n: o.n }), TYPE.title + 2, S.ink, WEIGHT.bold));
   cy += 34;
 
   // Чипы в ряд слева направо: поле, потом новое.

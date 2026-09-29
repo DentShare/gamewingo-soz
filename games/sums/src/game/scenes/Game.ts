@@ -5,7 +5,8 @@ import { mulberry32 } from '../../core/rng';
 import { levelAt } from '../../core/levels';
 import { COLORS, FONT } from '../palette';
 import {
-  applyTheme, setupCamera, makeButton, makeBackButton, playSound, squash, sparkle, VIEW_BOTTOM,
+  applyTheme, setupCamera, makeButton, playSound, squash, sparkle, VIEW_BOTTOM,
+  makeGameHeader, openPauseSheet, setBackHandler, TOP_BAR_H, type GameHeader, type PauseSheet,
 } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
@@ -21,8 +22,10 @@ const W = 400;
  * телефоне кнопка иначе висит посреди пустоты.
  */
 const RESET_Y = Math.round(VIEW_BOTTOM - 64);
+/** Подпись цели — сразу под шапкой партии. */
+const GOAL_Y = TOP_BAR_H + 22;
 /** Полоса, в которой живёт доска: под подписью цели и над кнопкой сброса. */
-const BOARD_TOP = 100;
+const BOARD_TOP = GOAL_Y + 22;
 const BOARD_BOTTOM = RESET_Y - 52;
 /** Потолок размера клетки: на 3×3 плитки во весь экран выглядят как ошибка вёрстки. */
 const MAX_CELL = 76;
@@ -44,7 +47,7 @@ export class Game extends Scene {
   private puzzle!: Puzzle;
   private round!: SumsGame;
   private finished = false;
-  /** Идёт обучение: игровой ввод и выход заблокированы. */
+  /** Идёт обучение: игровой ввод заблокирован, стрелка шапки ведёт в меню. */
   private tutorialActive = false;
   /** Какие линии уже сошлись — чтобы звук «ок» играл на новую, а не на каждый тап. */
   private doneRows: boolean[] = [];
@@ -58,7 +61,8 @@ export class Game extends Scene {
   private rowLabels: Phaser.GameObjects.Text[] = [];
   private colPlates: Phaser.GameObjects.Rectangle[] = [];
   private colLabels: Phaser.GameObjects.Text[] = [];
-  private movesText!: Phaser.GameObjects.Text;
+  private header?: GameHeader;
+  private pause: PauseSheet | null = null;
   private timer!: RoundTimer;
 
   // Геометрия доски.
@@ -82,6 +86,10 @@ export class Game extends Scene {
     this.colLabels = [];
     this.finished = false;
     this.tutorialActive = false;
+    this.header = undefined;
+    this.pause = null;
+    // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
@@ -106,7 +114,8 @@ export class Game extends Scene {
     this.timer.start();
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') this.timer.pause();
-      else if (e.type === 'RESUME') this.timer.resume();
+      // Приложение вернулось на передний план, а наша пауза открыта — время стоит до «Продолжить».
+      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorialActive) this.timer.resume();
     });
     this.events.once('shutdown', off);
 
@@ -138,33 +147,68 @@ export class Game extends Scene {
     this.refresh();
   }
 
-  // ── HUD ──────────────────────────────────────────────────────────────────────
+  // ── Шапка партии и пауза ─────────────────────────────────────────────────────
 
+  /**
+   * Шапка каталога: стрелка (пауза), «Уровень N» и чип ходов. Таймера на экране
+   * у «Сумм» нет (время идёт только в результат) — поэтому и чип один.
+   */
   private buildHud() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+    this.header = makeGameHeader(this, {
+      title: this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }),
+      chips: [{ id: 'moves', text: this.movesLabel(), widest: '888' }],
+      onBack: () => this.openPause(),
+    });
 
     this.add
-      .text(W - 20, 22, this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }), {
-        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
-      })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
-
-    this.movesText = this.add
-      .text(W - 20, 44, this.movesLabel(), { fontFamily: FONT, fontSize: 16, color: COLORS.headText })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
-
-    this.add
-      .text(W / 2, 78, t(this.locale, 'game.goal'), {
+      .text(W / 2, GOAL_Y, t(this.locale, 'game.goal'), {
         fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
       })
       .setOrigin(0.5)
       .setResolution(DPR);
   }
 
+  /** Ходы в чипе — просто счётчик: лимита ходов в «Суммах» нет. */
   private movesLabel(): string {
-    return t(this.locale, 'game.moves', { n: this.round.moves });
+    return String(this.round.moves);
+  }
+
+  /**
+   * Стрелка в шапке: пауза вместо мгновенного выхода. Проигрыша в «Суммах» нет,
+   * поэтому сводка короткая — только ходы.
+   */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
+    if (this.tutorialActive) {
+      this.exitToMenu();
+      return;
+    }
+    this.timer.pause();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      summary: t(this.locale, 'pause.moves', { moves: this.movesLabel() }),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => { this.pause = null; this.timer.resume(); },
+      // «Начать уровень заново» — новая партия (сессия, время, для лестницы — новый расклад);
+      // кнопка «Заново» под доской — другое: снять вычёркивания на этой же доске.
+      onRestart: () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
   }
 
   // ── Доска ────────────────────────────────────────────────────────────────────
@@ -260,7 +304,7 @@ export class Game extends Scene {
     // Вычеркнули — короткий щелчок, вернули — шорох: на слух видно, что действие обратимо.
     playSound(result === 'crossed' ? 'tap' : 'swipe');
     squash(this, this.cellRects[i]);
-    this.movesText.setText(this.movesLabel());
+    this.header?.setChip('moves', this.movesLabel());
     this.refresh();
     if (this.round.solved) this.win();
   }
@@ -273,12 +317,12 @@ export class Game extends Scene {
   private resetBoard() {
     if (this.finished || this.tutorialActive) return;
     this.startRound();
-    this.movesText.setText(this.movesLabel());
+    this.header?.setChip('moves', this.movesLabel());
     this.refresh();
   }
 
-  private goBack() {
-    if (this.finished || this.tutorialActive) return;
+  private exitToMenu() {
+    if (this.finished) return;
     this.finished = true;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
@@ -419,7 +463,7 @@ export class Game extends Scene {
         // Доску возвращаем как была, вместе со счётчиком ходов: обучение не даёт форы.
         this.startRound();
         this.refresh();
-        this.movesText.setText(this.movesLabel());
+        this.header?.setChip('moves', this.movesLabel());
       },
     }, onDone);
   }

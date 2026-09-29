@@ -14,6 +14,11 @@ export const FIELD_H = 720;
 export const GROUND_H = 84;
 /** Y пола: ниже герою нельзя. */
 export const FLOOR_Y = FIELD_H - GROUND_H; // 636
+/**
+ * Y потолка: низ шапки партии (TOP_BAR_H = 56 в `@gamewingo/game-ui`). Выше —
+ * шапка со стрелкой и чипами, герой не должен залетать под неё.
+ */
+export const CEIL_Y = 56;
 
 // ── Герой ────────────────────────────────────────────────────────────────────
 export const HERO_X = 118;
@@ -25,7 +30,8 @@ export const HERO_START_Y = 280;
 export const WALL_W = 62;
 /** Высота проёма фиксирована и комфортна (≈6 ростов героя). */
 export const GAP_H = 190;
-export const GAP_MIN_Y = 70;
+/** Верх проёма не ближе 40px к потолку: над проёмом виден торец верхнего столба. */
+export const GAP_MIN_Y = CEIL_Y + 40; // 96
 export const GAP_MAX_Y = FLOOR_Y - GAP_H - 70; // 376
 /** Расстояние между соседними стенами по X. */
 export const SPACING = 230;
@@ -157,8 +163,8 @@ export function createFlight(rnd: () => number, opts: FlightOptions = {}): Fligh
     if (y + HERO_H / 2 >= FLOOR_Y) {
       y = FLOOR_Y - HERO_H / 2;
       die('floor');
-    } else if (y - HERO_H / 2 <= 0) {
-      y = HERO_H / 2;
+    } else if (y - HERO_H / 2 <= CEIL_Y) {
+      y = CEIL_Y + HERO_H / 2;
       die('ceiling');
     }
     return scored;

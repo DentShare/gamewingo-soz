@@ -4,7 +4,7 @@ import type { Row } from '../../core/gameState';
 import { t } from '../../i18n';
 import {
   makeButton, applyTheme, setupCamera, type Button, makeGlyph, makeStarRow, makeBonusChip,
-  playSound,
+  playSound, setBackHandler,
   makePhoenix,
 } from '../ui';
 import { COLORS, FONT } from '../palette';
@@ -48,6 +48,7 @@ export class GameOver extends Scene {
   create() {
     applyTheme(this);
     setupCamera(this);
+    setBackHandler(() => this.scene.start('MainMenu'));
     this.cameras.main.fadeIn(220, ...COLORS.fade);
     this.session = this.registry.get('session') as Session;
     this.last = this.registry.get('lastGame') as LastGame;

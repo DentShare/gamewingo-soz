@@ -2,7 +2,7 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import {
-  makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip,
+  setBackHandler, makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip,
   playSound,
   makePhoenix,
 } from '../ui';
@@ -34,6 +34,8 @@ export class GameOver extends Scene {
   create() {
     applyTheme(this);
     setupCamera(this);
+    // Системный «назад» с итогов — в меню игры, как кнопка «В меню».
+    setBackHandler(() => this.scene.start('MainMenu'));
     this.cameras.main.fadeIn(220, ...COLORS.fade);
     const session = this.registry.get('session') as Session | undefined;
     const last = this.registry.get('lastGame') as LastGame;

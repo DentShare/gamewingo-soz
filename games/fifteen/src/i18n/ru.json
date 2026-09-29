@@ -44,5 +44,6 @@
   "intro.timerTighter": "меньше времени: {t}",
   "level.goldHint": "3 звезды — ходов не больше {n}",
   "game.dailyLevel": "Уровень дня",
-  "result.dailyLevel": "Уровень дня"
+  "result.dailyLevel": "Уровень дня",
+  "pause.moves": "ходы {moves}"
 }

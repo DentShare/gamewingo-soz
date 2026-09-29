@@ -42,5 +42,6 @@
   "result.playAgain": "Ещё раз",
   "result.menu": "В меню",
   "result.leaderboard": "Таблица лидеров",
-  "error.network": "Нет соединения"
+  "error.network": "Нет соединения",
+  "pause.summary": "Змейка стоит · очки {score} · длина {n}"
 }

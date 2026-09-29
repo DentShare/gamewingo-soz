@@ -1,7 +1,10 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { applyTheme, setupCamera, makeBackButton, playSound, sparkle } from '../ui';
+import {
+  applyTheme, setupCamera, playSound, sparkle, makeGameHeader, openPauseSheet, setBackHandler, TOP_BAR_H,
+  type GameHeader, type PauseSheet,
+} from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { GHOST_ALPHA, levelAt } from '../../core/levels';
@@ -20,7 +23,7 @@ const CX = W / 2;
 /** Поле сборки: квадрат под шапкой, пиксель в пиксель с текстурой картинки. */
 const BOARD = PICTURE_SIZE;
 const BOARD_LEFT = (W - BOARD) / 2;
-const BOARD_TOP = 96;
+const BOARD_TOP = TOP_BAR_H + 16; // поле сразу под шапкой партии
 /** Лоток с кусочками под полем. */
 const TRAY_TOP = BOARD_TOP + BOARD + 24;
 const TRAY_H = 104;
@@ -45,11 +48,13 @@ export class Game extends Scene {
   private textureKey = '';
   private ghost?: Phaser.GameObjects.Image;
   private board!: Phaser.GameObjects.Graphics;
-  private progressText!: Phaser.GameObjects.Text;
+  private header?: GameHeader;
+  private pause: PauseSheet | null = null;
   private hintText!: Phaser.GameObjects.Text;
   /** Кусочки, лежащие в лотке: id → спрайт. */
   private trayViews = new Map<number, Phaser.GameObjects.Image>();
   private finished = false;
+  /** Партия стоит: пауза приложения (PAUSE от моста) или открытый шит паузы. */
   private paused = false;
   private tutorialActive = false;
 
@@ -64,6 +69,10 @@ export class Game extends Scene {
     this.paused = false;
     this.tutorialActive = false;
     this.ghost = undefined;
+    this.header = undefined;
+    this.pause = null;
+    // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
@@ -90,7 +99,7 @@ export class Game extends Scene {
     this.refillTray();
     this.bindDrag();
 
-    // «Как играть» из меню: обучение поверх настоящего поля, без сессии и таймера.
+    // «Как играть» из паузы: обучение поверх настоящего поля, без сессии и таймера.
     if (this.registry.get('howto')) {
       this.runHowto();
       return;
@@ -98,7 +107,8 @@ export class Game extends Scene {
 
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') { this.paused = true; this.timer?.pause(); }
-      else if (e.type === 'RESUME') { this.paused = false; this.timer?.resume(); }
+      // Приложение вернулось, но шит паузы открыт — партия ждёт «Продолжить».
+      else if (e.type === 'RESUME' && !this.pause?.open) { this.paused = false; this.timer?.resume(); }
     });
     this.events.once('shutdown', off);
 
@@ -110,25 +120,20 @@ export class Game extends Scene {
 
   // ── Экран ────────────────────────────────────────────────────────────────────
 
+  /**
+   * Шапка каталога: стрелка (пауза), «Картинка N» или «Уровень дня» и чип
+   * «собрано из скольких». Таймера и проигрыша у пазла нет — чип один.
+   * Раньше здесь были белая пилюля «Назад» и текстовый счётчик справа.
+   */
   private buildHud() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
-
-    this.progressText = this.add
-      .text(W - 20, 34, t(this.locale, 'game.progress', { n: 0, total: this.core.total }), {
-        fontFamily: FONT, fontSize: 15, color: COLORS.headMuted, fontStyle: 'bold',
-      })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
-
-    // Уровень дня подписан по центру шапки: ребёнок и родитель видят, что это не картинка лестницы.
-    if (this.daily) {
-      this.add
-        .text(CX, 34, t(this.locale, 'game.dailyLevel'), {
-          fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
-        })
-        .setOrigin(0.5)
-        .setResolution(DPR);
-    }
+    const total = this.core.total;
+    this.header = makeGameHeader(this, {
+      title: this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }),
+      chips: [
+        { id: 'progress', text: this.progressLabel(), widest: t(this.locale, 'game.progress', { n: total, total }) },
+      ],
+      onBack: () => this.openPause(),
+    });
 
     this.hintText = this.add
       .text(CX, TRAY_TOP + TRAY_H + 22, t(this.locale, 'game.take'), {
@@ -246,7 +251,12 @@ export class Game extends Scene {
     });
 
     this.input.on('dragend', (_p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Image) => {
-      if (this.tutorialActive || this.finished || this.paused) return;
+      if (this.tutorialActive || this.finished) return;
+      // Пауза посреди перетаскивания — кусочек возвращается в лоток, а не висит в воздухе.
+      if (this.paused) {
+        this.returnToTray(obj);
+        return;
+      }
       this.tryPlace(obj);
     });
   }
@@ -294,9 +304,7 @@ export class Game extends Scene {
   }
 
   private afterPlace() {
-    this.progressText.setText(
-      t(this.locale, 'game.progress', { n: this.core.placed, total: this.core.total }),
-    );
+    this.header?.setChip('progress', this.progressLabel());
     if (this.core.isComplete) {
       this.ghost?.destroy();
       this.time.delayedCall(420, () => this.endGame());
@@ -358,8 +366,54 @@ export class Game extends Scene {
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }
 
-  private goBack() {
-    if (this.finished || this.tutorialActive) return;
+  // ── Шапка партии и пауза ─────────────────────────────────────────────────────
+
+  /** «3 из 9» — сколько кусочков уже на поле. */
+  private progressLabel(): string {
+    return t(this.locale, 'game.progress', { n: this.core?.placed ?? 0, total: this.core?.total ?? 0 });
+  }
+
+  /** Стрелка в шапке: пауза с выбором, а не мгновенный выход. */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
+    if (this.tutorialActive) {
+      this.exitToMenu();
+      return;
+    }
+    this.paused = true;
+    this.timer?.pause();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      // Таймера и проигрыша нет — сводка короткая: сколько уже собрано.
+      summary: t(this.locale, 'pause.progress', { progress: this.progressLabel() }),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => {
+        this.pause = null;
+        this.paused = false;
+        this.timer?.resume();
+      },
+      onRestart: () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
+  }
+
+  private exitToMenu() {
+    if (this.finished) return;
     this.finished = true;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
@@ -367,7 +421,7 @@ export class Game extends Scene {
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
 
-  /** «Как играть» из меню: настоящее поле, но без сессии и таймера; по концу — в меню. */
+  /** «Как играть» из паузы: настоящее поле, но без сессии и таймера; по концу — в меню. */
   private runHowto() {
     this.registry.set('howto', false); // одноразовый вход
     this.tutorialActive = true;

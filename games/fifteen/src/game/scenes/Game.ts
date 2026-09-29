@@ -4,7 +4,11 @@ import { createBoard, type Board } from '../../core/board';
 import { levelAt, type FifteenParams } from '../../core/levels';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, darken, setupCamera, makeBackButton, toast, shakeCamera, playSound } from '../ui';
+import {
+  applyTheme, darken, setupCamera, toast, shakeCamera, playSound,
+  makeGameHeader, openPauseSheet, setBackHandler, uiText, TOP_BAR_H,
+  type GameHeader, type PauseSheet,
+} from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -14,7 +18,7 @@ import { hasOnboarded, setOnboarded } from '../../core/persistence';
 import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
 
 const W = 400;
-const GRID_TOP = 96;
+const GRID_TOP = TOP_BAR_H + 16; // поле сразу под шапкой партии
 const GRID_BOTTOM = 620;
 const GAP = 8;
 const SLIDE_MS = 90;
@@ -35,8 +39,8 @@ export class Game extends Scene {
   private board!: Board;
   /** Вью плитки по индексу клетки (null — пустая клетка). */
   private views: (TileView | null)[] = [];
-  private movesText!: Phaser.GameObjects.Text;
-  private timeText!: Phaser.GameObjects.Text;
+  private header?: GameHeader;
+  private pause: PauseSheet | null = null;
   private timer!: RoundTimer;
   private finished = false;
   private cellSize = 0;
@@ -47,7 +51,6 @@ export class Game extends Scene {
   /** Клетка, из которой нужно вернуть плитку после обучающего показа (−1 — нечего). */
   private demoUndoCell = -1;
   private boardBounds: Rect = { x: 0, y: 0, w: 0, h: 0 };
-  private hudBounds: Rect = { x: 0, y: 0, w: 0, h: 0 };
 
   constructor() {
     super('Game');
@@ -59,6 +62,10 @@ export class Game extends Scene {
     this.finished = false;
     this.tutorialActive = false;
     this.demoUndoCell = -1;
+    this.header = undefined;
+    this.pause = null;
+    // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
@@ -87,7 +94,8 @@ export class Game extends Scene {
     this.timer.start();
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') this.timer.pause();
-      else if (e.type === 'RESUME') this.timer.resume();
+      // Приложение вернулось на передний план, а наша пауза открыта — часы стоят до «Продолжить».
+      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorialActive) this.timer.resume();
     });
     this.events.once('shutdown', off);
 
@@ -143,7 +151,7 @@ export class Game extends Scene {
 
   /**
    * Четыре шага на живом поле: всё поле → конкретная подвижная плитка → настоящий
-   * ход этой плиткой → HUD (ходы и время).
+   * ход этой плиткой → чипы шапки (ходы и время).
    */
   private tutorialSteps(): OnboardingStep[] {
     const from = this.movableCell();
@@ -163,7 +171,7 @@ export class Game extends Scene {
           this.time.delayedCall(SLIDE_MS + 180, done);
         },
       },
-      { rect: () => this.hudBounds, textKey: 'onboarding.goal', pad: 10, radius: 12, gap: 40 },
+      { rect: () => this.chipsRect(), textKey: 'onboarding.goal', pad: 8, radius: 16, gap: 40 },
     ];
   }
 
@@ -190,30 +198,37 @@ export class Game extends Scene {
     this.performMove(this.demoUndoCell);
     this.demoUndoCell = -1;
     this.board.resetMoves();
-    this.movesText.setText(this.movesLabel());
+    this.header?.setChip('moves', this.movesLabel());
   }
 
-  /** Ходы: с лимитом показываем «сделано / всего», без лимита — просто счётчик. */
+  /** Ходы в чипе: с лимитом «сделано / всего», без лимита — просто счётчик. */
   private movesLabel(): string {
     const n = this.board?.moves ?? 0;
-    return this.params.moveLimit
-      ? t(this.locale, 'game.movesLimit', { n, limit: this.params.moveLimit })
-      : t(this.locale, 'game.moves', { n });
+    return this.params.moveLimit ? `${n} / ${this.params.moveLimit}` : String(n);
+  }
+
+  /** Общая рамка чипов «ходы + время» — её подсвечивает последний шаг обучения. */
+  private chipsRect(): Rect {
+    const a = this.header?.chipRect('moves');
+    const b = this.header?.chipRect('time');
+    if (!a || !b) return this.boardBounds;
+    return { x: a.x, y: a.y, w: b.x + b.w - a.x, h: a.h };
   }
 
   update() {
-    if (!this.timeText || this.finished) return;
-    const elapsed = Math.floor(this.timer.elapsedMs() / 1000);
+    if (!this.header || !this.timer || this.finished) return;
+    const sec = this.clockSec();
     const limit = this.params.timeLimitSec;
-    // С лимитом идёт обратный отсчёт: последние десять секунд подсвечены красным.
-    const sec = limit ? Math.max(0, limit - elapsed) : elapsed;
-    const mm = String(Math.floor(sec / 60)).padStart(2, '0');
-    const ss = String(sec % 60).padStart(2, '0');
-    this.timeText.setText(`${mm}:${ss}`);
-    if (limit) {
-      this.timeText.setColor(sec <= 10 ? COLORS.danger : COLORS.headMuted);
-      if (sec <= 0) this.failRound('time');
-    }
+    // С лимитом идёт обратный отсчёт: последние десять секунд — белый чип с красным текстом.
+    this.header.setChip('time', formatClock(sec), Boolean(limit) && sec <= 10);
+    if (limit && sec <= 0) this.failRound('time');
+  }
+
+  /** Секунды на часах: с лимитом — сколько осталось, без лимита — сколько прошло. */
+  private clockSec(): number {
+    const elapsed = Math.floor((this.timer?.elapsedMs() ?? 0) / 1000);
+    const limit = this.params.timeLimitSec;
+    return limit ? Math.max(0, limit - elapsed) : elapsed;
   }
 
   /** Уровень не пройден: кончились ходы или время. */
@@ -226,40 +241,68 @@ export class Game extends Scene {
     this.time.delayedCall(1100, () => this.endGame(false));
   }
 
-  // ── HUD: кнопка назад + ходы + таймер ────────────────────────────────────────
+  // ── Шапка партии и пауза ─────────────────────────────────────────────────────
 
+  /**
+   * Шапка каталога: стрелка (пауза), «Уровень N» и чипы ходов и таймера.
+   * Раньше здесь были белая пилюля «Назад» и текстовый HUD, а тап по «Назад»
+   * посреди уровня с лимитом сразу терял партию.
+   */
   private buildHud() {
-    this.buildBackButton();
-    this.add
-      .text(W / 2 + 26, 20, this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }), {
-        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-    this.movesText = this.add
-      .text(W / 2 + 26, 42, this.movesLabel(), {
-        fontFamily: FONT, fontSize: 16, color: COLORS.headText,
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-    this.timeText = this.add
-      .text(W - 20, 34, '00:00', { fontFamily: FONT, fontSize: 16, color: COLORS.headMuted })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
-
-    // Общая рамка «ходы + время» — её подсвечивает последний шаг обучения.
-    const a = this.movesText.getBounds();
-    const b = this.timeText.getBounds();
-    const top = Math.min(a.y, b.y);
-    this.hudBounds = { x: a.x, y: top, w: b.x + b.width - a.x, h: Math.max(a.bottom, b.bottom) - top };
+    const limit = this.params.moveLimit;
+    this.header = makeGameHeader(this, {
+      title: this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }),
+      chips: [
+        { id: 'moves', text: this.movesLabel(), widest: limit ? `${limit} / ${limit}` : '888' },
+        { id: 'time', text: formatClock(this.params.timeLimitSec), widest: '88:88' },
+      ],
+      onBack: () => this.openPause(),
+    });
   }
 
-  /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
-  private buildBackButton() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+  /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
+    if (this.tutorialActive) {
+      this.exitToMenu();
+      return;
+    }
+    this.timer.pause();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      summary: this.pauseSummary(),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => { this.pause = null; this.timer.resume(); },
+      onRestart: () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
   }
 
-  private goBack() {
+  /** «Таймер остановлен · ходы 11 / 20 · осталось 0:09». */
+  private pauseSummary(): string {
+    const parts: string[] = [];
+    if (this.params.timeLimitSec) parts.push(uiText(this.locale, 'pause.timerStopped'));
+    parts.push(t(this.locale, 'pause.moves', { moves: this.movesLabel() }));
+    if (this.params.timeLimitSec) parts.push(uiText(this.locale, 'pause.left', { t: formatClock(this.clockSec()) }));
+    return parts.join(' · ');
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
+  }
+
+  private exitToMenu() {
     if (this.finished) return;
     this.finished = true;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
@@ -362,7 +405,8 @@ export class Game extends Scene {
 
   /** Ход по воле игрока (тап или стрелка). Во время обучения ввод игнорируем. */
   private tryMoveCell(cell: number) {
-    if (this.tutorialActive) return;
+    // Под паузой поле не нажать (затемнение глотает тапы), но стрелки клавиатуры — дошли бы.
+    if (this.tutorialActive || this.pause?.open) return;
     this.performMove(cell);
   }
 
@@ -387,7 +431,7 @@ export class Game extends Scene {
       onComplete: () => { view.animating = false; },
     });
 
-    this.movesText.setText(this.movesLabel());
+    this.header?.setChip('moves', this.movesLabel());
 
     if (this.board.isSolved()) {
       this.finished = true;
@@ -429,4 +473,9 @@ export class Game extends Scene {
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }
+}
+
+/** «0:09», «1:50» — часы в чипе шапки. */
+function formatClock(sec: number): string {
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 }

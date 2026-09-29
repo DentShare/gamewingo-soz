@@ -85,6 +85,14 @@ export function makeButton(
     })
     .setOrigin(0.5)
     .setResolution(DPR);
+  // Длинная подпись (узбекский, «выйти — прогресс не сохранится») не вылезает
+  // за кнопку на узком экране: шрифт ужимается до 12, но не ниже.
+  const fit = () => {
+    let size = TYPE.body;
+    txt.setFontSize(size);
+    while (txt.width > w - 20 && size > 12) txt.setFontSize(--size);
+  };
+  fit();
 
   const hit = scene.add.rectangle(0, 0, w, h, 0x000000, 0).setInteractive({ useHandCursor: true });
   root.add([g, txt, hit]);
@@ -97,9 +105,23 @@ export function makeButton(
 
   return {
     root,
-    setLabel: (s: string) => txt.setText(s),
+    setLabel: (s: string) => { txt.setText(s); fit(); },
     destroy: () => root.destroy(),
   };
+}
+
+/**
+ * Убрать HTML-сплэш игры (`#splash` в `index.html`). Он закрывает белый экран,
+ * пока грузится бандл: Phaser в это время ещё не запущен, поэтому сплэш — на
+ * чистом HTML. Зовётся из шапок меню и партии — первого, что рисует игра, —
+ * так что сценам делать ничего не нужно. Повторный вызов безопасен.
+ */
+export function hideSplash(): void {
+  if (typeof document === 'undefined') return;
+  const el = document.getElementById('splash');
+  if (!el) return;
+  el.style.opacity = '0';
+  window.setTimeout(() => el.remove(), 200);
 }
 
 /**
@@ -111,6 +133,7 @@ export function makeTopBar(
   title: string,
   onBack: () => void,
 ): Phaser.GameObjects.Container {
+  hideSplash();
   const root = scene.add.container(0, 0);
 
   const bar = scene.add.graphics();

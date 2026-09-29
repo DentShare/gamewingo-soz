@@ -38,5 +38,8 @@
   "level.goldHint": "3 yulduz — {n} xatodan koʻp emas",
   "level.goldHintClean": "3 yulduz — xatosiz",
   "game.dailyLevel": "Kun darajasi",
-  "result.dailyLevel": "Kun darajasi"
+  "result.dailyLevel": "Kun darajasi",
+  "game.level": "{n}-daraja",
+  "pause.progress": "savol: {total} dan {n}",
+  "pause.mistakes": "xatolar: {n}"
 }

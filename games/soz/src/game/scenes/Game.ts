@@ -9,7 +9,10 @@ import { pickDailyWord, dailyIndex } from '../../core/dailyWord';
 import { saveDaily, loadDaily, hasOnboarded, setOnboarded } from '../../core/persistence';
 import { keyboardFor, ENTER, BACKSPACE, UZ_DIGRAPH_KEYS, type Key } from '../keyboards';
 import { paletteFor, statusColor, COLORS, FONT, type Palette } from '../palette';
-import { toast, applyTheme, setupCamera, makeBackButton, makeKeyCap, type KeyCap, playSound } from '../ui';
+import {
+  toast, applyTheme, setupCamera, makeKeyCap, type KeyCap, playSound, makeGameHeader, openPauseSheet,
+  setBackHandler, TOP_BAR_H, type GameHeader, type PauseSheet,
+} from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
@@ -32,7 +35,7 @@ const TILE = 54;
 const GAP = 6;
 const BOARD_W = WORD_LENGTH * TILE + (WORD_LENGTH - 1) * GAP;
 const BOARD_X = (400 - BOARD_W) / 2;
-const BOARD_Y = 70;
+const BOARD_Y = TOP_BAR_H + 16; // поле сразу под шапкой партии
 
 interface Tile { rect: Phaser.GameObjects.Rectangle; text: Phaser.GameObjects.Text; }
 
@@ -55,6 +58,10 @@ export class Game extends Scene {
   private timer!: RoundTimer;
   private finished = false;
   private tutorialActive = false;
+  private header?: GameHeader;
+  private pause: PauseSheet | null = null;
+  /** «Как играть»: поле без партии — `coreGame` здесь от прошлой партии, не трогаем его. */
+  private howto = false;
 
   // Зоны для обучения (заполняются при построении доски/клавиатуры).
   private boardBounds!: Rect;
@@ -74,6 +81,11 @@ export class Game extends Scene {
     this.tiles = [];
     this.rowContainers = [];
     this.keyObjects = new Map();
+    this.header = undefined;
+    this.pause = null;
+    this.howto = false;
+    // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
@@ -114,7 +126,7 @@ export class Game extends Scene {
 
     this.buildBoard();
     this.buildKeyboard();
-    this.buildBackButton();
+    this.buildHeader();
 
     // Восстановить сохранённые ряды (daily, партия в процессе).
     if (this.mode === 'daily') {
@@ -127,6 +139,7 @@ export class Game extends Scene {
         this.refreshKeyColors();
       }
     }
+    this.syncAttempt();
 
     // Таймер + старт сессии.
     this.timer = createRoundTimer(() => performance.now());
@@ -135,7 +148,8 @@ export class Game extends Scene {
 
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') this.timer.pause();
-      else if (e.type === 'RESUME') this.timer.resume();
+      // Игрок сам поставил паузу — время стоит, пока он не нажмёт «Продолжить».
+      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorialActive) this.timer.resume();
     });
     this.events.once('shutdown', off);
 
@@ -147,9 +161,10 @@ export class Game extends Scene {
   private runHowto() {
     this.registry.set('howto', false); // одноразовый вход
     this.tutorialActive = true;
+    this.howto = true;
     this.buildBoard();
     this.buildKeyboard();
-    this.buildBackButton();
+    this.buildHeader();
     const back = () => {
       setOnboarded();
       this.scene.start('MainMenu');
@@ -293,7 +308,13 @@ export class Game extends Scene {
   private bindPhysicalKeyboard() {
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
       if (this.tutorialActive) return;
-      if (e.key === 'Escape') this.goBack();
+      // Escape — та же стрелка: открыть паузу, повторный — продолжить.
+      if (e.key === 'Escape') {
+        if (this.pause?.open) {
+          this.pause.close();
+          this.resumeFromPause();
+        } else this.openPause();
+      } else if (this.pause?.open) return;
       else if (e.key === 'Enter') this.onKey(ENTER);
       else if (e.key === 'Backspace') this.onKey(BACKSPACE);
       else if (e.key.length === 1) {
@@ -303,37 +324,104 @@ export class Game extends Scene {
     });
   }
 
-  /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню. */
-  private buildBackButton() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
-    // Справа — что именно сейчас играется: слово дня или уровень тренировки.
-    this.add
-      .text(386, 34, this.mode === 'daily'
-        ? t(this.locale, 'menu.daily')
-        : t(this.locale, 'game.level', { n: this.level }), {
-        fontFamily: FONT, fontSize: 14, color: COLORS.headMuted,
-      })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
+  // ── Шапка партии и пауза ─────────────────────────────────────────────────────
+
+  /**
+   * Шапка каталога: стрелка (пауза), «Слово дня» / «Уровень N» и чип попытки «3 / 6».
+   * Раньше здесь были белая пилюля «Назад» и подпись режима справа.
+   */
+  private buildHeader() {
+    this.header = makeGameHeader(this, {
+      title: this.mode === 'daily' ? t(this.locale, 'menu.daily') : t(this.locale, 'game.level', { n: this.level }),
+      chips: [
+        { id: 'attempt', text: this.attemptLabel(), widest: `${this.params.guesses} / ${this.params.guesses}` },
+      ],
+      onBack: () => this.openPause(),
+    });
   }
 
-  /** Выход в главное меню. Незавершённую партию слова дня сохраняем, чтобы прогресс не потерялся. */
-  private goBack() {
-    if (this.finished || this.tutorialActive) return;
-    if (this.mode === 'daily' && this.coreGame.guessesUsed > 0) {
-      saveDaily(this.locale, this.dayId, {
-        rows: this.coreGame.rows,
-        status: this.coreGame.status,
-        rewardClaimed: false,
-      });
+  /** Текущая попытка: «3 / 6»; после последней — «6 / 6», а не «7 / 6». */
+  private attemptLabel(): string {
+    const max = this.params.guesses;
+    const used = this.howto ? 0 : this.coreGame?.guessesUsed ?? 0;
+    return `${Math.min(max, used + 1)} / ${max}`;
+  }
+
+  private syncAttempt() {
+    this.header?.setChip('attempt', this.attemptLabel());
+  }
+
+  /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
+    if (this.tutorialActive) {
+      this.exitToMenu();
+      return;
     }
+    this.timer?.pause();
+    const daily = this.mode === 'daily';
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      summary: this.pauseSummary(),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => this.resumeFromPause(),
+      // Слово дня одно на день: «заново» ему не нужно (сыгранные ряды остаются), а выход
+      // ничего не теряет — ряды сохраняются, поэтому и подпись выхода спокойная.
+      kind: daily ? 'saved' : 'level',
+      onRestart: daily ? undefined : () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        if (daily) this.saveDailyProgress();
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
+  }
+
+  private resumeFromPause() {
+    this.pause = null;
+    this.timer?.resume();
+  }
+
+  /** «попытка 3 / 6» и для слова дня — что сыгранные ряды не пропадут. */
+  private pauseSummary(): string {
+    const parts = [t(this.locale, 'pause.attempt', { a: this.attemptLabel() })];
+    if (this.mode === 'daily' && this.coreGame.guessesUsed > 0) parts.push(t(this.locale, 'pause.dailySaved'));
+    return parts.join(' · ');
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
+  }
+
+  /** Незавершённую партию слова дня сохраняем, чтобы прогресс не потерялся (и не переигрывался). */
+  private saveDailyProgress() {
+    if (this.mode !== 'daily' || this.howto || !this.coreGame || this.coreGame.guessesUsed === 0) return;
+    saveDaily(this.locale, this.dayId, {
+      rows: this.coreGame.rows,
+      status: this.coreGame.status,
+      rewardClaimed: false,
+    });
+  }
+
+  /** Выход в главное меню. */
+  private exitToMenu() {
+    if (this.finished) return;
+    this.saveDailyProgress();
     this.finished = true; // блокируем ввод на время перехода
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
   }
 
   private onKey(key: Key) {
-    if (this.finished || this.tutorialActive) return;
+    if (this.finished || this.tutorialActive || this.pause?.open) return;
     if (key === ENTER) return this.onEnter();
     if (key === BACKSPACE) return this.onBackspace();
     if (this.current.length >= WORD_LENGTH) return;
@@ -397,6 +485,7 @@ export class Game extends Scene {
 
     this.revealRow(row, () => {
       this.refreshKeyColors();
+      this.syncAttempt();
       const status = this.coreGame.status;
       if (status === 'won') {
         this.winBounce(row);

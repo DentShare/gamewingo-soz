@@ -1,7 +1,10 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { applyTheme, setupCamera, makeBackButton, makeButton, makeChip, playSound } from '../ui';
+import {
+  applyTheme, setupCamera, makeButton, makeChip, playSound, makeGameHeader, openPauseSheet,
+  setBackHandler, uiText, TOP_BAR_H, type GameHeader, type PauseSheet,
+} from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { makeOption, OPTION_W, type Option } from '../option';
@@ -20,7 +23,10 @@ const CX = W / 2;
 /** Верх блока вариантов; вопрос живёт над ним и переносится по словам. */
 const OPTIONS_TOP = 268;
 const OPTION_GAP = 10;
-const TIMER_Y = 84;
+/** Полоса времени — сразу под шапкой партии. */
+const TIMER_Y = TOP_BAR_H + 16;
+/** Последние секунды вопроса: полоса краснеет, чип таймера — белый с красным текстом. */
+const LOW_MS = 5000;
 const TIMER_W = 336;
 
 export class Game extends Scene {
@@ -33,8 +39,10 @@ export class Game extends Scene {
   private timer?: RoundTimer;
 
   private questionText!: Phaser.GameObjects.Text;
-  private progressText!: Phaser.GameObjects.Text;
-  private mistakesText!: Phaser.GameObjects.Text;
+  private header?: GameHeader;
+  private pause: PauseSheet | null = null;
+  /** Секунды, которые сейчас в чипе таймера: перерисовываем чип только при смене. */
+  private shownSec = -1;
   private topicChip?: ReturnType<typeof makeChip>;
   private options: Option[] = [];
   private factGroup?: Phaser.GameObjects.Container;
@@ -61,6 +69,11 @@ export class Game extends Scene {
     this.finished = false;
     this.paused = false;
     this.tutorialActive = false;
+    this.header = undefined;
+    this.pause = null;
+    this.shownSec = -1;
+    // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
@@ -99,7 +112,11 @@ export class Game extends Scene {
 
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') { this.paused = true; this.timer?.pause(); }
-      else if (e.type === 'RESUME') { this.paused = false; this.timer?.resume(); }
+      else if (e.type === 'RESUME') {
+        this.paused = false;
+        // Приложение вернулось, но игрок сам поставил паузу — время стоит, пока он не нажмёт «Продолжить».
+        if (!this.pause?.open) this.timer?.resume();
+      }
     });
     this.events.once('shutdown', off);
 
@@ -110,7 +127,8 @@ export class Game extends Scene {
   }
 
   update(_time: number, delta: number) {
-    if (this.finished || this.answered || this.paused || this.tutorialActive) return;
+    // Открытая пауза держит и полосу, и просрочку: вопрос не сгорит, пока игрок в шите.
+    if (this.finished || this.answered || this.paused || this.tutorialActive || this.pause?.open) return;
     if (!this.timeLimitSec) return;
     this.questionLeftMs -= delta;
     this.paintTimer();
@@ -119,33 +137,30 @@ export class Game extends Scene {
 
   // ── HUD ──────────────────────────────────────────────────────────────────────
 
+  /**
+   * Шапка каталога: стрелка (пауза), «Уровень N» / «Уровень дня» и чипы —
+   * вопрос «3 / 10», ошибки и таймер на вопрос, если он есть на уровне.
+   * Раньше здесь были белая пилюля «Назад» и текстовый HUD, а тап по «Назад»
+   * посреди партии сразу её терял.
+   */
   private buildHud() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
-
-    // Номер уровня в шапке викторины не пишется; уровень дня подписываем — это другой расклад.
-    if (this.daily) {
-      this.add
-        .text(CX, 34, t(this.locale, 'game.dailyLevel'), {
-          fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
-        })
-        .setOrigin(0.5)
-        .setResolution(DPR);
-    }
-
-    this.progressText = this.add
-      .text(W - 20, 34, this.progressLabel(), {
-        fontFamily: FONT, fontSize: 15, color: COLORS.headMuted, fontStyle: 'bold',
-      })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
-
     const params = levelAt(this.level).params;
-    this.mistakesText = this.add
-      .text(W - 20, 58, t(this.locale, 'game.mistakes', { n: 0, max: params.maxMistakes }), {
-        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
-      })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
+    const chips = [
+      { id: 'progress', text: this.progressLabel(), widest: `${this.core.total} / ${this.core.total}` },
+      {
+        id: 'mistakes',
+        text: this.mistakesLabel(),
+        widest: this.mistakesLabel(params.maxMistakes),
+      },
+    ];
+    if (this.timeLimitSec) {
+      chips.push({ id: 'time', text: formatClock(this.timeLimitSec), widest: formatClock(Math.max(10, this.timeLimitSec)) });
+    }
+    this.header = makeGameHeader(this, {
+      title: this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }),
+      chips,
+      onBack: () => this.openPause(),
+    });
 
     if (this.timeLimitSec) {
       this.timerBar = this.add.graphics();
@@ -166,7 +181,13 @@ export class Game extends Scene {
   private paintTimer() {
     if (!this.timerBar || !this.timeLimitSec) return;
     const ratio = Math.max(0, Math.min(1, this.questionLeftMs / (this.timeLimitSec * 1000)));
-    const low = this.questionLeftMs <= 5000;
+    const low = this.questionLeftMs <= LOW_MS;
+    // Чип таймера: секунды вверх до целой, чтобы «0:00» совпадало с моментом просрочки.
+    const sec = this.questionSecLeft();
+    if (sec !== this.shownSec) {
+      this.shownSec = sec;
+      this.header?.setChip('time', formatClock(sec), low);
+    }
     this.timerBar.clear();
     this.timerBar
       .fillStyle(COLORS.timerTrack, 1)
@@ -178,8 +199,23 @@ export class Game extends Scene {
     }
   }
 
+  /** Вопрос в чипе: «3 / 10». */
   private progressLabel(): string {
-    return t(this.locale, 'game.progress', { n: this.core.index + 1, total: this.core.total });
+    return `${this.core.index + 1} / ${this.core.total}`;
+  }
+
+  /**
+   * Ошибки в чипе: «Ошибки: 1/3». На уровнях с таймером в шапке три чипа, и полная
+   * подпись выдавливает заголовок под стрелку — там короткая «× 1/3».
+   */
+  private mistakesLabel(n = this.core?.mistakes ?? 0): string {
+    const max = levelAt(this.level).params.maxMistakes;
+    return t(this.locale, this.timeLimitSec ? 'game.mistakesShort' : 'game.mistakes', { n, max });
+  }
+
+  /** Сколько целых секунд осталось на вопрос (с округлением вверх). */
+  private questionSecLeft(): number {
+    return Math.max(0, Math.ceil(this.questionLeftMs / 1000));
   }
 
   // ── Вопрос и ответ ───────────────────────────────────────────────────────────
@@ -190,7 +226,7 @@ export class Game extends Scene {
     this.paintTimer();
 
     const q = this.core.current;
-    this.progressText.setText(this.progressLabel());
+    this.header?.setChip('progress', this.progressLabel());
     this.questionText.setText(q.q[this.locale]);
 
     // Чип с темой вопроса: игрок всегда видит, о чём спрашивают.
@@ -229,15 +265,11 @@ export class Game extends Scene {
       else opt.setState('dim');
     });
 
-    const params = levelAt(this.level).params;
-    this.mistakesText.setText(
-      t(this.locale, 'game.mistakes', { n: this.core.mistakes, max: params.maxMistakes }),
-    );
+    // Ошибка — чип ошибок на миг белеет с красным текстом, как таймер на последних секундах.
+    this.header?.setChip('mistakes', this.mistakesLabel(), !result.correct);
     if (!result.correct) {
       this.cameras.main.shake(160, 0.006);
-      this.tweens.add({
-        targets: this.mistakesText, scale: 1.2, duration: 120, yoyo: true, ease: 'Quad.easeOut',
-      });
+      this.time.delayedCall(700, () => this.header?.setChip('mistakes', this.mistakesLabel()));
     }
 
     this.showFact(result);
@@ -315,8 +347,57 @@ export class Game extends Scene {
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }
 
-  private goBack() {
-    if (this.finished || this.tutorialActive) return;
+  // ── Пауза и «назад» ──────────────────────────────────────────────────────────
+
+  /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
+    if (this.tutorialActive) {
+      this.exitToMenu();
+      return;
+    }
+    this.timer?.pause();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      summary: this.pauseSummary(),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => {
+        this.pause = null;
+        if (!this.paused) this.timer?.resume();
+      },
+      onRestart: () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
+  }
+
+  /** «Таймер остановлен · вопрос 3 / 10 · осталось 0:09» или «вопрос 3 / 10 · ошибки 1/3». */
+  private pauseSummary(): string {
+    const parts: string[] = [];
+    const ticking = this.timeLimitSec > 0 && !this.answered;
+    if (ticking) parts.push(uiText(this.locale, 'pause.timerStopped'));
+    parts.push(t(this.locale, 'pause.question', { q: this.progressLabel() }));
+    if (ticking) parts.push(uiText(this.locale, 'pause.left', { t: formatClock(this.questionSecLeft()) }));
+    else parts.push(t(this.locale, 'pause.mistakes', { m: `${this.core.mistakes} / ${levelAt(this.level).params.maxMistakes}` }));
+    return parts.join(' · ');
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
+  }
+
+  private exitToMenu() {
+    if (this.finished) return;
     this.finished = true;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
@@ -352,7 +433,12 @@ export class Game extends Scene {
     return [
       { textKey: 'onboarding.question', target: (): Rect => this.questionRect(), pad: 10, radius: 14 },
       { textKey: 'onboarding.fact', target: (): Rect => this.optionsRect(), pad: 8, radius: 14 },
-      { textKey: 'onboarding.mistakes', target: (): Rect => ({ x: W - 150, y: 46, w: 140, h: 28 }), pad: 6, radius: 10 },
+      {
+        textKey: 'onboarding.mistakes',
+        target: (): Rect => this.header?.chipRect('mistakes') ?? this.questionRect(),
+        pad: 6,
+        radius: 16,
+      },
     ];
   }
 
@@ -371,4 +457,9 @@ export class Game extends Scene {
     const bottom = last.root.y + last.height / 2;
     return { x: CX - OPTION_W / 2, y: top, w: OPTION_W, h: bottom - top };
   }
+}
+
+/** «0:09», «1:50» — часы в чипе шапки. */
+function formatClock(sec: number): string {
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 }

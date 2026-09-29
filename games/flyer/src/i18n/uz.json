@@ -42,5 +42,6 @@
   "result.playAgain": "Yana",
   "result.menu": "Menyuga",
   "result.leaderboard": "Reyting",
-  "error.network": "Aloqa yoʻq"
+  "error.network": "Aloqa yoʻq",
+  "pause.summary": "Teshiklar {passed} · havoda {time}"
 }

@@ -1,11 +1,14 @@
 import { Scene, Math as PhaserMath } from 'phaser';
 import type { Locale } from '../../core/locale';
 import {
-  createTargetsGame, FIELD, ROUND_MS, type Target, type TargetsGame,
+  createTargetsGame, FIELD, ROUND_MS, MAX_MULTIPLIER, type Target, type TargetsGame,
 } from '../../core/targets';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, setupCamera, makeBackButton, playSound } from '../ui';
+import {
+  applyTheme, setupCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler, uiText,
+  TOP_BAR_H, type GameHeader, type PauseSheet,
+} from '../ui';
 import { t } from '../../i18n';
 import { CHALLENGES } from '../../core/challenges';
 import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
@@ -25,8 +28,8 @@ const POP_POOL = 10;
 const RIPPLE_POOL = 6;
 /** Ограничение шага ядра: после сворачивания WebView delta может быть огромной. */
 const MAX_DELTA = 50;
-const HUD_TOP_Y = 34;
-const HUD_ROW_Y = 80;
+/** Строка активного испытания — в полосе между шапкой партии и полем. */
+const CHALLENGE_Y = (TOP_BAR_H + FIELD.y) / 2;
 
 interface TargetView {
   root: Phaser.GameObjects.Container;
@@ -47,9 +50,10 @@ export class Game extends Scene {
   private challengeText?: Phaser.GameObjects.Text;
   private timer?: RoundTimer;
 
-  private scoreText!: Phaser.GameObjects.Text;
-  private timeText!: Phaser.GameObjects.Text;
-  private comboText!: Phaser.GameObjects.Text;
+  private header?: GameHeader;
+  private pause: PauseSheet | null = null;
+  /** Твины, замороженные паузой-шитом (всплытие/угасание целей, «+N», отсчёт) — их и продолжаем. */
+  private frozenTweens: Phaser.Tweens.Tween[] = [];
 
   private targetPool: TargetView[] = [];
   private popPool: Phaser.GameObjects.Text[] = [];
@@ -64,6 +68,9 @@ export class Game extends Scene {
 
   private running = false;
   private finished = false;
+  /** PAUSE от приложения и пауза-шит — раунд идёт, только когда нет ни того, ни другого. */
+  private appPaused = false;
+  private sheetPaused = false;
   private tutorialActive = false;
   private lastScore = -1;
   private lastCombo = -1;
@@ -87,6 +94,15 @@ export class Game extends Scene {
     this.lastCombo = -1;
     this.lastSec = -1;
     this.timer = undefined;
+    this.appPaused = false;
+    this.sheetPaused = false;
+    this.header = undefined;
+    this.pause = null;
+    this.frozenTweens = [];
+    // Часы сцены переживают restart: «Начать заново» из паузы пришёл бы с замороженными таймерами.
+    this.time.paused = false;
+    // Системный «назад» ведёт туда же, куда стрелка: раунд → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
@@ -114,8 +130,8 @@ export class Game extends Scene {
     }
 
     const off = this.session?.onApp((e: AppToGameEvent) => {
-      if (e.type === 'PAUSE') this.pauseRound();
-      else if (e.type === 'RESUME') this.resumeRound();
+      if (e.type === 'PAUSE') { this.appPaused = true; this.pauseRound(); }
+      else if (e.type === 'RESUME') { this.appPaused = false; this.resumeRound(); }
     });
     if (off) this.events.once('shutdown', off);
 
@@ -143,52 +159,112 @@ export class Game extends Scene {
     g.lineStyle(1.5, COLORS.fieldBorder, 1).strokeRoundedRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h, 22);
   }
 
+  /**
+   * Шапка каталога: стрелка (пауза), название игры и чипы очков, серии и времени.
+   * Раньше были белая пилюля «Назад» (сразу терявшая раунд), крупный таймер
+   * справа и строка «Очки · Серия» над полем; теперь всё это — чипы шапки,
+   * последние 10 секунд — белый чип с красным текстом, как таймер в «Найди пару».
+   */
   private buildHud() {
-    this.buildBackButton();
-
-    // Крупный обратный отсчёт — главный элемент аркады.
-    this.timeText = this.add
-      .text(W - 18, HUD_TOP_Y, t(this.locale, 'game.time', { n: Math.round(ROUND_MS / 1000) }), {
-        fontFamily: FONT, fontSize: 30, color: COLORS.headText, fontStyle: 'bold',
-      })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
-
-    this.scoreText = this.add
-      .text(18, HUD_ROW_Y, t(this.locale, 'game.score', { n: 0 }), {
-        fontFamily: FONT, fontSize: 22, color: COLORS.headText, fontStyle: 'bold',
-      })
-      .setOrigin(0, 0.5)
-      .setResolution(DPR);
-    // Активное испытание с живым прогрессом — под счётом; когда всё пройдено, строки нет.
+    this.header = makeGameHeader(this, {
+      title: t(this.locale, 'app.title'),
+      chips: [
+        { id: 'score', text: '0', widest: '88888' },
+        { id: 'combo', text: comboChip(1), widest: comboChip(MAX_MULTIPLIER) },
+        { id: 'time', text: this.timeLabel(Math.round(ROUND_MS / 1000)), widest: this.timeLabel(88) },
+      ],
+      onBack: () => this.openPause(),
+    });
+    // Активное испытание с живым прогрессом — под шапкой; когда всё пройдено, строки нет.
     if (this.challenge) {
       this.challengeText = this.add
-        .text(18, HUD_ROW_Y + 22, this.challengeLabel(), {
+        .text(W / 2, CHALLENGE_Y, this.challengeLabel(), {
           fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
         })
-        .setOrigin(0, 0.5)
+        .setOrigin(0.5)
         .setResolution(DPR)
         .setDepth(20);
     }
-
-
-    this.comboText = this.add
-      .text(W - 18, HUD_ROW_Y, '', {
-        fontFamily: FONT, fontSize: 22, color: COLORS.comboText, fontStyle: 'bold',
-      })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
   }
 
-  /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
-  private buildBackButton() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+  private timeLabel(sec: number): string {
+    return t(this.locale, 'game.time', { n: sec });
   }
 
-  private goBack() {
+  // ── Пауза ────────────────────────────────────────────────────────────────────
+
+  /** Стрелка в шапке: пауза с честным выбором, а не мгновенная потеря раунда. */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
+    if (this.tutorialActive) {
+      this.exitToMenu();
+      return;
+    }
+    this.freezeWorld();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      kind: 'run',
+      summary: this.pauseSummary(),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => { this.pause = null; this.thawWorld(); },
+      onRestart: () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
+  }
+
+  /** «Таймер остановлен · очки 240 · осталось 32 с». */
+  private pauseSummary(): string {
+    const sec = Math.ceil(this.core.remainingMs / 1000);
+    return [
+      uiText(this.locale, 'pause.timerStopped'),
+      t(this.locale, 'pause.score', { n: this.core.score }),
+      uiText(this.locale, 'pause.left', { t: this.timeLabel(sec) }),
+    ].join(' · ');
+  }
+
+  /**
+   * Мир раунда стоит: ядро не шагает (running = false — цели не стареют, спавн
+   * и отсчёт минуты стоят, серия цела), часы сессии на паузе, таймеры сцены
+   * («3 · 2 · 1» до старта) стоят, идущие твины (всплытие/угасание, «+N») замерли.
+   * Твины самого шита создаются после заморозки и едут как обычно.
+   */
+  private freezeWorld() {
+    this.sheetPaused = true;
+    this.pauseRound();
+    this.time.paused = true;
+    this.frozenTweens = this.tweens.getTweens().filter((tw) => tw.isPlaying());
+    for (const tw of this.frozenTweens) tw.pause();
+  }
+
+  private thawWorld() {
+    this.sheetPaused = false;
+    this.time.paused = false;
+    for (const tw of this.frozenTweens) tw.resume();
+    this.frozenTweens = [];
+    this.resumeRound();
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.pause = null;
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
+  }
+
+  private exitToMenu() {
     if (this.finished) return;
     this.finished = true;
     this.running = false;
+    this.time.paused = false;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
   }
@@ -197,32 +273,25 @@ export class Game extends Scene {
   private syncHud() {
     if (this.core.score !== this.lastScore) {
       this.lastScore = this.core.score;
-      this.scoreText.setText(t(this.locale, 'game.score', { n: this.lastScore }));
+      this.header?.setChip('score', String(this.lastScore));
       this.updateChallengeLine();
     }
 
-    // Показываем серию, только когда множитель реально выше единицы — «×1» ни о чём.
+    // Чип серии: «×1» без серии, дальше множитель — он и подсвечен в обучении.
     const mult = this.core.multiplier;
     const shown = mult >= 2 ? mult : 0;
     if (shown !== this.lastCombo) {
       this.lastCombo = shown;
-      this.comboText.setText(shown ? t(this.locale, 'game.combo', { n: shown }) : '');
-      if (shown) this.pop(this.comboText, 1.22);
+      this.header?.setChip('combo', comboChip(mult));
+      if (shown) this.header?.pulseChip('combo');
     }
 
     const sec = Math.ceil(this.core.remainingMs / 1000);
     if (sec !== this.lastSec) {
       this.lastSec = sec;
-      this.timeText.setText(t(this.locale, 'game.time', { n: sec }));
-      this.timeText.setColor(sec <= 10 ? COLORS.timeLow : COLORS.headText);
-      if (sec <= 5) this.pop(this.timeText, 1.18);
+      // Последние десять секунд — белый чип с красным текстом.
+      this.header?.setChip('time', this.timeLabel(sec), sec <= 10);
     }
-  }
-
-  private pop(obj: Phaser.GameObjects.Text, scale: number) {
-    this.tweens.killTweensOf(obj);
-    obj.setScale(1);
-    this.tweens.add({ targets: obj, scale, duration: 110, yoyo: true, ease: 'Quad.easeOut' });
   }
 
   // ── Пулы объектов (никаких аллокаций во время партии) ────────────────────────
@@ -366,7 +435,7 @@ export class Game extends Scene {
 
   private onTap(x: number, y: number) {
     if (!this.running || this.finished || this.tutorialActive) return;
-    if (y < FIELD.y) return; // зона HUD — там своя кнопка «Назад»
+    if (y < FIELD.y) return; // зона шапки и строки испытания — не поле
 
     const res = this.core.tap(x, y);
     if (!res.hit) {
@@ -419,10 +488,13 @@ export class Game extends Scene {
 
   private beginRound() {
     if (this.finished) return;
+    // Отсчёт «3 · 2 · 1» живёт на таймерах сцены — под шитом он стоит, сюда не дойдёт.
     this.timer = createRoundTimer(() => performance.now());
     this.session?.start();
     this.timer.start();
     this.running = true;
+    // Приложение свернули на «3 · 2 · 1»: раунд стартует уже на паузе.
+    if (this.appPaused) this.pauseRound();
     this.flashGo();
   }
 
@@ -441,13 +513,14 @@ export class Game extends Scene {
   }
 
   private pauseRound() {
-    if (!this.running) return;
+    if (!this.running) { this.timer?.pause(); return; }
     this.running = false;
     this.timer?.pause();
   }
 
   private resumeRound() {
-    if (this.finished || this.tutorialActive || !this.timer) return;
+    // Раунд идёт, только когда его не держат ни приложение, ни шит паузы.
+    if (this.finished || this.tutorialActive || !this.timer || this.appPaused || this.sheetPaused) return;
     this.running = true;
     this.timer.resume();
   }
@@ -501,8 +574,8 @@ export class Game extends Scene {
   }
 
   /**
-   * Три шага на РЕАЛЬНОМ экране: настоящая цель на поле, строка счёта/серии
-   * в HUD и крупный таймер.
+   * Три шага на РЕАЛЬНОМ экране: настоящая цель на поле, чипы очков и серии
+   * в шапке и чип таймера.
    */
   private tutorialSteps(): OnboardingStep[] {
     const demoX = FIELD.x + FIELD.w / 2;
@@ -518,16 +591,16 @@ export class Game extends Scene {
       },
       {
         textKey: 'onboarding.combo',
-        target: (): Rect => ({ x: 12, y: HUD_ROW_Y - 20, w: W - 24, h: 40 }),
+        target: (): Rect => this.chipsRect('score', 'combo'),
         pad: 6,
-        radius: 14,
+        radius: 16,
         prepare: () => this.previewHud(),
       },
       {
         textKey: 'onboarding.time',
-        target: (): Rect => rectOf(this.timeText),
-        pad: 10,
-        radius: 12,
+        target: (): Rect => this.chipsRect('time', 'time'),
+        pad: 8,
+        radius: 16,
       },
     ];
   }
@@ -559,18 +632,28 @@ export class Game extends Scene {
     this.fadeOutView(v);
   }
 
-  /** На шаге про серию HUD показывает пример значений — иначе подсвечивать нечего. */
+  /** Прямоугольник от чипа `a` до чипа `b` в шапке — для подсветки в обучении. */
+  private chipsRect(a: string, b: string): Rect {
+    const ra = this.header?.chipRect(a);
+    const rb = this.header?.chipRect(b);
+    if (!ra || !rb) return { x: FIELD.x, y: 0, w: FIELD.w, h: TOP_BAR_H };
+    const x = Math.min(ra.x, rb.x);
+    const right = Math.max(ra.x + ra.w, rb.x + rb.w);
+    return { x, y: ra.y, w: right - x, h: ra.h };
+  }
+
+  /** На шаге про серию чипы показывают пример значений — иначе подсвечивать нечего. */
   private previewHud() {
-    this.scoreText.setText(t(this.locale, 'game.score', { n: 240 }));
-    this.comboText.setText(t(this.locale, 'game.combo', { n: 3 }));
+    this.header?.setChip('score', '240');
+    this.header?.setChip('combo', comboChip(3));
   }
 
   private resetHudPreview() {
     this.lastScore = -1;
     this.lastCombo = -1;
     this.lastSec = -1;
-    this.scoreText.setText(t(this.locale, 'game.score', { n: 0 }));
-    this.comboText.setText('');
+    this.header?.setChip('score', '0');
+    this.header?.setChip('combo', comboChip(1));
   }
 
   /** «Серия из 10 подряд · 6/10» — активное испытание с прогрессом. */
@@ -609,8 +692,7 @@ function easeOutBack(x: number): number {
   return 1 + c3 * p * p * p + c1 * p * p;
 }
 
-/** Габарит объекта сцены в координатах сцены (для подсветки в обучении). */
-function rectOf(obj: Phaser.GameObjects.Text): Rect {
-  const b = obj.getBounds();
-  return { x: b.x, y: b.y, w: b.width, h: b.height };
+/** Чип серии: «×3» — множитель без слова, чтобы три чипа влезли рядом с названием. */
+function comboChip(mult: number): string {
+  return `×${mult}`;
 }
