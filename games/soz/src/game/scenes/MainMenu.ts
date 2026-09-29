@@ -6,8 +6,8 @@ import {
   makeTopBar,
   applyTheme,
   setupCamera,
-  makeLevelGrid,
-  makeLadderSummary,
+  makeNextLevelCard,
+  makeChapterSection,
   type LevelTileState,
   setBackHandler,
   readBonusBalance,
@@ -18,8 +18,10 @@ import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
 import { loadDaily, setHighContrast } from '../../core/persistence';
 import { formatClock } from '../roundTimer';
-import { LADDER, LADDER_SIZE } from '../../core/levels';
-import { isUnlocked, loadProgress, nextLevel, totalStars } from '@gamewingo/game-progress';
+import { LADDER, LADDER_SIZE, levelAt, newLever } from '../../core/levels';
+import {
+  chapterOf, chapterStates, isLadderComplete, loadProgress, nextLevel, totalStars, TARIFF,
+} from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 
 const CX = 200;
@@ -31,18 +33,34 @@ const SLUG = 'soz';
  */
 const HUB_URL = '../';
 
+/** Названия глав — по рычагу, который в ней появляется. */
+const CHAPTER_TITLES = ['chapter.1', 'chapter.2', 'chapter.3'] as const;
+
+/**
+ * Меню: сверху «Слово дня» — главный ежедневный повод зайти; под ним тренировка
+ * по главам, как у остальных лестниц каталога (макет 1c аудита): карточка
+ * «Следующий» с новым рычагом и порогом трёх звёзд, развёрнутая глава, остальные
+ * строкой. Раньше тут была сетка из 15 плиток с замками.
+ */
 export class MainMenu extends Scene {
   private locale: Locale = 'ru';
+  /** Какая глава развёрнута; по умолчанию — та, где следующий уровень. */
+  private shownChapter = 0;
 
   constructor() {
     super('MainMenu');
+  }
+
+  init(data: { chapter?: number }) {
+    this.shownChapter = data?.chapter ?? 0;
   }
 
   create() {
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     applyTheme(this);
     setupCamera(this);
-    this.cameras.main.fadeIn(200, ...COLORS.fade);
+    // Переключение главы перерисовывает меню — без затемнения, иначе экран мигает.
+    if (!this.shownChapter) this.cameras.main.fadeIn(200, ...COLORS.fade);
 
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
     // Системный «назад» из меню — тот же выход в каталог, что и стрелка.
@@ -58,38 +76,55 @@ export class MainMenu extends Scene {
     makeButton(this, CX, 92, dailyLabel, () => this.startDaily(), { primary: !dailyDone });
 
     const progress = loadProgress(SLUG);
-    const next = nextLevel(progress, LADDER_SIZE);
+    const complete = isLadderComplete(progress, LADDER_SIZE);
+    // Вся лестница пройдена — предлагаем первый уровень, где не хватает звёзд.
+    const improveAt = LADDER.find((lv) => (progress.stars[lv.n - 1] ?? 0) < 3)?.n;
+    const next = complete ? improveAt ?? LADDER_SIZE : nextLevel(progress, LADDER_SIZE);
 
-    makeLadderSummary(
-      this,
-      CX,
-      146,
-      t(this.locale, 'menu.ladder', { n: next, total: LADDER_SIZE }),
-      totalStars(progress),
-      LADDER_SIZE * 3,
-    );
-
-    // Лестница тренировки: пройденные со звёздами, следующий выделен, дальше — замки.
-    const tiles: LevelTileState[] = LADDER.map((lv) => ({
-      n: lv.n,
-      unlocked: isUnlocked(progress, lv.n),
-      stars: progress.stars[lv.n - 1] ?? 0,
-      current: lv.n === next,
-    }));
-    const grid = makeLevelGrid(this, CX, 190, tiles, (n) => this.startLevel(n));
-
-    // Подпись к следующему уровню: чем именно он отличается.
-    this.add
-      .text(CX, 190 + grid.height + 14, this.levelRules(next), {
-        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-
-    const belowGrid = 190 + grid.height + 44;
-    makeButton(this, CX, belowGrid, t(this.locale, 'menu.play', { n: next }), () => this.startLevel(next), {
-      primary: dailyDone,
+    let y = 92 + BUTTON_H.md / 2 + 16;
+    const lever = newLever(next);
+    const card = makeNextLevelCard(this, CX, y, {
+      locale: this.locale,
+      n: next,
+      stars: totalStars(progress),
+      maxStars: LADDER_SIZE * 3,
+      field: this.guessesLabel(levelAt(next).params.guesses),
+      intro: lever ? this.leverLabel(next, lever) : undefined,
+      goldHint: t(this.locale, 'level.goldHint', { n: levelAt(next).goals.gold }),
+      improve: complete,
+      onPlay: () => this.startLevel(next),
     });
+    y += card.height + 20;
+
+    // Главы: развёрнутая первой, остальные строкой — по порядку.
+    const chapters = chapterStates(progress, LADDER_SIZE);
+    const shown = this.shownChapter || chapterOf(next);
+    const ordered = [chapters[shown - 1], ...chapters.filter((c) => c.n !== shown)];
+    for (const ch of ordered) {
+      const expanded = ch.n === shown;
+      const tiles: LevelTileState[] = ch.levels.map((n) => ({
+        n,
+        unlocked: n <= next || (progress.stars[n - 1] ?? 0) > 0,
+        stars: progress.stars[n - 1] ?? 0,
+        current: n === next && !complete,
+      }));
+      const section = makeChapterSection(this, CX, y, {
+        locale: this.locale,
+        n: ch.n,
+        title: t(this.locale, CHAPTER_TITLES[ch.n - 1]),
+        levels: tiles,
+        cleared: ch.cleared,
+        done: ch.done,
+        unlocked: ch.unlocked,
+        stars: ch.stars,
+        maxStars: ch.maxStars,
+        bonus: TARIFF.chapterClear,
+        expanded,
+        onPick: (n) => this.startLevel(n),
+        onToggle: () => this.scene.restart({ chapter: ch.n }),
+      });
+      y += section.height + (expanded ? 20 : 14);
+    }
     // «Как играть» и звук живут в паузе партии, высокий контраст — под шестерёнкой.
     this.makeGear();
   }
@@ -211,14 +246,13 @@ export class MainMenu extends Scene {
     this.tweens.add({ targets: panel, y: 0, duration: 220, ease: 'Cubic.easeOut' });
   }
 
-  /** Строка «5 попыток · строгий режим · редкие слова · 5:00» — что именно ждёт на уровне. */
-  private levelRules(n: number): string {
-    const p = LADDER[n - 1].params;
-    const parts = [this.guessesLabel(p.guesses)];
-    if (p.strict) parts.push(t(this.locale, 'menu.strict'));
-    if (p.rare) parts.push(t(this.locale, 'menu.rare'));
-    if (p.timeLimitSec) parts.push(t(this.locale, 'menu.timer', { t: formatClock(p.timeLimitSec) }));
-    return parts.join(' · ');
+  /** Что нового на уровне: «строгий режим», «редкие слова», «таймер 5:00», «5 попыток». */
+  private leverLabel(n: number, lever: string): string {
+    const p = levelAt(n).params;
+    if (lever === 'strict') return t(this.locale, 'menu.strict').toLowerCase();
+    if (lever === 'rare') return t(this.locale, 'menu.rare');
+    if (lever === 'timeLimitSec') return t(this.locale, 'menu.timer', { t: formatClock(p.timeLimitSec) });
+    return this.guessesLabel(p.guesses);
   }
 
   /** «4 попытки» / «5 попыток» — русский требует согласования числительного. */

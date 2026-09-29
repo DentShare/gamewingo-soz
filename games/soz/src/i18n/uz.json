@@ -11,8 +11,6 @@
   "result.claim": "Mukofotni olish +{n}",
   "result.claimed": "Hisoblandi: {points}",
   "a11y.highContrast": "Yuqori kontrast",
-  "menu.ladder": "{total} dan {n}-daraja",
-  "menu.play": "Mashq · {n}-daraja",
   "game.level": "{n}-daraja",
   "game.strictPosition": "{n}-harf — {unit}",
   "game.strictMissing": "{unit} harfidan foydalaning",
@@ -62,5 +60,9 @@
   "date.month.9": "sentabr",
   "date.month.10": "oktabr",
   "date.month.11": "noyabr",
-  "date.month.12": "dekabr"
+  "date.month.12": "dekabr",
+  "chapter.1": "Tanishuv",
+  "chapter.2": "Besh urinish",
+  "chapter.3": "Vaqtga",
+  "level.goldHint": "3 yulduz — {n} urinishda topish"
 }
