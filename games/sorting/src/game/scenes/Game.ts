@@ -161,7 +161,8 @@ export class Game extends Scene {
   private buildHud() {
     const total = this.core.total;
     this.header = makeGameHeader(this, {
-      title: this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }),
+      // Детская игра: в шапке название, а не «Уровень N» — номер ребёнку ничего не говорит.
+      title: t(this.locale, 'app.title'),
       chips: [
         {
           id: 'progress',

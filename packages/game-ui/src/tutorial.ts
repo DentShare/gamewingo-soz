@@ -4,6 +4,7 @@ import { DPR, LOGICAL_W, VIEW_BOTTOM } from './viewport.js';
 import { makeButton } from './widgets.js';
 import { motionAllowed } from './motion.js';
 import { uiText } from './strings.js';
+import { isKidsMode } from './kids.js';
 
 /**
  * Онбординг в один шаг (T6 UX-волны, раздел 1b аудита): учить действием, а не
@@ -115,6 +116,9 @@ export function runFirstMoveTutorial(scene: Scene, o: FirstMoveTutorialOpts): Fi
     .setResolution(DPR);
   const barH = Math.max(64, msg.height + 28);
   const barTop = o.barTop ? o.barTop(barH) : VIEW_BOTTOM - 16 - barH - 8;
+  // Детский режим: игрок не читает — ни фразы, ни «Пропустить», только подсветка
+  // (озвучка подсказок появится вместе с файлами RU/UZ от контента).
+  const silent = isKidsMode();
   const bar = scene.add.graphics();
   bar.fillStyle(C.ink, 0.94).fillRoundedRect(16, barTop, barW, barH, RADIUS.card);
   msg.setPosition(32, barTop + (barH - msg.height) / 2);
@@ -125,9 +129,10 @@ export function runFirstMoveTutorial(scene: Scene, o: FirstMoveTutorialOpts): Fi
   const barHit = scene.add.rectangle(16 + barW / 2, barTop + barH / 2, barW, barH, 0x000000, 0).setInteractive();
   root.add([bar, barHit, msg, skip.root]);
   skip.root.setDepth(1);
+  if (silent) [bar, barHit, msg, skip.root].forEach((o2) => o2.destroy());
 
   let note: Phaser.GameObjects.Text | null = null;
-  if (o.note) {
+  if (o.note && !silent) {
     note = scene.add
       .text(LOGICAL_W / 2, barTop - 10, o.note, {
         fontFamily: FONT, fontSize: TYPE.caption, fontStyle: WEIGHT.semibold, color: S.muted, align: 'center',
@@ -207,6 +212,8 @@ export function showRuleOnce(
   /** `y` — верх плашки, если под шапкой она закроет то, что объясняет (цвета плиток). */
   opts: { y?: number } = {},
 ): boolean {
+  // Детский режим — без строк текста: правило ребёнок узнаёт из самой игры.
+  if (isKidsMode()) return false;
   const seen = seenRules();
   if (seen.includes(id)) return false;
   try {
