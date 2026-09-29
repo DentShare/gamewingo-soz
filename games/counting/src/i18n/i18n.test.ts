@@ -11,8 +11,7 @@ const REQUIRED = [
   'intro.field', 'intro.options', 'intro.questions',
   'game.dailyLevel',
   'game.question', 'game.progress',
-  'onboarding.count', 'onboarding.tap', 'onboarding.help',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
+  'tutorial.firstMove', 'rule.mistake',
   'result.title', 'result.gapMistakes.one', 'result.gapMistakes.few', 'result.gapMistakes.many',
   'result.almostDetail', 'result.almostDetailClean',
 ];
@@ -42,5 +41,7 @@ describe('i18n (counting)', () => {
     expect(t('uz', 'result.gapMistakes.few', { n: 2 })).toContain('2');
     expect(t('ru', 'game.progress', { n: 3, total: 10 })).toBe('3 из 10');
     expect(t('uz', 'game.progress', { n: 3, total: 10 })).toBe('10 dan 3');
+    expect(t('ru', 'tutorial.firstMove', { n: 4 })).toContain('4');
+    expect(t('uz', 'tutorial.firstMove', { n: 4 })).toContain('4');
   });
 });

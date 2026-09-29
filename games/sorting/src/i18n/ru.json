@@ -6,13 +6,6 @@
   "mode.color": "Раскладываем по цвету",
   "mode.shape": "Раскладываем по форме",
   "game.progress": "{n} из {total}",
-  "onboarding.take": "Возьми фигурку пальцем.",
-  "onboarding.drop": "Перетащи её в корзину такого же цвета.",
-  "onboarding.dropShape": "Перетащи её в корзину такой же формы.",
-  "onboarding.goal": "Разложи все фигурки. Ошибиться не страшно — попробуй ещё раз.",
-  "onboarding.next": "Далее",
-  "onboarding.done": "Понятно",
-  "onboarding.skip": "Пропустить",
   "result.title": "Молодец!",
   "sound.on": "Звук: вкл",
   "sound.off": "Звук: выкл",
@@ -36,5 +29,8 @@
   "result.gapMistakes.few": "на {n} ошибки меньше",
   "result.gapMistakes.many": "на {n} ошибок меньше",
   "result.almostDetail": "Ошибок: {n} · нужно не больше {need}",
-  "result.almostDetailClean": "Ошибок: {n} · нужно без ошибок"
+  "result.almostDetailClean": "Ошибок: {n} · нужно без ошибок",
+  "tutorial.firstMove": "Перетащи фигурку в корзину такого же цвета",
+  "tutorial.firstMoveShape": "Перетащи фигурку в корзину такой же формы",
+  "rule.mistake": "Не та корзина! Нужная мигает — попробуй ещё раз"
 }

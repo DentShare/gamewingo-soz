@@ -7,12 +7,6 @@
   "game.progress": "{n} из {total}",
   "game.praise": "Молодец!",
   "game.help": "Посчитаем вместе!",
-  "onboarding.count": "Посчитай, сколько тут предметов.",
-  "onboarding.tap": "Нажми внизу цифру — сколько насчитал.",
-  "onboarding.help": "Ошибся? Не страшно: покажем, как считать, и попробуешь снова.",
-  "onboarding.next": "Далее",
-  "onboarding.done": "Понятно",
-  "onboarding.skip": "Пропустить",
   "result.title": "Молодец!",
   "sound.on": "Звук: вкл",
   "sound.off": "Звук: выкл",
@@ -35,5 +29,7 @@
   "result.gapMistakes.few": "на {n} ошибки меньше",
   "result.gapMistakes.many": "на {n} ошибок меньше",
   "result.almostDetail": "Ошибок: {n} · нужно не больше {need}",
-  "result.almostDetailClean": "Ошибок: {n} · нужно без ошибок"
+  "result.almostDetailClean": "Ошибок: {n} · нужно без ошибок",
+  "tutorial.firstMove": "Нажми на число {n} — столько здесь картинок",
+  "rule.mistake": "Не страшно! Посчитаем вместе — и нажми ещё раз"
 }
