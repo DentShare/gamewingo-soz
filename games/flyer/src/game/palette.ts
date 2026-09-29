@@ -32,8 +32,6 @@ export const COLORS = {
   wallGlow: C.tint,        // светлая вставка у торца проёма
   hero: C.accent,          // герой — бирюзовый, контраст к оранжевым стенам
   heroDark: C.accentDark,
-  scoreText: '#ffffff',    // крупный счёт поверх неба
-  scoreShadow: '#2f4f4a',
 
   toastBg: S.ink,
   toastText: S.white,

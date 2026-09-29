@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { mulberry32 } from './rng';
 import {
-  createFlight, FLOOR_Y, GAP_H, HERO_H, HERO_START_Y, HERO_W, HERO_X, type Flight,
+  createFlight, CEIL_Y, FLOOR_Y, GAP_H, HERO_H, HERO_START_Y, HERO_W, HERO_X, type Flight,
 } from './flight';
 
 const FRAME = 16; // типичный кадр 60 fps
@@ -86,6 +86,8 @@ describe('createFlight — смерть', () => {
     }
     expect(over).toBe(true);
     expect(f.cause).toBe('ceiling');
+    // Потолок — низ шапки партии: герой не залетает под стрелку и чипы.
+    expect(f.y - HERO_H / 2).toBeGreaterThanOrEqual(CEIL_Y);
   });
 
   it('столкновение со стеной заканчивает партию', () => {

@@ -3,7 +3,10 @@ import type { Locale } from '../../core/locale';
 import { createStackGame, type StackGame, type DropResult } from '../../core/stack';
 import { computeScore } from '../../core/score';
 import { COLORS, FONT, blockColor } from '../palette';
-import { applyTheme, darken, setupCamera, shakeCamera, makeBackButton, playSound } from '../ui';
+import {
+  applyTheme, darken, setupCamera, shakeCamera, playSound, makeGameHeader, openPauseSheet,
+  setBackHandler, TOP_BAR_H, type GameHeader, type PauseSheet,
+} from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import { CHALLENGES } from '../../core/challenges';
@@ -21,8 +24,8 @@ const BLOCK_H = 26;
 const BASE_Y = 690;
 /** Сколько блоков помещается по высоте до того, как башня начнёт «уезжать» вниз. */
 const MAX_VISIBLE = 17;
-/** Высота HUD: тапы выше не роняют блок (там кнопка «Назад»). */
-const HUD_H = 62;
+/** Строка активного испытания — на поле сразу под шапкой партии. */
+const CHALLENGE_Y = TOP_BAR_H + 20;
 /** Демонстрационный промах в обучении. */
 const TUTORIAL_MISS = 26;
 
@@ -48,7 +51,6 @@ export class Game extends Scene {
   private currentView!: Phaser.GameObjects.Rectangle;
   private flash!: Phaser.GameObjects.Rectangle;
   private perfectText!: Phaser.GameObjects.Text;
-  private scoreText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
 
   private timer?: RoundTimer;
@@ -57,6 +59,14 @@ export class Game extends Scene {
   /** Во время обучения блок стоит на месте (кроме первого шага — там он едет). */
   private frozen = false;
   private tutorialCut: Rect = { x: 0, y: 0, w: 0, h: 0 };
+
+  /** Шапка партии: стрелка (пауза), название игры, чипы счёта и точных попаданий. */
+  private header?: GameHeader;
+  private pause: PauseSheet | null = null;
+  /** Мир стоит: блок не едет, таймеры и твины заморожены (пауза-шит открыт). */
+  private paused = false;
+  /** Твины, которые шли в момент паузы, — только их и возобновляем. */
+  private frozenTweens: Phaser.Tweens.Tween[] = [];
 
   constructor() {
     super('Game');
@@ -70,6 +80,14 @@ export class Game extends Scene {
     this.tutorialActive = false;
     this.frozen = false;
     this.timer = undefined;
+    this.header = undefined;
+    this.pause = null;
+    this.paused = false;
+    this.frozenTweens = [];
+    // Часы сцены переживают restart — после «Начать заново» из паузы их надо отпустить.
+    this.time.paused = false;
+    // Системный «назад» ведёт туда же, куда стрелка: забег → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
@@ -96,9 +114,15 @@ export class Game extends Scene {
     this.timer = createRoundTimer(() => performance.now());
     this.session.start();
     this.timer.start();
+    // Приложение уходит в фон (звонок, шторка) — открываем ту же паузу, что и стрелка:
+    // мир стоит, а вернувшись, игрок сам жмёт «Продолжить» — блок не уедет без него.
     const off = this.session.onApp((e: AppToGameEvent) => {
-      if (e.type === 'PAUSE') this.timer?.pause();
-      else if (e.type === 'RESUME') this.timer?.resume();
+      if (e.type === 'PAUSE') {
+        if (!this.tutorialActive) this.openPause();
+        else this.timer?.pause();
+      } else if (e.type === 'RESUME') {
+        if (!this.paused) this.timer?.resume();
+      }
     });
     this.events.once('shutdown', off);
 
@@ -106,7 +130,7 @@ export class Game extends Scene {
   }
 
   update(_time: number, delta: number) {
-    if (this.finished || this.core.isOver) return;
+    if (this.finished || this.paused || this.core.isOver) return;
     if (this.tutorialActive && this.frozen) return;
     this.core.tick(delta);
     this.currentView.x = this.core.current.x; // единственная работа за кадр
@@ -189,21 +213,27 @@ export class Game extends Scene {
     this.style(this.currentView, this.core.blocks.length, c.x, c.width, this.yOf(this.core.blocks.length));
   }
 
-  // ── HUD ──────────────────────────────────────────────────────────────────────
+  // ── Шапка партии и пауза ─────────────────────────────────────────────────────
 
+  /**
+   * Шапка каталога: стрелка (пауза), название игры и чипы — счёт и точные попадания.
+   * Раньше здесь были белая пилюля «Назад» (тап по ней сразу терял забег) и крупный
+   * счёт на поле. Счёт переехал в чип: крупная цифра дублировала бы его, а место
+   * над башней теперь свободно.
+   */
   private buildHud() {
-    this.buildBackButton();
-    this.scoreText = this.add
-      .text(W / 2, 84, t(this.locale, 'game.score', { n: 0 }), {
-        fontFamily: FONT, fontSize: 58, color: COLORS.scoreText, fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR)
-      .setDepth(20);
-    // Активное испытание с живым прогрессом — под счётом; когда всё пройдено, строки нет.
+    this.header = makeGameHeader(this, {
+      title: t(this.locale, 'app.title'),
+      chips: [
+        { id: 'score', text: '0', widest: '888' },
+        { id: 'perfects', text: perfectsLabel(0), widest: perfectsLabel(88) },
+      ],
+      onBack: () => this.openPause(),
+    });
+    // Активное испытание с живым прогрессом — под шапкой; когда всё пройдено, строки нет.
     if (this.challenge) {
       this.challengeText = this.add
-        .text(W / 2, 126, this.challengeLabel(), {
+        .text(W / 2, CHALLENGE_Y, this.challengeLabel(), {
           fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
         })
         .setOrigin(0.5)
@@ -220,13 +250,82 @@ export class Game extends Scene {
       .setDepth(20);
   }
 
-  /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
-  private buildBackButton() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+  /** Счёт и точные попадания — в чипы шапки. */
+  private updateChips() {
+    this.header?.setChip('score', String(this.core.score));
+    this.header?.setChip('perfects', perfectsLabel(this.core.perfects));
   }
 
-  private goBack() {
-    if (this.finished || this.tutorialActive) return;
+  /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
+    if (this.tutorialActive) {
+      this.exitToMenu();
+      return;
+    }
+    this.freezeWorld();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      kind: 'run',
+      summary: this.pauseSummary(),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => {
+        this.pause = null;
+        this.thawWorld();
+      },
+      onRestart: () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
+  }
+
+  /**
+   * Остановить мир: `update()` не двигает блок, часы сцены (`delayedCall`) и
+   * идущие твины (падающие обрезки, прокрутка башни, вспышка) замирают, таймер
+   * партии стоит. Замораживаем ДО открытия шита — его собственные твины
+   * выезда создаются позже и идут как обычно.
+   */
+  private freezeWorld() {
+    this.paused = true;
+    this.timer?.pause();
+    this.time.paused = true;
+    this.frozenTweens = this.tweens.getTweens().filter((tw) => tw.isPlaying());
+    for (const tw of this.frozenTweens) tw.pause();
+  }
+
+  /**
+   * Мир едет дальше ровно с того же места: `core.tick` получает обычную дельту
+   * следующего кадра (кадры паузы в него не попадали), твины — с того же прогресса.
+   */
+  private thawWorld() {
+    this.paused = false;
+    this.time.paused = false;
+    for (const tw of this.frozenTweens) if (!tw.isDestroyed()) tw.resume();
+    this.frozenTweens = [];
+    this.timer?.resume();
+  }
+
+  /** «Счёт 12 · точных 3». */
+  private pauseSummary(): string {
+    return t(this.locale, 'pause.summary', { score: this.core.score, perfects: this.core.perfects });
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
+  }
+
+  private exitToMenu() {
+    if (this.finished) return;
     this.finished = true;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
@@ -237,14 +336,14 @@ export class Game extends Scene {
   private bindInput() {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       // `p.y` — в пикселях холста (он плотнее в DPR раз), поэтому переводим в координаты сцены.
-      if (this.cameras.main.getWorldPoint(p.x, p.y).y < HUD_H) return; // зона кнопки «Назад»
+      if (this.cameras.main.getWorldPoint(p.x, p.y).y < TOP_BAR_H) return; // шапка партии
       this.tryDrop();
     });
     this.input.keyboard?.on('keydown-SPACE', () => this.tryDrop());
   }
 
   private tryDrop() {
-    if (this.finished || this.tutorialActive || this.core.isOver) return;
+    if (this.finished || this.paused || this.tutorialActive || this.core.isOver) return;
     this.applyDrop(this.core.drop());
   }
 
@@ -294,7 +393,7 @@ export class Game extends Scene {
       this.streak = 0;
     }
 
-    this.scoreText.setText(t(this.locale, 'game.score', { n: this.core.score }));
+    this.updateChips();
     this.updateChallengeLine();
 
     // Новый едущий блок + прокрутка башни вниз.
@@ -333,9 +432,6 @@ export class Game extends Scene {
     this.tweens.add({
       targets: this.perfectText, y: y - 54, alpha: 0, duration: 520, ease: 'Quad.easeOut',
       onComplete: () => this.perfectText.setVisible(false),
-    });
-    this.tweens.add({
-      targets: this.scoreText, scale: 1.16, duration: 110, yoyo: true, ease: 'Quad.easeOut',
     });
   }
 
@@ -411,9 +507,9 @@ export class Game extends Scene {
       },
       {
         textKey: 'onboarding.score',
-        target: () => rectOf(this.scoreText),
-        pad: 12,
-        radius: 14,
+        target: () => this.header?.chipRect('score') ?? this.currentRowRect(),
+        pad: 8,
+        radius: 16,
       },
     ];
   }
@@ -450,7 +546,7 @@ export class Game extends Scene {
     this.flash.destroy();
     this.perfectText.destroy();
     this.buildField();
-    this.scoreText.setText(t(this.locale, 'game.score', { n: 0 })).setScale(1);
+    this.updateChips();
     this.updateChallengeLine(); // новая башня — прогресс испытания с нуля
     this.hintText.setVisible(true).setAlpha(1);
   }
@@ -501,9 +597,7 @@ export class Game extends Scene {
   }
 }
 
-/** Габарит объекта сцены в координатах сцены (для подсветки в обучении). */
-function rectOf(obj: Phaser.GameObjects.Text): Rect {
-  const b = obj.getBounds();
-  return { x: b.x, y: b.y, w: b.width, h: b.height };
-
+/** «★ 3» — точные попадания в чипе шапки (звезда — символ, не текст: без перевода). */
+function perfectsLabel(n: number): string {
+  return `★ ${n}`;
 }
