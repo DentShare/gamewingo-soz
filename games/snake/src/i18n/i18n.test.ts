@@ -8,8 +8,7 @@ const REQUIRED = [
   'app.title', 'menu.play', 'menu.howto', 'menu.catalog', 'menu.record', 'menu.back',
   'menu.challenges',
   'game.swipeToStart', 'game.length', 'game.challenge',
-  'onboarding.move', 'onboarding.food', 'onboarding.crash',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
+  'tutorial.firstMove', 'rule.crash',
   'result.length', 'result.points.one', 'result.points.few', 'result.points.many',
 ];
 

@@ -1,13 +1,14 @@
 import { Scene, Math as PhaserMath } from 'phaser';
 import type { Locale } from '../../core/locale';
 import {
-  createTargetsGame, FIELD, ROUND_MS, MAX_MULTIPLIER, type Target, type TargetsGame,
+  createTargetsGame, FIELD, ROUND_MS, MAX_MULTIPLIER, R_BIG, type Target, type TargetsGame,
 } from '../../core/targets';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
 import {
   applyTheme, setupCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler, uiText, makeRecordGhost,
-  TOP_BAR_H, type GameHeader, type PauseSheet, type RecordGhost,
+  runFirstMoveTutorial, showRuleOnce, TOP_BAR_H,
+  type GameHeader, type PauseSheet, type RecordGhost, type FirstMoveTutorial,
 } from '../ui';
 import { t } from '../../i18n';
 import { CHALLENGES } from '../../core/challenges';
@@ -16,7 +17,6 @@ import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
-import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
 import { DPR } from '../dpr';
 
 const W = 400;
@@ -62,8 +62,8 @@ export class Game extends Scene {
   private ripplePool: Phaser.GameObjects.Arc[] = [];
   /** Живые цели ядра → их представления. */
   private views = new Map<number, TargetView>();
-  /** Цель, показанная в обучении (вне ядра — не влияет на счёт). */
-  private demoView?: TargetView;
+  /** Первая цель обучения — настоящая цель ядра: попадание по ней и есть первый ход. */
+  private tutorialTarget: Target | null = null;
 
   /** Переиспользуемый буфер перевода экранных координат тапа в логические. */
   private tapPoint = new PhaserMath.Vector2();
@@ -73,7 +73,10 @@ export class Game extends Scene {
   /** PAUSE от приложения и пауза-шит — раунд идёт, только когда нет ни того, ни другого. */
   private appPaused = false;
   private sheetPaused = false;
-  private tutorialActive = false;
+  /** Обучение в один шаг (T6): раунд стоит, пока не будет первого попадания. */
+  private tutorial: FirstMoveTutorial | null = null;
+  /** Сколько целей уже погасло само — чтобы поймать первое такое событие. */
+  private lastExpired = 0;
   private lastScore = -1;
   private lastCombo = -1;
   private lastSec = -1;
@@ -88,10 +91,11 @@ export class Game extends Scene {
     this.popPool = [];
     this.ripplePool = [];
     this.views = new Map();
-    this.demoView = undefined;
+    this.tutorialTarget = null;
     this.running = false;
     this.finished = false;
-    this.tutorialActive = false;
+    this.tutorial = null;
+    this.lastExpired = 0;
     this.lastScore = -1;
     this.lastCombo = -1;
     this.lastSec = -1;
@@ -126,19 +130,16 @@ export class Game extends Scene {
       this.onTap(w.x, w.y);
     });
 
-    // «Как играть» из меню: обучение поверх настоящего поля, без сессии и партии.
-    if (this.registry.get('howto')) {
-      this.runHowto();
-      return;
-    }
-
     const off = this.session?.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') { this.appPaused = true; this.pauseRound(); }
       else if (e.type === 'RESUME') { this.appPaused = false; this.resumeRound(); }
     });
     if (off) this.events.once('shutdown', off);
 
-    if (!hasOnboarded()) this.runFirstTimeOnboarding();
+    // «Как играть» из паузы — то же обучение на новом раунде.
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
+    if (howto || !hasOnboarded()) this.startTutorial();
     else this.time.delayedCall(220, () => this.runCountdown(() => this.beginRound()));
   }
 
@@ -147,6 +148,7 @@ export class Game extends Scene {
       this.core.step(Math.min(delta, MAX_DELTA));
       this.syncTargets();
       this.syncHud();
+      this.checkRules();
       if (this.core.isOver) this.endRound();
       return;
     }
@@ -202,11 +204,6 @@ export class Game extends Scene {
   /** Стрелка в шапке: пауза с честным выбором, а не мгновенная потеря раунда. */
   private openPause() {
     if (this.finished || this.pause?.open) return;
-    // В обучении ставить на паузу нечего — стрелка просто возвращает в меню.
-    if (this.tutorialActive) {
-      this.exitToMenu();
-      return;
-    }
     this.freezeWorld();
     this.pause = openPauseSheet(this, {
       locale: this.locale,
@@ -378,7 +375,6 @@ export class Game extends Scene {
       this.fadeOutView(v);
     }
 
-    if (this.demoView) this.pulseDemo(this.demoView, now);
   }
 
   /** Появление — по «настенным» часам, угасание — по возрасту в шкале ядра. */
@@ -441,13 +437,26 @@ export class Game extends Scene {
   // ── Ввод ─────────────────────────────────────────────────────────────────────
 
   private onTap(x: number, y: number) {
-    if (!this.running || this.finished || this.tutorialActive) return;
+    if (this.finished || this.sheetPaused) return;
     if (y < FIELD.y) return; // зона шапки и строки испытания — не поле
+    if (this.tutorial?.active) {
+      // Промах в обучении не трогает ядро (ни промахов, ни серии) — только объясняет правило.
+      if (!this.hitsTutorialTarget(x, y)) {
+        playSound('wrong');
+        this.showRipple(x, y);
+        showRuleOnce(this, 'targets:miss', t(this.locale, 'rule.miss'));
+        return;
+      }
+      // Первое попадание — настоящий ход: раунд стартует, очки за цель засчитываются.
+      this.tutorial.done();
+    }
+    if (!this.running) return;
 
     const res = this.core.tap(x, y);
     if (!res.hit) {
       playSound('wrong');
       this.showRipple(x, y);
+      showRuleOnce(this, 'targets:miss', t(this.locale, 'rule.miss'));
       return;
     }
     playSound(res.golden ? 'star' : 'ok');
@@ -493,7 +502,8 @@ export class Game extends Scene {
     nextTick();
   }
 
-  private beginRound() {
+  /** `flash` — «Начали!» после отсчёта; после первого попадания в обучении он лишний. */
+  private beginRound(flash = true) {
     if (this.finished) return;
     // Отсчёт «3 · 2 · 1» живёт на таймерах сцены — под шитом он стоит, сюда не дойдёт.
     this.timer = createRoundTimer(() => performance.now());
@@ -502,7 +512,7 @@ export class Game extends Scene {
     this.running = true;
     // Приложение свернули на «3 · 2 · 1»: раунд стартует уже на паузе.
     if (this.appPaused) this.pauseRound();
-    this.flashGo();
+    if (flash) this.flashGo();
   }
 
   private flashGo() {
@@ -527,7 +537,7 @@ export class Game extends Scene {
 
   private resumeRound() {
     // Раунд идёт, только когда его не держат ни приложение, ни шит паузы.
-    if (this.finished || this.tutorialActive || !this.timer || this.appPaused || this.sheetPaused) return;
+    if (this.finished || !this.timer || this.appPaused || this.sheetPaused) return;
     this.running = true;
     this.timer.resume();
   }
@@ -552,115 +562,59 @@ export class Game extends Scene {
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
 
-  /** «Как играть» из меню: настоящее поле + обучение, по концу — обратно в меню. */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
+  /**
+   * Обучение в один шаг: на поле одна крупная настоящая цель, обведена и пульсирует,
+   * внизу одна фраза. Мир стоит (ядро не шагает, цель не гаснет, минута не идёт),
+   * чипы шапки спрятаны. Попадание по цели — первый ход: очки засчитываются,
+   * раунд стартует сразу, без отсчёта. Промах не наказывается — только строка правила.
+   */
+  private startTutorial() {
+    this.header?.setChipsVisible(false);
+    this.tutorialTarget = this.core.spawnTarget({
+      x: FIELD.x + FIELD.w / 2,
+      y: FIELD.y + 180,
+      r: R_BIG,
+    });
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove'),
+      note: t(this.locale, 'tutorial.note'),
+      targets: () => {
+        const tg = this.tutorialTarget;
+        return tg ? [{ x: tg.x - tg.r, y: tg.y - tg.r, w: tg.r * 2, h: tg.r * 2 }] : [];
+      },
+      pad: 10,
+      radius: R_BIG + 10,
+      onDone: (skipped) => {
         setOnboarded();
-        this.hideDemo();
-        this.cameras.main.fadeOut(200, ...COLORS.fade);
-        this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
-      });
+        this.header?.setChipsVisible(true);
+        if (skipped) {
+          // «Пропустить» — обычный старт с отсчётом; цель обучения остаётся подарком.
+          this.runCountdown(() => this.beginRound());
+        } else {
+          this.beginRound(false);
+        }
+      },
     });
   }
 
-  /** Первая партия — показываем обучение один раз, затем отсчёт и старт. */
-  private runFirstTimeOnboarding() {
-    this.tutorialActive = true;
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
-        setOnboarded();
-        this.hideDemo();
-        this.resetHudPreview();
-        this.tutorialActive = false;
-        this.runCountdown(() => this.beginRound());
-      });
-    });
+  /** Попал ли тап по цели обучения (с тем же допуском для пальца, что и в ядре). */
+  private hitsTutorialTarget(x: number, y: number): boolean {
+    const tg = this.tutorialTarget;
+    if (!tg) return false;
+    return Math.hypot(x - tg.x, y - tg.y) <= tg.r + 6;
   }
 
   /**
-   * Три шага на РЕАЛЬНОМ экране: настоящая цель на поле, чипы очков и серии
-   * в шапке и чип таймера.
+   * Правила — в момент первого события, один раз на устройство: первая серия ×2
+   * и первая цель, погасшая сама. Про промах — в onTap.
    */
-  private tutorialSteps(): OnboardingStep[] {
-    const demoX = FIELD.x + FIELD.w / 2;
-    const demoY = FIELD.y + 180;
-    const demoR = 46;
-    return [
-      {
-        textKey: 'onboarding.aim',
-        target: (): Rect => ({ x: demoX - demoR, y: demoY - demoR, w: demoR * 2, h: demoR * 2 }),
-        pad: 12,
-        radius: 22,
-        prepare: () => this.showDemo(demoX, demoY, demoR),
-      },
-      {
-        textKey: 'onboarding.combo',
-        target: (): Rect => this.chipsRect('score', 'combo'),
-        pad: 6,
-        radius: 16,
-        prepare: () => this.previewHud(),
-      },
-      {
-        textKey: 'onboarding.time',
-        target: (): Rect => this.chipsRect('time', 'time'),
-        pad: 8,
-        radius: 16,
-      },
-    ];
-  }
-
-  /** Настоящая цель на поле для первого шага обучения (вне ядра — счёт не трогает). */
-  private showDemo(x: number, y: number, r: number) {
-    if (this.demoView) return;
-    const v = this.acquireView();
-    if (!v) return;
-    this.paintView(v, false);
-    v.root.setPosition(x, y).setScale(0);
-    this.tweens.add({
-      targets: v.root, scale: r / BASE_R, duration: 260, ease: 'Back.easeOut',
-    });
-    this.demoView = v;
-  }
-
-  /** Лёгкое «дыхание» демо-цели, чтобы она читалась как живая. */
-  private pulseDemo(v: TargetView, now: number) {
-    const k = 1 + 0.05 * Math.sin(now / 260);
-    v.outer.setScale(k);
-  }
-
-  private hideDemo() {
-    if (!this.demoView) return;
-    const v = this.demoView;
-    this.demoView = undefined;
-    v.outer.setScale(1);
-    this.fadeOutView(v);
-  }
-
-  /** Прямоугольник от чипа `a` до чипа `b` в шапке — для подсветки в обучении. */
-  private chipsRect(a: string, b: string): Rect {
-    const ra = this.header?.chipRect(a);
-    const rb = this.header?.chipRect(b);
-    if (!ra || !rb) return { x: FIELD.x, y: 0, w: FIELD.w, h: TOP_BAR_H };
-    const x = Math.min(ra.x, rb.x);
-    const right = Math.max(ra.x + ra.w, rb.x + rb.w);
-    return { x, y: ra.y, w: right - x, h: ra.h };
-  }
-
-  /** На шаге про серию чипы показывают пример значений — иначе подсвечивать нечего. */
-  private previewHud() {
-    this.header?.setChip('score', '240');
-    this.header?.setChip('combo', comboChip(3));
-  }
-
-  private resetHudPreview() {
-    this.lastScore = -1;
-    this.lastCombo = -1;
-    this.lastSec = -1;
-    this.header?.setChip('score', '0');
-    this.header?.setChip('combo', comboChip(1));
+  private checkRules() {
+    if (this.core.multiplier >= 2) showRuleOnce(this, 'targets:combo', t(this.locale, 'rule.combo'));
+    if (this.core.expired > this.lastExpired) {
+      this.lastExpired = this.core.expired;
+      showRuleOnce(this, 'targets:expired', t(this.locale, 'rule.expired'));
+    }
   }
 
   /** «Серия из 10 подряд · 6/10» — активное испытание с прогрессом. */

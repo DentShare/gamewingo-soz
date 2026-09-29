@@ -10,8 +10,7 @@ const REQUIRED = [
   'game.combo', 'game.time', 'game.challenge',
   'result.points.one', 'result.points.few', 'result.points.many',
   'result.hits.one', 'result.hits.few', 'result.hits.many',
-  'onboarding.aim', 'onboarding.combo', 'onboarding.time',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
+  'tutorial.firstMove', 'tutorial.note', 'rule.miss', 'rule.combo', 'rule.expired',
 ];
 
 describe('i18n (targets)', () => {

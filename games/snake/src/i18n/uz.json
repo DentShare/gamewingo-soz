@@ -26,15 +26,11 @@
   "challenge.feast5": "12 soniyada 5 ta olma",
   "challenge.len38": "38 uzunlikkacha oʻs",
   "challenge.eat45": "Bir yugurishda 45 ta olma ye",
-  "onboarding.move": "Istalgan tomonga suring — ilon oʻsha tomonga oʻrmalaydi.",
-  "onboarding.food": "Yemni yeng: ilon uzayadi, ochkolar qoʻshiladi.",
-  "onboarding.crash": "Devorga yoki oʻzingizga urilsangiz — oʻyin tugaydi. Ilon qancha uzun boʻlsa, shuncha tez oʻrmalaydi.",
-  "onboarding.next": "Keyingi",
-  "onboarding.done": "Tushunarli",
-  "onboarding.skip": "Oʻtkazib yuborish",
   "result.length": "Uzunlik {n}",
   "pause.summary": "Ilon toʻxtadi · ochko {score} · uzunlik {n}",
   "result.points.one": "{n} ochko",
   "result.points.few": "{n} ochko",
-  "result.points.many": "{n} ochko"
+  "result.points.many": "{n} ochko",
+  "tutorial.firstMove": "Suring — ilon oʻrmalaydi. Uni olmaga olib boring",
+  "rule.crash": "Devor yoki oʻz dumi — oʻyin tugaydi. Hozir kechiramiz: yana suring"
 }

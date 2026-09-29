@@ -26,15 +26,11 @@
   "challenge.feast5": "5 яблок за 12 секунд",
   "challenge.len38": "Дорасти до длины 38",
   "challenge.eat45": "Съешь 45 яблок за забег",
-  "onboarding.move": "Свайпайте в любую сторону — змейка поползёт туда.",
-  "onboarding.food": "Съедайте еду: змейка растёт, очки прибавляются.",
-  "onboarding.crash": "Врезались в стену или в себя — конец. Чем длиннее, тем быстрее.",
-  "onboarding.next": "Далее",
-  "onboarding.done": "Понятно",
-  "onboarding.skip": "Пропустить",
   "result.length": "Длина {n}",
   "pause.summary": "Змейка стоит · очки {score} · длина {n}",
   "result.points.one": "{n} очко",
   "result.points.few": "{n} очка",
-  "result.points.many": "{n} очков"
+  "result.points.many": "{n} очков",
+  "tutorial.firstMove": "Свайпни — змейка поползёт. Веди её к яблоку",
+  "rule.crash": "Стена или свой хвост — конец забега. Сейчас прощаем: свайпни ещё"
 }
