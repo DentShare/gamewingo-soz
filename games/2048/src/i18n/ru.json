@@ -7,8 +7,6 @@
   "menu.back": "Назад",
   "menu.record": "личный рекорд",
   "menu.challenges": "Испытания · {k} из {n}",
-  "menu.nextMilestone": "Веха: плитка {n} · +{r} бонусов",
-  "menu.milestonesDone": "Все вехи взяты!",
   "sound.on": "Звук: вкл",
   "sound.off": "Звук: выкл",
   "game.score": "Счёт: {n}",

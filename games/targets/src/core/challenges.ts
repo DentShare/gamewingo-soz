@@ -1,4 +1,4 @@
-import { buildChallenges, buildMilestones } from '@gamewingo/game-progress';
+import { buildChallenges } from '@gamewingo/game-progress';
 
 /**
  * Прогрессия «Меткого глаза» — от механики: раунд всегда 60 секунд, растёт
@@ -37,14 +37,3 @@ export const CHALLENGES = buildChallenges([
 
 export const CHALLENGES_TOTAL = CHALLENGES.length;
 
-/** Вехи по очкам раунда. Награда растёт со ступенью. */
-export const MILESTONES = buildMilestones([
-  ['score1000', 'score', 1000, 10],
-  ['score2000', 'score', 2000, 12],
-  ['score3000', 'score', 3000, 15],
-  ['score4200', 'score', 4200, 18],
-  ['score5500', 'score', 5500, 21],
-  ['score7000', 'score', 7000, 24],
-  ['score8000', 'score', 8000, 27],
-  ['score9000', 'score', 9000, 30],
-]);

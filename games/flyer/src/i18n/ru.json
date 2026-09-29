@@ -6,8 +6,6 @@
   "menu.back": "Назад",
   "menu.record": "личный рекорд",
   "menu.challenges": "Испытания · {k} из {n}",
-  "menu.nextMilestone": "Веха: {n} проёмов · +{r} бонусов",
-  "menu.milestonesDone": "Все вехи взяты!",
   "menu.hint": "Одна кнопка — тап. Партия меньше минуты.",
   "sound.on": "Звук: вкл",
   "sound.off": "Звук: выкл",

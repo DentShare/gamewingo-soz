@@ -1,4 +1,4 @@
-import { buildChallenges, buildMilestones } from '@gamewingo/game-progress';
+import { buildChallenges } from '@gamewingo/game-progress';
 
 /**
  * Прогрессия «Полёта» — от механики: забег один и тот же, растёт мастерство.
@@ -36,14 +36,3 @@ export const CHALLENGES = buildChallenges([
 
 export const CHALLENGES_TOTAL = CHALLENGES.length;
 
-/** Вехи по проёмам — естественная шкала полёта. Награда растёт со ступенью. */
-export const MILESTONES = buildMilestones([
-  ['pass5', 'passed', 5, 10],
-  ['pass10', 'passed', 10, 12],
-  ['pass15', 'passed', 15, 15],
-  ['pass20', 'passed', 20, 18],
-  ['pass26', 'passed', 26, 21],
-  ['pass33', 'passed', 33, 24],
-  ['pass40', 'passed', 40, 27],
-  ['pass50', 'passed', 50, 30],
-]);

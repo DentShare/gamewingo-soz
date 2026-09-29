@@ -2,12 +2,12 @@ import { Scene, Math as PhaserMath } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { COLORS, FONT } from '../palette';
 import {
-  applyTheme, darken, setupCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler,
-  TOP_BAR_H, VIEW_BOTTOM, type GameHeader, type PauseSheet,
+  applyTheme, darken, setupCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler, makeRecordGhost,
+  TOP_BAR_H, VIEW_BOTTOM, type GameHeader, type PauseSheet, type RecordGhost,
 } from '../ui';
 import { t } from '../../i18n';
 import { CHALLENGES } from '../../core/challenges';
-import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
+import { challengeStates, loadBests, type ChallengeDef } from '@gamewingo/game-progress';
 import {
   createSnakeGame, COLS, ROWS, type Dir, type Point, type SnakeGame,
 } from '../../core/snake';
@@ -76,6 +76,8 @@ export class Game extends Scene {
   private headC!: Phaser.GameObjects.Container;
   private foodC!: Phaser.GameObjects.Container;
   private header?: GameHeader;
+  /** «Призрак» рекорда длины под шапкой: каждый забег — гонка с собой. */
+  private ghost?: RecordGhost;
   private pause: PauseSheet | null = null;
   /** Твины, замороженные паузой-шитом (пульс еды, вспышки) — их и только их продолжаем. */
   private frozenTweens: Phaser.Tweens.Tween[] = [];
@@ -111,6 +113,7 @@ export class Game extends Scene {
     this.swipeFrom = null;
     this.sheetPaused = false;
     this.header = undefined;
+    this.ghost = undefined;
     this.pause = null;
     this.frozenTweens = [];
     // Часы сцены переживают restart: «Начать заново» из паузы пришёл бы с замороженными таймерами.
@@ -198,6 +201,7 @@ export class Game extends Scene {
     this.header?.setChip('score', String(this.core.score));
     this.header?.pulseChip('score');
     this.header?.setChip('length', t(this.locale, 'game.length', { n: this.core.length }));
+    this.ghost?.update(this.core.length);
 
     // «Жор»: сколько еды съедено в скользящее окно 12 секунд.
     const now = this.timer?.elapsedMs() ?? 0;
@@ -384,6 +388,8 @@ export class Game extends Scene {
       ],
       onBack: () => this.openPause(),
     });
+    this.ghost = makeRecordGhost(this, TOP_BAR_H + 3, loadBests('snake').lengthMax ?? 0);
+    this.ghost.update(this.core.length);
     // Активное испытание с живым прогрессом — под шапкой; когда всё пройдено, строки нет.
     if (this.challenge) {
       this.challengeText = this.add

@@ -120,3 +120,36 @@ def test_record_not_beaten_pays_nothing():
     arcade(300, "r2")  # равный — не рекорд
     arcade(100, "r3")
     assert not any(k.startswith("record-week-") for k in keys())
+
+
+# ── испытания аркад ─────────────────────────────────────────────────────────────
+
+def level_tariff(n):
+    return TARIFF["levelBase"] + TARIFF["levelStep"] * (n - 1)
+
+
+def test_arcade_challenge_pays_level_tariff():
+    # snake: 1 — eaten ≥ 5, 2 — lengthMax ≥ 12.
+    res = send(game="snake", mode="endless", level=None, score=50, sid="c1", metrics={"eaten": 6, "lengthMax": 8})
+    assert "level-snake-1" in keys()
+    assert "level-snake-2" not in keys()
+    assert res["xp"] >= level_tariff(1)
+
+
+def test_arcade_challenges_close_in_cascade_and_once():
+    send(game="snake", mode="endless", level=None, score=50, sid="c2", metrics={"eaten": 9, "lengthMax": 13})
+    assert {"level-snake-1", "level-snake-2"} <= set(keys())
+    before = state.store.user("demo").balance
+    send(game="snake", mode="endless", level=None, score=10, sid="c3", metrics={"eaten": 9, "lengthMax": 13})
+    assert state.store.user("demo").balance == before
+
+
+def test_arcade_challenge_needs_previous():
+    # Второе условие выполнено, первое — нет: каскад не перескакивает.
+    send(game="snake", mode="endless", level=None, score=50, sid="c4", metrics={"eaten": 1, "lengthMax": 14})
+    assert "level-snake-2" not in keys()
+
+
+def test_milestones_pay_nothing():
+    send(game="snake", mode="endless", level=None, score=50, sid="c5", metrics={"lengthMax": 40})
+    assert not any(k.startswith("milestone-") for k in keys())

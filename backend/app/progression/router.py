@@ -111,6 +111,7 @@ def ingest_result(result: GameResult, user_id: str = Depends(get_user_id)) -> Aw
                 result.game, result.sessionId,
             )
     if result.mode == "endless":
+        _grant_arcade_challenges(user_id, result, config, tariff)
         _grant_record_week(user_id, result, tariff, today)
 
     # 5. Задания дня игры: закрылись — награда, повторно в тот же день не выдаётся.
@@ -161,6 +162,32 @@ def _grant_chapter_if_closed(user_id: str, result: GameResult, tariff: dict[str,
             user_id, f"chapter-{result.game}-{chapter + 1}", tariff["chapterClear"],
             result.game, result.sessionId,
         )
+
+
+def _grant_arcade_challenges(
+    user_id: str, result: GameResult, config: dict[str, Any], tariff: dict[str, Any],
+) -> None:
+    """Испытания аркады: метрика забега ≥ порога — бонус по тарифу уровня n.
+
+    Зеркало recordArcadeRound + grantArcadeBonuses клиента: закрываются каскадом
+    (хороший забег закрывает несколько подряд), следующее — только после
+    предыдущего, ключ тот же `level-<игра>-<n>`, поэтому второй раз не платится.
+    Вехи с T4 не оплачиваются: одна шкала — испытания.
+    """
+    challenges = sorted(config.get("challenges") or [], key=lambda c: c["n"])
+    keys = state.store.user(user_id).keys
+    prev_done = True
+    for ch in challenges:
+        key = f"level-{result.game}-{ch['n']}"
+        done = key in keys
+        if not done and prev_done and float(result.metrics.get(ch["metric"], 0)) >= float(ch["target"]):
+            state.store.grant_once(
+                user_id, key, tariff["levelBase"] + tariff["levelStep"] * (ch["n"] - 1),
+                result.game, result.sessionId,
+            )
+            prev_done = True
+        else:
+            prev_done = done
 
 
 def _grant_record_week(user_id: str, result: GameResult, tariff: dict[str, Any], today: int) -> None:

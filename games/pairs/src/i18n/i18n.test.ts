@@ -11,8 +11,8 @@ const REQUIRED = [
   'intro.field', 'intro.moveLimit', 'intro.moveLimitTighter', 'intro.timer', 'intro.timerTighter',
   'game.dailyLevel', 'result.dailyLevel',
   'game.level', 'game.moves', 'game.movesLimit', 'game.fail.moves', 'game.fail.time',
-  'result.title', 'result.failed', 'result.level', 'result.nextLevel', 'result.unlocked',
-  'result.score', 'result.playAgain', 'result.leaderboard', 'error.network',
+  'result.title', 'result.failed', 'result.gapMoves.one', 'result.gapMoves.few', 'result.gapMoves.many',
+  'result.almostDetail',
 ];
 
 describe('i18n (pairs)', () => {
@@ -26,6 +26,6 @@ describe('i18n (pairs)', () => {
     }
   });
   it('t() подставляет параметры', () => {
-    expect(t('ru', 'result.score', { score: 1234 })).toContain('1234');
+    expect(t('ru', 'result.almostDetail', { moves: 9, need: 8, time: '0:42' })).toContain('0:42');
   });
 });

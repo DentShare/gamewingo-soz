@@ -6,8 +6,6 @@
   "menu.back": "Назад",
   "menu.record": "личный рекорд",
   "menu.challenges": "Испытания · {k} из {n}",
-  "menu.nextMilestone": "Веха: длина {n} · +{r} бонусов",
-  "menu.milestonesDone": "Все вехи взяты!",
   "sound.on": "Звук: вкл",
   "sound.off": "Звук: выкл",
   "game.swipeToStart": "Свайпните, чтобы начать",
@@ -34,14 +32,9 @@
   "onboarding.next": "Далее",
   "onboarding.done": "Понятно",
   "onboarding.skip": "Пропустить",
-  "result.run": "Забег окончен",
-  "result.score": "Очки: {score}",
-  "result.length": "Длина: {n}",
-  "result.newBest": "Новый рекорд!",
-  "result.closed": "Испытания забега",
-  "result.playAgain": "Ещё раз",
-  "result.menu": "В меню",
-  "result.leaderboard": "Таблица лидеров",
-  "error.network": "Нет соединения",
-  "pause.summary": "Змейка стоит · очки {score} · длина {n}"
+  "result.length": "Длина {n}",
+  "pause.summary": "Змейка стоит · очки {score} · длина {n}",
+  "result.points.one": "{n} очко",
+  "result.points.few": "{n} очка",
+  "result.points.many": "{n} очков"
 }

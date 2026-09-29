@@ -6,8 +6,6 @@
   "menu.back": "Orqaga",
   "menu.record": "shaxsiy rekord",
   "menu.challenges": "Sinovlar · {n} tadan {k}",
-  "menu.nextMilestone": "Bosqich: uzunlik {n} · +{r} bonus",
-  "menu.milestonesDone": "Barcha bosqichlar olindi!",
   "sound.on": "Ovoz: yoqilgan",
   "sound.off": "Ovoz: oʻchirilgan",
   "game.swipeToStart": "Boshlash uchun suring",
@@ -34,14 +32,9 @@
   "onboarding.next": "Keyingi",
   "onboarding.done": "Tushunarli",
   "onboarding.skip": "Oʻtkazib yuborish",
-  "result.run": "Yugurish tugadi",
-  "result.score": "Ochko: {score}",
-  "result.length": "Uzunlik: {n}",
-  "result.newBest": "Yangi rekord!",
-  "result.closed": "Yugurish sinovlari",
-  "result.playAgain": "Yana",
-  "result.menu": "Menyuga",
-  "result.leaderboard": "Reyting",
-  "error.network": "Aloqa yoʻq",
-  "pause.summary": "Ilon toʻxtadi · ochko {score} · uzunlik {n}"
+  "result.length": "Uzunlik {n}",
+  "pause.summary": "Ilon toʻxtadi · ochko {score} · uzunlik {n}",
+  "result.points.one": "{n} ochko",
+  "result.points.few": "{n} ochko",
+  "result.points.many": "{n} ochko"
 }

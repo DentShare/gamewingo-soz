@@ -7,7 +7,7 @@ const REQUIRED = [
   'sound.on', 'sound.off',
   'app.title', 'menu.play', 'menu.continue', 'menu.howto',
   'menu.back', 'menu.catalog', 'menu.record',
-  'menu.challenges', 'menu.nextMilestone', 'menu.milestonesDone',
+  'menu.challenges',
   'game.score', 'game.best', 'game.reached', 'game.challenge',
   'onboarding.swipe', 'onboarding.merge', 'onboarding.score', 'onboarding.goal',
   'onboarding.next', 'onboarding.done', 'onboarding.skip',

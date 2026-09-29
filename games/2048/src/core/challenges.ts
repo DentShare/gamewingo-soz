@@ -1,4 +1,4 @@
-import { buildChallenges, buildMilestones } from '@gamewingo/game-progress';
+import { buildChallenges } from '@gamewingo/game-progress';
 
 /**
  * Прогрессия «2048» — от механики: у игры есть естественная лестница, номинал
@@ -43,11 +43,3 @@ export const CHALLENGES = buildChallenges([
 
 export const CHALLENGES_TOTAL = CHALLENGES.length;
 
-/** Вехи по номиналу — та самая естественная лестница 2048. */
-export const MILESTONES = buildMilestones([
-  ['tile128', 'maxTile', 128, 10],
-  ['tile256', 'maxTile', 256, 13],
-  ['tile512', 'maxTile', 512, 16],
-  ['tile1024', 'maxTile', 1024, 21],
-  ['tile2048', 'maxTile', 2048, 30],
-]);

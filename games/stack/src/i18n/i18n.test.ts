@@ -6,7 +6,7 @@ import { t } from './index';
 const REQUIRED = [
   'sound.on', 'sound.off',
   'app.title', 'menu.play', 'menu.howto', 'menu.catalog', 'menu.record',
-  'menu.challenges', 'menu.nextMilestone', 'menu.milestonesDone', 'game.challenge',
+  'menu.challenges', 'game.challenge',
   'pause.summary', 'result.run', 'result.score', 'result.newBest', 'result.closed',
   'result.playAgain', 'result.menu', 'result.leaderboard', 'error.network',
   'onboarding.drop', 'onboarding.cut', 'onboarding.score',
