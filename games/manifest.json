@@ -223,6 +223,54 @@
       "kidsMode": true
     },
     {
+      "gameId": "color-sort",
+      "title": {
+        "ru": "Цветные колбы",
+        "uz": "Rangli idishlar"
+      },
+      "genre": "puzzle",
+      "mechanic": "color-sort",
+      "locales": [
+        "ru",
+        "uz"
+      ],
+      "orientation": "portrait",
+      "url": "https://gamewingo-soz.vercel.app/color-sort/",
+      "modes": [
+        "levels"
+      ],
+      "leaderboard": false,
+      "streak": false,
+      "status": "mvp",
+      "buildSizeMb": 1.5,
+      "ageHint": "6+",
+      "noFailState": true
+    },
+    {
+      "gameId": "block-drop",
+      "title": {
+        "ru": "Блок-дроп",
+        "uz": "Bloklar"
+      },
+      "genre": "puzzle",
+      "mechanic": "falling-blocks",
+      "locales": [
+        "ru",
+        "uz"
+      ],
+      "orientation": "portrait",
+      "url": "https://gamewingo-soz.vercel.app/block-drop/",
+      "modes": [
+        "endless"
+      ],
+      "leaderboard": false,
+      "streak": false,
+      "status": "mvp",
+      "buildSizeMb": 1.7,
+      "ageHint": "7+",
+      "noFailState": false
+    },
+    {
       "gameId": "counting",
       "title": {
         "ru": "Счёт",

@@ -54,7 +54,7 @@ export function makeButton(
   y: number,
   label: string,
   onClick: () => void,
-  opts: { width?: number; height?: number; primary?: boolean; danger?: boolean } = {},
+  opts: { width?: number; height?: number; primary?: boolean; danger?: boolean; textColor?: string; fontSize?: number } = {},
 ): Button {
   // Размеры по умолчанию совпадают с кнопкой хаба (338×40 на ширине 402).
   const w = opts.width ?? 336;
@@ -78,17 +78,16 @@ export function makeButton(
   const txt = scene.add
     .text(0, 0, label, {
       fontFamily: FONT,
-      fontSize: TYPE.body,
+      fontSize: opts.fontSize ?? TYPE.body,
       fontStyle: WEIGHT.semibold,
-      // `danger` — необратимое действие («выйти, прогресс не сохранится»): красный текст на белом.
-      color: isPrimary ? S.white : opts.danger ? S.danger : S.ink,
+      color: opts.textColor ?? (isPrimary ? S.white : opts.danger ? S.danger : S.ink),
     })
     .setOrigin(0.5)
     .setResolution(DPR);
   // Длинная подпись (узбекский, «выйти — прогресс не сохранится») не вылезает
   // за кнопку на узком экране: шрифт ужимается до 12, но не ниже.
   const fit = () => {
-    let size = TYPE.body;
+    let size = opts.fontSize ?? TYPE.body;
     txt.setFontSize(size);
     while (txt.width > w - 20 && size > 12) txt.setFontSize(--size);
   };

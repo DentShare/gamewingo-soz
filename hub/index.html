@@ -324,12 +324,14 @@
   ];
   // Аркады: заходишь и играешь — партия на 30–60 секунд, управление одним пальцем.
   const ARCADE = [
+    { id: 'block-drop', kind: 'arcade', total: 0, metric: 'score', title: { ru: 'Блок-дроп', uz: 'Bloklar' } },
     { id: 'stack', kind: 'arcade', metric: 'score', title: { ru: 'Башня', uz: 'Minora' } },
     { id: 'flyer', kind: 'arcade', metric: 'score', title: { ru: 'Полёт', uz: 'Parvoz' } },
     { id: 'targets', kind: 'arcade', metric: 'score', title: { ru: 'Меткий глаз', uz: 'Nishonga ur' } },
     { id: 'snake', kind: 'arcade', metric: 'score', title: { ru: 'Змейка', uz: 'Ilon' } },
   ];
   const PUZZLES = [
+    { id: 'color-sort', kind: 'ladder', total: 10, title: { ru: 'Цветные колбы', uz: 'Rangli idishlar' } },
     { id: 'soz', kind: 'ladder', title: { ru: '5 букв', uz: '5 harf' } },
     { id: 'pairs', kind: 'ladder', title: { ru: 'Найди пару', uz: 'Juftini top' } },
     { id: 'fifteen', kind: 'ladder', title: { ru: 'Пятнашки', uz: 'Boshqotirma 15' } },
@@ -375,7 +377,7 @@
       contChallenge: (k, t) => `испытание ${k} / ${t}`,
       stLadder: (n, a, b) => `Уровень ${n} · ★ ${a} / ${b}`,
       // Рекорда ещё нет (закрыто испытание, но очков не записано) — не пишем «Рекорд 0».
-      stArcade: (r, k, t) => (r > 0 ? `Рекорд ${num(r)} · ` : '') + `испытание ${k}/${t}`,
+      stArcade: (r, k, t) => (r > 0 ? `Рекорд ${num(r)}` : '') + (t > 0 ? (r > 0 ? ' · ' : '') + `испытание ${k}/${t}` : ''),
       stNew: 'Не начато',
       today: 'Сегодня',
       days: (n) => `${n} ${plural(n, 'день', 'дня', 'дней')}`,
@@ -408,7 +410,7 @@
       contRecord: (g, n) => `${g} · rekord ${num(n)}`,
       contChallenge: (k, t) => `sinov ${k} / ${t}`,
       stLadder: (n, a, b) => `${n}\u2011daraja · ★ ${a} / ${b}`,
-      stArcade: (r, k, t) => (r > 0 ? `Rekord ${num(r)} · ` : '') + `sinov ${k}/${t}`,
+      stArcade: (r, k, t) => (r > 0 ? `Rekord ${num(r)}` : '') + (t > 0 ? (r > 0 ? ' · ' : '') + `sinov ${k}/${t}` : ''),
       stNew: 'Boshlanmagan',
       today: 'Bugun',
       days: (n) => `${n} kun`,
@@ -462,7 +464,7 @@
   // ── Данные из game-progress ────────────────────────────────────────────────
 
   function statusOf(g) {
-    return P ? P.gameStatus(g.id, g.kind, TOTAL, g.metric || 'score') : { started: false };
+    return P ? P.gameStatus(g.id, g.kind, g.total ?? TOTAL, g.metric || 'score') : { started: false };
   }
   /** Текущее испытание аркады: закрыто k — идёт k+1 (как «испытание 4/15» в меню игры). */
   const currentChallenge = (st) => Math.min((st.challengesDone || 0) + 1, st.total || TOTAL);
@@ -557,7 +559,7 @@
     const name = g.title[lang];
     const line1 = g.kind === 'arcade' ? s.contRecord(name, st.record || 0) : s.contLevel(name, st.level);
     const line2 = g.kind === 'arcade'
-      ? s.contChallenge(currentChallenge(st), st.total)
+      ? (st.total > 0 ? s.contChallenge(currentChallenge(st), st.total) : '')
       : `★ ${st.stars} / ${st.maxStars}`;
     return `
       <div class="card continue tap" data-go="${g.id}" role="link" tabindex="0">

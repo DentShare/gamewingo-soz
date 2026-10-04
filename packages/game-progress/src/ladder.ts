@@ -133,6 +133,7 @@ export interface StarGap {
  * секунды, ошибки) — знает игра: она и подписывает дельту своим словом.
  */
 export function starGap(goals: StarGoals, value: number): StarGap | null {
+  if (!Number.isFinite(value) || !Number.isFinite(goals.gold)) return null;
   if (starsFor(goals, value) === 3) return null;
   const missing = goals.higherIsBetter ? goals.gold - value : value - goals.gold;
   return { threshold: goals.gold, missing: Math.max(1, Math.ceil(missing)) };

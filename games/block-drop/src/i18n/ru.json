@@ -1,0 +1,8 @@
+{
+  "app.title":"Блок-дроп","menu.play":"Играть","menu.howto":"Как играть","menu.back":"Назад","menu.catalog":"К играм","menu.record":"Рекорд","menu.linesBest":"Лучше всего: {n} линий",
+  "game.score":"Очки: {n}","game.lines":"Линии: {n}","game.level":"Скорость: {n}","game.left":"←","game.right":"→","game.rotate":"Повернуть","game.drop":"Бросить","game.hint":"Собирай полные горизонтальные линии","game.cleared":"Линия собрана!",
+  "onboarding.take":"Кнопками двигай и поворачивай фигуру.","onboarding.drop":"«Бросить» быстро опускает её вниз.","onboarding.goal":"Заполняй горизонтальные линии без пробелов.",
+  "result.title":"Забег окончен","result.score":"Очки: {score}","result.detail":"Линии: {lines} · Фигуры: {pieces}","result.newBest":"Новый рекорд!","result.playAgain":"Ещё раз","result.menu":"В меню",
+  "result.pending":"Проверяем результат…","result.notAccepted":"Бонусы не подтверждены","result.server":"Начислено сервером: +{n}",
+  "sound.on":"Звук: вкл","sound.off":"Звук: выкл","error.network":"Нет соединения"
+}

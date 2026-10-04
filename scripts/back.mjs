@@ -17,7 +17,7 @@
  *
  * Запуск: `npm run check:back` или `node scripts/back.mjs pairs soz`.
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -119,13 +119,18 @@ async function until(page, pred, timeoutMs = 8000) {
 // ── Одна игра ─────────────────────────────────────────────────────────────────
 
 async function checkGame(browser, slug, port) {
-  const server = spawn('npm', ['run', 'dev', '-w', packageName(slug)], {
+  const isWindows = process.platform === 'win32';
+  const npmArgs = ['run', 'dev', '-w', packageName(slug), '--', '--port', String(port), '--host', '127.0.0.1'];
+  const command = isWindows ? (process.env.ComSpec ?? 'cmd.exe') : 'npm';
+  const args = isWindows ? ['/d', '/s', '/c', 'npm', ...npmArgs] : npmArgs;
+  const server = spawn(command, args, {
     cwd: ROOT,
     env: { ...process.env, PORT: String(port) },
     stdio: 'ignore',
     detached: true,
+    windowsHide: true,
   });
-  const url = `http://localhost:${port}/`;
+  const url = `http://127.0.0.1:${port}/`;
   const problems = [];
   const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
   const errors = [];
@@ -220,11 +225,8 @@ async function checkGame(browser, slug, port) {
     return [...problems, `упал сам тест: ${e.message}`];
   } finally {
     await page.close().catch(() => {});
-    try {
-      process.kill(-server.pid, 'SIGTERM');
-    } catch {
-      server.kill('SIGTERM');
-    }
+    if (isWindows) spawnSync('taskkill', ['/pid', String(server.pid), '/t', '/f'], { stdio: 'ignore', windowsHide: true });
+    else { try { process.kill(-server.pid, 'SIGTERM'); } catch { server.kill('SIGTERM'); } }
   }
 }
 
