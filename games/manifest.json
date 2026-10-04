@@ -263,10 +263,10 @@
       "modes": [
         "endless"
       ],
-      "leaderboard": true,
+      "leaderboard": false,
       "streak": false,
       "status": "mvp",
-      "buildSizeMb": 1.5,
+      "buildSizeMb": 1.7,
       "ageHint": "7+",
       "noFailState": false
     },
