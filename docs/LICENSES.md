@@ -39,6 +39,8 @@
 | quiz · банк вопросов и фактов | собственная курация (6 тем × 10 вопросов, RU/UZ) | — (собственная) | без сторонних прав; факты общеизвестные, формулировки оригинальные | 2026-08-08 | — |
 | jigsaw (пазл) | github.com/phaserjs/template-vite-ts (через структуру counting); механика реализована с нуля | MIT | сохранён `games/jigsaw/LICENSE` + копирайт Phaser Studio | 2026-08-08 | — |
 | sums (суммы) | github.com/phaserjs/template-vite-ts (через структуру sudoku-kids); правила — общеизвестная числовая головоломка, генератор и весь код написаны с нуля; механика вдохновлена игрой Sumplete (D. Tait, 2023), но ни кода, ни ассетов, ни текстов оттуда не взято | MIT | сохранён `games/sums/LICENSE` + копирайт Phaser Studio | 2026-08-18 | — |
+| color-sort (головоломка) | github.com/phaserjs/template-vite-ts (через структуру sorting); механика и SVG-графика реализованы с нуля | MIT | сохранён `games/color-sort/LICENSE` + копирайт Phaser Studio | 2026-10-03 | — |
+| block-drop (аркада) | github.com/phaserjs/template-vite-ts (через структуру color-sort); общеизвестная механика падающих фигур реализована с нуля, бренд и ассеты Tetris не используются | MIT | сохранён `games/block-drop/LICENSE` + копирайт Phaser Studio | 2026-10-03 | — |
 | jigsaw · истории к картинкам | собственная курация (15 историй, RU/UZ) | — (собственная) | без сторонних прав | 2026-08-08 | — |
 |  |  |  |  |  |  |
 

@@ -21,6 +21,14 @@ export interface StarGoals {
 
 export type Stars = 1 | 2 | 3;
 
+export type StarMetric = 'moves' | 'time' | 'mistakes' | 'score';
+/** Расстояние до третьей звезды, по той же величине, что и starsFor. */
+export function starGap(level: { goals: StarGoals }, result: { metric: StarMetric; value: number }): { metric: StarMetric; missing: number } | null {
+  if (!Number.isFinite(result.value) || !Number.isFinite(level.goals.gold)) return null;
+  const gap = level.goals.higherIsBetter ? level.goals.gold - result.value : result.value - level.goals.gold;
+  return gap > 0 ? { metric: result.metric, missing: Math.ceil(gap) } : null;
+}
+
 /** Уровень лестницы: `n` — номер для игрока (1-based), `params` — что подать в ядро игры. */
 export interface LevelDef<P> {
   n: number;

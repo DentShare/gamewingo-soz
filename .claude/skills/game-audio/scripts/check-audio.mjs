@@ -128,7 +128,12 @@ for (const slug of slugs) {
     errors.push('нет installAudioUnlock() в main.ts — в iOS WebView звука не будет');
   }
   if (!/makeSoundToggle\(|setMuted\(/.test(src)) {
-    errors.push('нет выключателя звука в меню (makeSoundToggle из @gamewingo/game-ui)');
+    // UX-волна переносит настройки в общий лист паузы. Проверяем подключение
+    // листа игрой И сам toggle в общей реализации, а не просто наличие импорта.
+    const chromeFile = join(ROOT, 'packages/game-ui/src/gameChrome.ts');
+    const chrome = existsSync(chromeFile) ? readFileSync(chromeFile, 'utf8') : '';
+    const pauseToggle = /openPauseSheet\(/.test(src) && /setMuted\(/.test(chrome) && /soundOn:/.test(src) && /soundOff:/.test(src);
+    if (!pauseToggle) errors.push('нет выключателя звука в меню или общем листе паузы');
   }
 
   const strays = walk(join(gameDir, 'public'))

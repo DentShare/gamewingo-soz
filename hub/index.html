@@ -202,7 +202,7 @@
   const FILE_ICONS = new Set([
     'soz', 'pairs', 'fifteen', '2048', 'sudoku-kids',
     'stack', 'flyer', 'targets', 'snake', 'sorting', 'counting',
-    'quiz', 'jigsaw', 'sums',
+    'quiz', 'jigsaw', 'sums', 'color-sort',
   ]);
 
   // Векторный запасной набор — инлайн-SVG (ноль запросов, чёткие на любом DPR).
@@ -354,6 +354,13 @@
     },
   ];
   const PUZZLES = [
+    {
+      id: 'color-sort',
+      title: { ru: 'Цветные колбы', uz: 'Rangli idishlar' },
+      desc: { ru: 'Переливай цвета и собирай колбы — 10 уровней', uz: 'Ranglarni quyib idishlarni toʻldir — 10 bosqich' },
+      url: 'color-sort/',
+      tags: ['RU', 'UZ', { ru: '6+ лет', uz: '6+ yosh', accent: true }],
+    },
     {
       id: 'soz',
       title: { ru: '5 букв', uz: '5 harf' },

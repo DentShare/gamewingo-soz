@@ -1,0 +1,7 @@
+{
+  "app.title":"Bloklar","menu.play":"Oʻynash","menu.howto":"Qanday oʻynash","menu.back":"Orqaga","menu.catalog":"Oʻyinlarga","menu.record":"Rekord","menu.linesBest":"Eng yaxshisi: {n} qator",
+  "game.score":"Ochko: {n}","game.lines":"Qatorlar: {n}","game.level":"Tezlik: {n}","game.left":"←","game.right":"→","game.rotate":"Burish","game.drop":"Tushirish","game.hint":"Toʻliq gorizontal qatorlarni yigʻing","game.cleared":"Qator tayyor!",
+  "onboarding.take":"Tugmalar bilan shaklni yuring va buring.","onboarding.drop":"«Tushirish» uni tez pastga tushiradi.","onboarding.goal":"Gorizontal qatorlarni boʻshliqsiz toʻldiring.",
+  "result.title":"Oʻyin tugadi","result.score":"Ochko: {score}","result.detail":"Qatorlar: {lines} · Shakllar: {pieces}","result.newBest":"Yangi rekord!","result.playAgain":"Yana","result.menu":"Menyuga",
+  "sound.on":"Ovoz: yoqilgan","sound.off":"Ovoz: oʻchirilgan","error.network":"Aloqa yoʻq"
+}

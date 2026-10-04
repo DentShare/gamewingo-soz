@@ -87,10 +87,23 @@ for (const slug of slugs) {
 if (!only.length) {
   const hub = join(ROOT, 'dist-all');
   if (existsSync(join(hub, 'index.html'))) {
-    const files = walk(hub).filter((f) => !slugs.some((s) => f.includes(`${hub}/${s}/`)));
-    const bytes = files.reduce((s, f) => s + statSync(f).size, 0);
+    // `join()` возвращает обратные слэши на Windows, поэтому проверка строкой
+    // `${hub}/${slug}/` считала вложенные билды игр частью хаба. Сравниваем
+    // первый относительный сегмент — это одинаково работает на всех ОС.
+    const gameNames = new Set(slugs);
+    const paths = walk(hub).filter((f) => !gameNames.has(relative(hub, f).split(/[\\/]/)[0]));
+    const files = paths.map((path) => {
+      const raw = readFileSync(path);
+      return {
+        path: relative(hub, path), bytes: statSync(path).size,
+        gzip: /\.(js|css|html|json|svg|txt)$/i.test(path) ? gzipSync(raw).length : raw.length,
+      };
+    });
+    const bytes = files.reduce((s, f) => s + f.bytes, 0);
+    const gzip = files.reduce((s, f) => s + f.gzip, 0);
     results.push({
-      name: 'хаб (корень домена)', bytes, gzip: bytes, heaviest: [],
+      name: 'хаб (корень домена)', bytes, gzip,
+      heaviest: [...files].sort((a, b) => b.bytes - a.bytes).slice(0, 3),
       overHard: mb(bytes) > HARD_LIMIT_MB, overTarget: mb(bytes) > TARGET_MB,
     });
   }

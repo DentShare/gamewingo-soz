@@ -54,7 +54,7 @@ export function makeButton(
   y: number,
   label: string,
   onClick: () => void,
-  opts: { width?: number; height?: number; primary?: boolean } = {},
+  opts: { width?: number; height?: number; primary?: boolean; textColor?: string; fontSize?: number } = {},
 ): Button {
   // Размеры по умолчанию совпадают с кнопкой хаба (338×40 на ширине 402).
   const w = opts.width ?? 336;
@@ -78,9 +78,9 @@ export function makeButton(
   const txt = scene.add
     .text(0, 0, label, {
       fontFamily: FONT,
-      fontSize: TYPE.body,
+      fontSize: opts.fontSize ?? TYPE.body,
       fontStyle: WEIGHT.semibold,
-      color: isPrimary ? S.white : S.ink,
+      color: opts.textColor ?? (isPrimary ? S.white : S.ink),
     })
     .setOrigin(0.5)
     .setResolution(DPR);

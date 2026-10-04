@@ -14,3 +14,5 @@ export * from './glyphs.js';
 export * from './levels.js';
 export * from './arcadeMeta.js';
 export * from './bonus.js';
+export * from './gameChrome.js';
+export * from './backstack.js';
