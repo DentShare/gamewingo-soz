@@ -9,13 +9,15 @@
  *
  * Запускается ПОСЛЕ сборки всех игр (см. npm run build:all).
  */
-import { readdirSync, rmSync, mkdirSync, copyFileSync, statSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, rmSync, mkdirSync, copyFileSync, statSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
+import { ageManifest } from '../hub/age-groups.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(root, 'dist-all');
+const manifest = ageManifest(JSON.parse(readFileSync(join(root, 'games', 'manifest.json'), 'utf8')));
 
 function copyTree(source, destination) {
   if (!statSync(source).isDirectory()) { copyFileSync(source, destination); return; }
@@ -59,7 +61,7 @@ await build({
 });
 
 // Манифест каталога.
-copyFileSync(join(root, 'games', 'manifest.json'), join(out, 'manifest.json'));
+writeFileSync(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 
 // Билды игр.
 for (const slug of GAMES) {

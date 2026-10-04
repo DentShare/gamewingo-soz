@@ -36,6 +36,9 @@ jobs:
       - name: Словари RU/UZ
         run: npm run check:content
 
+      - name: Возрастные категории каталога
+        run: npm run check:catalog
+
       - name: Дымовой тест сцен
         run: npm run check:smoke
 
