@@ -100,6 +100,16 @@
     padding: 16px 20px calc(env(safe-area-inset-bottom, 0px) + 24px);
   }
   #sections { display: flex; flex-direction: column; gap: 20px; }
+  .age-nav { display: flex; flex-wrap: wrap; gap: 8px; }
+  .age-nav a {
+    display: flex; align-items: center; min-height: 44px; padding: 8px 12px;
+    border-radius: 12px; background: var(--tint); color: var(--ink);
+    font-size: 15px; text-decoration: none;
+  }
+  .age-nav a:active { background: var(--chip-bg); }
+  .age-nav a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .age-section { scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 76px); }
+  .age-section .section-note { margin: 4px 0 12px; }
 
   /* ── Карточки ──────────────────────────────────────────────────────── */
   .card { background: var(--surface); border-radius: 12px; padding: 12px; }
@@ -306,7 +316,8 @@
 
 <!-- @gamewingo/game-progress бандлом (window.WingoProgress): кладёт scripts/build-catalog.mjs. -->
 <script src="progress.js"></script>
-<script>
+<script type="module">
+  import { categorizeGames } from './age-groups.mjs';
   // Все правила прогресса и экономики — в пакете game-progress. Хаб только рисует.
   // Нет бандла (сломанная сборка) — каталог всё равно открывается, без прогресса.
   const P = window.WingoProgress || null;
@@ -341,15 +352,8 @@
     { id: 'quiz', kind: 'ladder', title: { ru: 'Викторина', uz: 'Viktorina' } },
     { id: 'sums', kind: 'ladder', title: { ru: 'Суммы', uz: 'Yigʻindilar' } },
   ];
-  const SOON = [];
-
-  const SECTIONS = [
-    { key: 'kids', games: KIDS },
-    { key: 'arcade', games: ARCADE },
-    { key: 'puzzles', games: PUZZLES },
-    { key: 'soon', games: SOON, soon: true },
-  ];
   const ALL = KIDS.concat(ARCADE, PUZZLES);
+  const SECTIONS = categorizeGames(ALL);
   const byId = (id) => ALL.find((g) => g.id === id) || null;
   const TOTAL = 15; // ступеней в лестнице и испытаний в аркаде
 
@@ -370,6 +374,14 @@
       title: 'Игры', back: 'Назад', bonuses: 'Бонусы', langName: 'Язык: русский',
       kids: 'Малышам · без проигрыша', arcade: 'Аркады · играй сразу',
       puzzles: 'Головоломки', soon: 'Скоро', soonBadge: 'Скоро',
+      ages: 'Игры по возрасту', ageNote: 'Возраст — ориентир по сложности, не ограничение доступа.',
+      ageTitles: { under6: 'До 6 лет', age6to9: '6–9 лет', age10to13: '10–13 лет', age14plus: '14+' },
+      ageDescriptions: {
+        under6: 'С 3 лет · без чтения и проигрыша',
+        age6to9: 'Память, цвета, простая логика и реакция',
+        age10to13: 'Стратегия, числа и сложные головоломки',
+        age14plus: 'Слова и знания · подросткам и взрослым',
+      },
       greet: 'Заходите каждый день — серия бонусов растёт',
       cont: 'Продолжить', play: 'Играть',
       contLevel: (g, n) => `${g} · уровень ${n}`,
@@ -404,6 +416,14 @@
       title: 'Oʻyinlar', back: 'Orqaga', bonuses: 'Bonuslar', langName: 'Til: oʻzbekcha',
       kids: 'Kichkintoylarga · yutqazish yoʻq', arcade: 'Arkada · darrov oʻyna',
       puzzles: 'Boshqotirmalar', soon: 'Tez orada', soonBadge: 'Tez orada',
+      ages: 'Yosh boʻyicha oʻyinlar', ageNote: 'Yosh — qiyinlik boʻyicha tavsiya, kirish cheklovi emas.',
+      ageTitles: { under6: '6 yoshgacha', age6to9: '6–9 yosh', age10to13: '10–13 yosh', age14plus: '14+' },
+      ageDescriptions: {
+        under6: '3 yoshdan · oʻqish va yutqazishsiz',
+        age6to9: 'Xotira, ranglar, oddiy mantiq va tezkorlik',
+        age10to13: 'Strategiya, sonlar va murakkab boshqotirmalar',
+        age14plus: 'Soʻzlar va bilim · oʻsmirlar va kattalarga',
+      },
       greet: 'Har kuni kiring — bonus seriyasi oʻsadi',
       cont: 'Davom etish', play: 'Oʻynash',
       contLevel: (g, n) => `${g} · ${n}\u2011daraja`,
@@ -625,12 +645,15 @@
 
     document.getElementById('top').innerHTML = topHtml(s);
     document.getElementById('today').innerHTML = P ? todayHtml(s) : '';
-    // Пустые секции (например «Скоро») не рисуются вовсе.
-    document.getElementById('sections').innerHTML = SECTIONS
+    document.getElementById('sections').innerHTML = `
+      <div><nav class="age-nav" aria-label="${s.ages}">
+        ${SECTIONS.map((sec) => `<a href="#${sec.id}">${s.ageTitles[sec.id]}</a>`).join('')}
+      </nav><p class="sub">${s.ageNote}</p></div>` + SECTIONS
       .filter((sec) => sec.games.length > 0)
       .map((sec) => `
-        <section>
-          <h2 class="section-title">${s[sec.key]}</h2>
+        <section class="age-section" id="${sec.id}" aria-labelledby="${sec.id}-title">
+          <h2 class="section-title" id="${sec.id}-title">${s.ageTitles[sec.id]}</h2>
+          <p class="sub section-note">${s.ageDescriptions[sec.id]}</p>
           <div class="grid">${sec.games.map((g) => tileHtml(g, s, sec.soon)).join('')}</div>
         </section>`)
       .join('');
