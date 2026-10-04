@@ -1,7 +1,7 @@
 import {Scene} from 'phaser';
 import type {Locale} from '../../core/locale';
 import {t} from '../../i18n';
-import {makeButton,applyTheme,setupCamera,makeTopBar,makeGameIcon,makeRecordBadge,makeSoundToggle} from '../ui';
+import {makeButton,applyTheme,setupCamera,createGameHeader,guardBrowserBack,makeGameIcon,makeRecordBadge,makeSoundToggle} from '../ui';
 import {COLORS,FONT} from '../palette';
 import {DPR} from '../dpr';
 import {loadBests} from '@gamewingo/game-progress';
@@ -12,7 +12,8 @@ export class MainMenu extends Scene{
   constructor(){super('MainMenu');}
   create(){
     this.locale=(this.registry.get('locale') as Locale)??'ru';applyTheme(this);setupCamera(this);this.cameras.main.fadeIn(200,...COLORS.fade);
-    makeTopBar(this,t(this.locale,'app.title'),()=>this.exitToCatalog());makeGameIcon(this,CX,118,82);
+    createGameHeader(this,{title:t(this.locale,'app.title'),chips:[],onBack:()=>this.exitToCatalog()});makeGameIcon(this,CX,118,82);
+    const offBack=guardBrowserBack(()=>this.exitToCatalog());this.events.once('shutdown',offBack);
     const bests=loadBests(SLUG);makeRecordBadge(this,CX,210,{value:String(Math.round(bests.score??0)),label:t(this.locale,'menu.record')});
     this.add.text(CX,286,t(this.locale,'menu.linesBest',{n:Math.round(bests.lines??0)}),{fontFamily:FONT,fontSize:15,color:COLORS.headMuted}).setOrigin(.5).setResolution(DPR);
     makeButton(this,CX,360,t(this.locale,'menu.play'),()=>this.startRun(),{primary:true});

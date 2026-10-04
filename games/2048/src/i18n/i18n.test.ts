@@ -7,13 +7,11 @@ const REQUIRED = [
   'sound.on', 'sound.off',
   'app.title', 'menu.play', 'menu.continue', 'menu.howto',
   'menu.back', 'menu.catalog', 'menu.record',
-  'menu.challenges', 'menu.nextMilestone', 'menu.milestonesDone',
+  'menu.challenges',
   'game.score', 'game.best', 'game.reached', 'game.challenge',
-  'onboarding.swipe', 'onboarding.merge', 'onboarding.score', 'onboarding.goal',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
-  'result.run', 'result.score', 'result.detail', 'result.newBest', 'result.closed',
-  'result.playAgain', 'result.menu', 'result.leaderboard',
-  'error.network',
+  'tutorial.firstMove', 'tutorial.note', 'rule.noMove', 'rule.goal',
+  'result.game', 'result.tile', 'result.newGame', 'result.thisGameMissing',
+  'result.points.one', 'result.points.few', 'result.points.many',
 ];
 
 describe('i18n (2048)', () => {
@@ -26,8 +24,14 @@ describe('i18n (2048)', () => {
       expect(uz).toHaveProperty(k);
     }
   });
+  it('ключи старого пошагового онбординга удалены', () => {
+    for (const k of Object.keys(ru)) expect(k.startsWith('onboarding.')).toBe(false);
+  });
   it('t() подставляет параметры', () => {
     expect(t('ru', 'game.score', { n: 1234 })).toContain('1234');
     expect(t('uz', 'game.best', { n: 512 })).toContain('512');
+    expect(t('ru', 'result.tile', { n: 512 })).toBe('Плитка 512');
+    expect(t('ru', 'result.game', { t: '4:12' })).toBe('Партия · 4:12');
+    expect(t('ru', 'result.points.few', { n: 3242 })).toBe('3242 очка');
   });
 });

@@ -110,7 +110,7 @@
         "questions": 5,
         "options": 3,
         "timeLimitSec": 0,
-        "maxMistakes": 5,
+        "maxMistakes": 4,
         "topics": [
           "animals"
         ]
@@ -123,10 +123,10 @@
     {
       "n": 2,
       "params": {
-        "questions": 5,
+        "questions": 6,
         "options": 3,
         "timeLimitSec": 0,
-        "maxMistakes": 5,
+        "maxMistakes": 4,
         "topics": [
           "space"
         ]
@@ -140,7 +140,7 @@
       "n": 3,
       "params": {
         "questions": 6,
-        "options": 3,
+        "options": 4,
         "timeLimitSec": 0,
         "maxMistakes": 4,
         "topics": [
@@ -155,9 +155,9 @@
     {
       "n": 4,
       "params": {
-        "questions": 6,
-        "options": 3,
-        "timeLimitSec": 25,
+        "questions": 7,
+        "options": 4,
+        "timeLimitSec": 0,
         "maxMistakes": 4,
         "topics": [
           "body"
@@ -165,31 +165,31 @@
       },
       "goals": {
         "gold": 0,
-        "silver": 2
+        "silver": 1
       }
     },
     {
       "n": 5,
       "params": {
-        "questions": 6,
+        "questions": 8,
         "options": 4,
-        "timeLimitSec": 25,
-        "maxMistakes": 3,
+        "timeLimitSec": 0,
+        "maxMistakes": 4,
         "topics": [
           "money"
         ]
       },
       "goals": {
         "gold": 0,
-        "silver": 2
+        "silver": 1
       }
     },
     {
       "n": 6,
       "params": {
-        "questions": 7,
+        "questions": 8,
         "options": 4,
-        "timeLimitSec": 25,
+        "timeLimitSec": 0,
         "maxMistakes": 3,
         "topics": [
           "science"
@@ -203,10 +203,10 @@
     {
       "n": 7,
       "params": {
-        "questions": 7,
+        "questions": 8,
         "options": 4,
-        "timeLimitSec": 20,
-        "maxMistakes": 3,
+        "timeLimitSec": 0,
+        "maxMistakes": 2,
         "topics": [
           "animals",
           "space"
@@ -214,15 +214,15 @@
       },
       "goals": {
         "gold": 0,
-        "silver": 2
+        "silver": 1
       }
     },
     {
       "n": 8,
       "params": {
-        "questions": 8,
+        "questions": 9,
         "options": 4,
-        "timeLimitSec": 20,
+        "timeLimitSec": 0,
         "maxMistakes": 3,
         "topics": [
           "uzbekistan",
@@ -237,9 +237,9 @@
     {
       "n": 9,
       "params": {
-        "questions": 8,
+        "questions": 9,
         "options": 4,
-        "timeLimitSec": 20,
+        "timeLimitSec": 0,
         "maxMistakes": 2,
         "topics": [
           "body",
@@ -248,16 +248,16 @@
       },
       "goals": {
         "gold": 0,
-        "silver": 2
+        "silver": 1
       }
     },
     {
       "n": 10,
       "params": {
-        "questions": 8,
+        "questions": 10,
         "options": 4,
-        "timeLimitSec": 18,
-        "maxMistakes": 2,
+        "timeLimitSec": 0,
+        "maxMistakes": 3,
         "topics": []
       },
       "goals": {
@@ -268,10 +268,10 @@
     {
       "n": 11,
       "params": {
-        "questions": 9,
+        "questions": 10,
         "options": 4,
-        "timeLimitSec": 18,
-        "maxMistakes": 2,
+        "timeLimitSec": 25,
+        "maxMistakes": 3,
         "topics": []
       },
       "goals": {
@@ -282,15 +282,15 @@
     {
       "n": 12,
       "params": {
-        "questions": 9,
+        "questions": 10,
         "options": 4,
-        "timeLimitSec": 15,
-        "maxMistakes": 2,
+        "timeLimitSec": 18,
+        "maxMistakes": 3,
         "topics": []
       },
       "goals": {
         "gold": 0,
-        "silver": 1
+        "silver": 2
       }
     },
     {
@@ -298,7 +298,7 @@
       "params": {
         "questions": 10,
         "options": 4,
-        "timeLimitSec": 15,
+        "timeLimitSec": 18,
         "maxMistakes": 2,
         "topics": []
       },
@@ -313,7 +313,7 @@
         "questions": 10,
         "options": 4,
         "timeLimitSec": 12,
-        "maxMistakes": 1,
+        "maxMistakes": 2,
         "topics": []
       },
       "goals": {

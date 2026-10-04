@@ -132,7 +132,14 @@ for (const slug of slugs) {
     // листа игрой И сам toggle в общей реализации, а не просто наличие импорта.
     const chromeFile = join(ROOT, 'packages/game-ui/src/gameChrome.ts');
     const chrome = existsSync(chromeFile) ? readFileSync(chromeFile, 'utf8') : '';
-    const pauseToggle = /openPauseSheet\(/.test(src) && /setMuted\(/.test(chrome) && /soundOn:/.test(src) && /soundOff:/.test(src);
+    const pauseFile = join(ROOT, 'packages/game-ui/src/pause.ts');
+    const pause = existsSync(pauseFile) ? readFileSync(pauseFile, 'utf8') : '';
+    const compactToggle = /openPourPauseSheet\(/.test(src) && /setMuted\(/.test(chrome) && /soundOn:/.test(src) && /soundOff:/.test(src);
+    const sharedToggle = /openPauseSheet\(/.test(src) && /makeSoundToggle\(/.test(pause) && /sound:/.test(src);
+    const kidsFile = join(ROOT, 'packages/game-ui/src/kids.ts');
+    const kids = existsSync(kidsFile) ? readFileSync(kidsFile, 'utf8') : '';
+    const kidsToggle = /makeKidsHeader\(/.test(src) && /setMuted\(/.test(kids);
+    const pauseToggle = compactToggle || sharedToggle || kidsToggle;
     if (!pauseToggle) errors.push('нет выключателя звука в меню или общем листе паузы');
   }
 

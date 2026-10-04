@@ -5,12 +5,12 @@ import { t } from './index';
 
 const REQUIRED = [
   'sound.on', 'sound.off',
-  'app.title', 'menu.ladder', 'menu.play', 'menu.howto', 'menu.catalog',
-  'game.progress', 'result.title', 'result.score', 'result.level', 'result.nextLevel',
-  'result.unlocked', 'result.newBest',
-  'result.playAgain', 'result.menu', 'error.network',
-  'onboarding.take', 'onboarding.drop', 'onboarding.goal',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
+  'app.title',
+  'chapter.1', 'chapter.2', 'chapter.3',
+  'level.goldHint', 'level.goldHintClean',
+  'intro.field', 'intro.modeShape', 'intro.modeColor', 'intro.bins',
+  'game.progress',
+  'tutorial.firstMove', 'tutorial.firstMoveShape', 'rule.mistake',
 ];
 
 describe('i18n (sorting)', () => {
@@ -37,6 +37,5 @@ describe('i18n (sorting)', () => {
   it('t() подставляет параметры в обеих локалях', () => {
     expect(t('ru', 'game.progress', { n: 3, total: 12 })).toBe('3 из 12');
     expect(t('uz', 'game.progress', { n: 3, total: 12 })).toBe('12 dan 3');
-    expect(t('ru', 'result.mistakes', { n: 2 })).toContain('2');
   });
 });

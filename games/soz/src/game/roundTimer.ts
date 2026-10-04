@@ -12,3 +12,9 @@ export function createRoundTimer(now: () => number) {
 }
 
 export type RoundTimer = ReturnType<typeof createRoundTimer>;
+
+/** «5:00», «0:09» — часы таймера уровня (минуты без ведущего нуля). */
+export function formatClock(sec: number): string {
+  const s = Math.max(0, Math.ceil(sec));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}

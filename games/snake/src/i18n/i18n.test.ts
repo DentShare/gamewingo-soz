@@ -6,12 +6,10 @@ import { t } from './index';
 const REQUIRED = [
   'sound.on', 'sound.off',
   'app.title', 'menu.play', 'menu.howto', 'menu.catalog', 'menu.record', 'menu.back',
-  'menu.challenges', 'menu.nextMilestone', 'menu.milestonesDone',
+  'menu.challenges',
   'game.swipeToStart', 'game.length', 'game.challenge',
-  'onboarding.move', 'onboarding.food', 'onboarding.crash',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
-  'result.run', 'result.score', 'result.length', 'result.newBest', 'result.closed',
-  'result.playAgain', 'result.menu', 'result.leaderboard', 'error.network',
+  'tutorial.firstMove', 'rule.crash',
+  'result.length', 'result.points.one', 'result.points.few', 'result.points.many',
 ];
 
 describe('i18n (snake)', () => {
@@ -43,7 +41,7 @@ describe('i18n (snake)', () => {
   });
 
   it('t() подставляет параметры', () => {
-    expect(t('ru', 'result.score', { score: 1500 })).toContain('1500');
+    expect(t('ru', 'result.points.many', { n: 1500 })).toContain('1500');
     expect(t('uz', 'result.length', { n: 12 })).toContain('12');
   });
 });

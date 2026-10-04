@@ -2,9 +2,13 @@ import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
 import { CHALLENGES } from '../../core/challenges';
-import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
+import { challengeStates, loadBests, type ChallengeDef } from '@gamewingo/game-progress';
 import { COLORS, FONT } from '../palette';
-import { setupCamera, shakeCamera, makeBackButton, playSound } from '../ui';
+import {
+  setupCamera, shakeCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler, makeRecordGhost,
+  TOP_BAR_H, runFirstMoveTutorial, showRuleOnce,
+  type GameHeader, type PauseSheet, type RecordGhost, type FirstMoveTutorial, type Rect,
+} from '../ui';
 import { DPR, VIEW_TOP, VIEW_BOTTOM } from '../dpr';
 import { mulberry32 } from '../../core/rng';
 import {
@@ -12,7 +16,6 @@ import {
 } from '../../core/flight';
 import { computeScore } from '../../core/score';
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
-import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
@@ -24,6 +27,8 @@ const WALL_POOL = 5;
 /** Высота «ствола» стены: с запасом перекрывает экран сверху и снизу. */
 const WALL_TALL = 760;
 const STRIPE_STEP = 55;
+/** Строка активного испытания — на поле сразу под шапкой партии. */
+const CHALLENGE_Y = TOP_BAR_H + 20;
 
 interface WallView {
   root: Phaser.GameObjects.Container;
@@ -46,12 +51,26 @@ export class Game extends Scene {
   private walls: WallView[] = [];
   private clouds: Phaser.GameObjects.Container[] = [];
   private stripes: Phaser.GameObjects.Rectangle[] = [];
-  private scoreText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
-  private backBtn?: Phaser.GameObjects.Container;
+
+  /** Шапка партии: стрелка (пауза), название игры, чипы проёмов и времени в воздухе. */
+  private header?: GameHeader;
+  /** «Призрак» рекорда проёмов под шапкой: каждый полёт — гонка с собой. */
+  private ghost?: RecordGhost;
+  private pause: PauseSheet | null = null;
+  /** Мир стоит: физика не шагает, часы сцены и твины заморожены (пауза-шит открыт). */
+  private paused = false;
+  /** Твины, которые шли в момент паузы, — только их и возобновляем. */
+  private frozenTweens: Phaser.Tweens.Tween[] = [];
+  /** Что сейчас в чипах — перерисовываем чип, только когда текст изменился. */
+  private chipScore = '';
+  private chipTime = '';
+  /** Своё время покачивания героя до старта: копится только вне паузы — без рывка. */
+  private bobMs = 0;
 
   private timer?: RoundTimer;
-  private tutorialActive = false;
+  /** Обучение в один шаг: первый пройденный проём — настоящий ход (T6). */
+  private tutorial: FirstMoveTutorial | null = null;
   private dead = false;
   private leaving = false;
 
@@ -64,9 +83,20 @@ export class Game extends Scene {
     this.walls = [];
     this.clouds = [];
     this.stripes = [];
-    this.backBtn = undefined;
     this.timer = undefined;
-    this.tutorialActive = false;
+    this.header = undefined;
+    this.ghost = undefined;
+    this.pause = null;
+    this.paused = false;
+    this.frozenTweens = [];
+    this.chipScore = '';
+    this.chipTime = '';
+    this.bobMs = 0;
+    // Часы сцены переживают restart — после «Начать заново» из паузы их надо отпустить.
+    this.time.paused = false;
+    // Системный «назад» ведёт туда же, куда стрелка: полёт → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
+    this.tutorial = null;
     this.dead = false;
     this.leaving = false;
 
@@ -84,47 +114,56 @@ export class Game extends Scene {
     this.buildHero();
     this.buildHud();
     this.syncViews();
-
-    // «Как играть» из меню: обучение поверх настоящего экрана, без сессии и таймера.
-    if (this.registry.get('howto')) {
-      this.runHowto();
-      return;
-    }
-
     this.bindInput();
 
     this.timer = createRoundTimer(() => performance.now());
     this.session?.start();
+    // Приложение уходит в фон (звонок, шторка) — открываем ту же паузу, что и стрелка:
+    // мир стоит, а вернувшись, игрок сам жмёт «Продолжить» — герой не упадёт без него.
     const off = this.session?.onApp((e: AppToGameEvent) => {
-      if (e.type === 'PAUSE') this.timer?.pause();
-      else if (e.type === 'RESUME') this.timer?.resume();
+      if (e.type === 'PAUSE') this.openPause();
+      else if (e.type === 'RESUME') {
+        if (!this.paused && this.core.started) this.timer?.resume();
+      }
     });
     if (off) this.events.once('shutdown', off);
 
-    this.maybeShowOnboarding();
+    // «Как играть» из паузы — то же обучение на новом полёте.
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
+    if (howto || !hasOnboarded()) this.startTutorial();
   }
 
-  update(time: number, delta: number) {
-    if (this.tutorialActive || this.dead || this.leaving) return;
+  update(_time: number, delta: number) {
+    // На паузе кадры просто пропускаем: ядро копит время только из переданной
+    // дельты, поэтому после «Продолжить» следующий кадр — обычные ~16 мс, без рывка.
+    if (this.paused || this.dead || this.leaving) return;
 
-    const before = this.core.score;
     const res = this.core.step(delta);
     if (this.core.started) this.scrollDecor(delta);
     this.syncViews();
     // До первого тапа герой мягко покачивается на месте — экран не выглядит замершим.
-    if (!this.core.started) this.hero.y = this.core.y + Math.sin(time / 320) * 5;
-    if (this.core.score !== before) this.bumpScore();
+    if (!this.core.started) {
+      this.bobMs += delta;
+      this.hero.y = this.core.y + Math.sin(this.bobMs / 320) * 5;
+    }
+    this.updateChips();
     this.updateChallengeLine();
+    if (res.scored) this.onScored();
+    // Рамки обучения едут вместе с героем и первой стеной.
+    this.tutorial?.refresh();
     if (res.over) this.die();
   }
 
   // ── Ввод ─────────────────────────────────────────────────────────────────────
 
   private bindInput() {
-    // `currentlyOver` непуст, если тап пришёлся на интерактивный объект (кнопка
-    // «Назад», блокировщик обучения) — тогда это не «взмах».
-    this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: unknown[]) => {
+    // `currentlyOver` непуст, если тап пришёлся на интерактивный объект (стрелка
+    // шапки, пауза-шит, блокировщик обучения) — тогда это не «взмах». Тап по самой
+    // шапке мимо стрелки тоже не взмах: промахнувшись по стрелке, не взлетаем.
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: unknown[]) => {
       if (over && over.length) return;
+      if (this.cameras.main.getWorldPoint(p.x, p.y).y < TOP_BAR_H) return;
       this.flap();
     });
     this.input.keyboard?.on('keydown-SPACE', () => this.flap());
@@ -132,8 +171,9 @@ export class Game extends Scene {
   }
 
   private flap() {
+    if (this.paused) return;
     playSound('swipe');
-    if (this.tutorialActive || this.dead || this.leaving) return;
+    if (this.dead || this.leaving) return;
     const first = !this.core.started;
     this.core.flap();
     if (first) this.onFirstFlap();
@@ -142,78 +182,50 @@ export class Game extends Scene {
     });
   }
 
-  /** Первый тап: прячем подсказку и кнопку выхода, запускаем таймер партии. */
+  /** Первый тап: прячем подсказку, запускаем таймер партии. */
   private onFirstFlap() {
     this.timer?.start();
     this.tweens.add({
       targets: this.hintText, alpha: 0, y: this.hintText.y - 14, duration: 220,
       onComplete: () => this.hintText.setVisible(false),
     });
-    const btn = this.backBtn;
-    if (btn) {
-      this.backBtn = undefined;
-      this.tweens.add({
-        targets: btn, alpha: 0, duration: 180, onComplete: () => btn.destroy(),
-      });
-    }
   }
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
 
-  /** «Как играть» из меню: настоящий экран игры, обучение, по концу — назад в меню. */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-    this.time.delayedCall(320, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
+  /**
+   * Обучение в один шаг. Полёт и так ждёт первого тапа, поэтому мир ничего не
+   * делает, пока игрок читает. Обведены ракета и проём первой стены (он выровнен
+   * по стартовой высоте — пролететь его легко), внизу одна фраза. Первый взмах —
+   * настоящий старт; обучение заканчивается на первом пройденном проёме.
+   */
+  private startTutorial() {
+    this.header?.setChipsVisible(false);
+    this.hintText.setVisible(false); // полоса обучения говорит то же самое
+    const first = this.core.obstacles[0];
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove'),
+      targets: () => {
+        const rects: Rect[] = [{ x: HERO_X - 26, y: this.hero.y - 26, w: 52, h: 52 }];
+        if (!first.passed) rects.push({ x: first.x - 3, y: first.gapY, w: WALL_W + 6, h: first.gapH });
+        return rects;
+      },
+      pad: 6,
+      radius: 18,
+      onDone: (skipped) => {
         setOnboarded();
-        this.leaving = true;
-        this.cameras.main.fadeOut(200, ...COLORS.fade);
-        this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
-      });
+        this.header?.setChipsVisible(true);
+        // Пропустили до взлёта — возвращаем обычную подсказку «Тапните, чтобы взлететь».
+        if (skipped && !this.core.started) this.hintText.setVisible(true).setAlpha(1);
+      },
     });
   }
 
-  /** Первая партия — показываем обучение один раз. Ввод на это время заблокирован. */
-  private maybeShowOnboarding() {
-    if (hasOnboarded()) return;
-    this.tutorialActive = true;
-    this.time.delayedCall(320, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
-        setOnboarded();
-        this.tutorialActive = false;
-      });
-    });
-  }
-
-  /** Три шага на реальном экране: герой → ближайший проём → счёт. */
-  private tutorialSteps(): OnboardingStep[] {
-    return [
-      {
-        textKey: 'onboarding.flap',
-        target: (): Rect => ({ x: HERO_X - 26, y: this.core.y - 26, w: 52, h: 52 }),
-        pad: 6,
-        radius: 26,
-      },
-      {
-        textKey: 'onboarding.gap',
-        target: (): Rect => {
-          const o = this.core.obstacles[0];
-          return { x: o.x - 3, y: o.gapY - 32, w: WALL_W + 6, h: o.gapH + 64 };
-        },
-        pad: 6,
-        radius: 14,
-      },
-      {
-        textKey: 'onboarding.score',
-        target: (): Rect => {
-          const b = this.scoreText.getBounds();
-          return { x: b.x, y: b.y, w: b.width, h: b.height };
-        },
-        pad: 10,
-        radius: 14,
-      },
-    ];
+  /** Пройден проём: первый закрывает обучение и одной строкой объясняет счёт. */
+  private onScored() {
+    if (this.tutorial?.active) this.tutorial.done();
+    showRuleOnce(this, 'flyer:score', t(this.locale, 'rule.score'));
   }
 
   // ── Отрисовка мира ───────────────────────────────────────────────────────────
@@ -289,7 +301,9 @@ export class Game extends Scene {
 
   private buildGround() {
     const g = this.add.graphics().setDepth(3);
-    g.fillStyle(COLORS.ground, 1).fillRect(-40, FLOOR_Y, W + 80, H - FLOOR_Y + 40);
+    // Земля — до нижней кромки вытянутого экрана (+ запас на тряску): иначе на
+    // высоком телефоне из-под неё торчат нижние столбы стен.
+    g.fillStyle(COLORS.ground, 1).fillRect(-40, FLOOR_Y, W + 80, Math.max(H, VIEW_BOTTOM) - FLOOR_Y + 40);
     g.fillStyle(COLORS.groundDark, 1).fillRect(-40, FLOOR_Y, W + 80, 6);
 
     const count = Math.ceil((W + STRIPE_STEP * 2) / STRIPE_STEP);
@@ -318,26 +332,34 @@ export class Game extends Scene {
     this.hero = this.add.container(HERO_X, this.core.y, [g, emoji]).setDepth(5);
   }
 
+  /**
+   * Шапка каталога: стрелка (пауза), название игры и чипы — пройденные проёмы и
+   * время в воздухе. Раньше здесь был крупный белый счёт поверх неба (стены с
+   * верхним проёмом проезжали прямо под ним) и кнопка «Назад», которая пряталась
+   * после взлёта — выйти посреди полёта было нельзя. Счёт переехал в чип, крупной
+   * цифры на поле больше нет: дубль чипа только закрывал бы верхние проёмы.
+   */
   private buildHud() {
-    this.scoreText = this.add
-      .text(W / 2, 96, '0', {
-        fontFamily: FONT, fontSize: 58, color: COLORS.scoreText, fontStyle: 'bold',
-        stroke: COLORS.scoreShadow, strokeThickness: 8,
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR)
-      .setDepth(20);
-    // Активное испытание с живым прогрессом — под счётом; когда всё пройдено, строки нет.
+    this.header = makeGameHeader(this, {
+      title: t(this.locale, 'app.title'),
+      chips: [
+        { id: 'score', text: '0', widest: '888' },
+        { id: 'time', text: formatClock(0), widest: '88:88' },
+      ],
+      onBack: () => this.openPause(),
+    });
+    this.ghost = makeRecordGhost(this, TOP_BAR_H + 3, loadBests('flyer').passed ?? 0);
+    this.ghost.update(this.core.score);
+    // Активное испытание с живым прогрессом — под шапкой; когда всё пройдено, строки нет.
     if (this.challenge) {
       this.challengeText = this.add
-        .text(W / 2, 138, this.challengeLabel(), {
+        .text(W / 2, CHALLENGE_Y, this.challengeLabel(), {
           fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
         })
         .setOrigin(0.5)
         .setResolution(DPR)
         .setDepth(20);
     }
-
 
     this.hintText = this.add
       .text(W / 2, 470, t(this.locale, 'game.tapToStart'), {
@@ -351,16 +373,92 @@ export class Game extends Scene {
       targets: this.hintText, y: this.hintText.y + 8, duration: 720,
       yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
-
-    this.backBtn = this.buildBackButton();
   }
 
-  /** Маленькая кнопка выхода — только до старта партии, чтобы не ловить её вместо взмаха. */
-  private buildBackButton(): Phaser.GameObjects.Container {
-    return makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+  /** Проёмы и время в воздухе — в чипы шапки, проёмы — в «призрак» рекорда (только при изменении). */
+  private updateChips() {
+    const score = String(this.core.score);
+    if (score !== this.chipScore) {
+      this.chipScore = score;
+      this.header?.setChip('score', score);
+      this.ghost?.update(this.core.score);
+    }
+    const time = formatClock(this.airSec());
+    if (time !== this.chipTime) {
+      this.chipTime = time;
+      this.header?.setChip('time', time);
+    }
   }
 
-  private goBack() {
+  /** Секунды в воздухе: таймер партии идёт с первого взмаха и стоит на паузе. */
+  private airSec(): number {
+    return this.core.started ? Math.floor((this.timer?.elapsedMs() ?? 0) / 1000) : 0;
+  }
+
+  // ── Пауза ────────────────────────────────────────────────────────────────────
+
+  /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
+  private openPause() {
+    if (this.dead || this.leaving || this.pause?.open) return;
+    this.freezeWorld();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      kind: 'run',
+      summary: this.pauseSummary(),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => {
+        this.pause = null;
+        this.thawWorld();
+      },
+      onRestart: () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
+  }
+
+  /**
+   * Остановить мир: `update()` не шагает физику ядра и не двигает стены, облака
+   * и землю; часы сцены (`delayedCall`) и идущие твины (взмах героя, подсказка)
+   * замирают; таймер партии стоит. Замораживаем ДО открытия шита — его
+   * собственные твины выезда создаются позже и идут как обычно.
+   */
+  private freezeWorld() {
+    this.paused = true;
+    this.timer?.pause();
+    this.time.paused = true;
+    this.frozenTweens = this.tweens.getTweens().filter((tw) => tw.isPlaying());
+    for (const tw of this.frozenTweens) tw.pause();
+  }
+
+  /** Полёт продолжается ровно с того же места: та же высота, скорость и стены. */
+  private thawWorld() {
+    this.paused = false;
+    this.time.paused = false;
+    for (const tw of this.frozenTweens) if (!tw.isDestroyed()) tw.resume();
+    this.frozenTweens = [];
+    // До первого взмаха таймер ещё не запущен — его стартует сам взмах.
+    if (this.core.started) this.timer?.resume();
+  }
+
+  /** «Проёмов 4 · в воздухе 0:12». */
+  private pauseSummary(): string {
+    return t(this.locale, 'pause.summary', { passed: this.core.score, time: formatClock(this.airSec()) });
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
+  }
+
+  private exitToMenu() {
     if (this.leaving || this.dead) return;
     this.leaving = true;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
@@ -381,7 +479,6 @@ export class Game extends Scene {
     }
     this.hero.y = this.core.y;
     this.hero.rotation = clamp(this.core.vy * 0.0011, -0.42, 0.9);
-    this.scoreText.setText(String(this.core.score));
   }
 
   /** Параллакс: облака медленнее стен, полосы земли — быстрее. */
@@ -398,12 +495,6 @@ export class Game extends Scene {
     }
   }
 
-  private bumpScore() {
-    this.tweens.add({
-      targets: this.scoreText, scale: 1.28, duration: 110, yoyo: true, ease: 'Quad.easeOut',
-    });
-  }
-
   // ── Конец партии ─────────────────────────────────────────────────────────────
 
   private die() {
@@ -415,7 +506,9 @@ export class Game extends Scene {
     if (this.core.cause !== 'floor') {
       this.tweens.add({ targets: this.hero, y: FLOOR_Y - 16, duration: 460, delay: 60, ease: 'Quad.easeIn' });
     }
-    this.time.delayedCall(760, () => this.endGame());
+    // Первое крушение на устройстве — одна строка, почему полёт окончен; даём её прочесть.
+    const rule = showRuleOnce(this, 'flyer:crash', t(this.locale, 'rule.crash'));
+    this.time.delayedCall(rule ? 1900 : 760, () => this.endGame());
   }
 
   private endGame() {
@@ -466,4 +559,9 @@ export class Game extends Scene {
       this.challengeText.setText(line);
     }
   }
+}
+
+/** «0:12», «1:05» — время в воздухе в чипе шапки. */
+function formatClock(sec: number): string {
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 }

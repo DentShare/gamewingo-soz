@@ -4,14 +4,16 @@ import uz from './uz.json';
 import { t } from './index';
 
 const REQUIRED = [
-  'app.title', 'menu.howto', 'menu.back', 'menu.ladder', 'menu.play',
+  'app.title', 'menu.howto', 'menu.back',
+  'chapter.1', 'chapter.2', 'chapter.3',
+  'level.field.one', 'level.field.few', 'level.field.many', 'level.goldHint',
+  'intro.field', 'intro.crosses', 'intro.maxValue', 'intro.negative',
+  'game.dailyLevel',
   'sound.on', 'sound.off',
   'game.level', 'game.moves', 'game.goal', 'game.reset',
-  'onboarding.board', 'onboarding.row', 'onboarding.cross', 'onboarding.reset',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
-  'result.title', 'result.level', 'result.score', 'result.moves', 'result.perfect',
-  'result.newBest', 'result.unlocked', 'result.nextLevel',
-  'result.playAgain', 'result.menu', 'result.leaderboard', 'error.network',
+  'tutorial.firstMove', 'tutorial.note', 'rule.over', 'rule.negative',
+  'result.title', 'result.gapMoves.one', 'result.gapMoves.few', 'result.gapMoves.many',
+  'result.almostDetail',
 ];
 
 describe('i18n (sums)', () => {
@@ -27,7 +29,7 @@ describe('i18n (sums)', () => {
   });
 
   it('t() подставляет параметры', () => {
-    expect(t('ru', 'result.score', { score: 1234 })).toContain('1234');
+    expect(t('ru', 'result.almostDetail', { moves: 12, best: 10 })).toContain('12');
     expect(t('uz', 'game.moves', { n: 7 })).toContain('7');
   });
 

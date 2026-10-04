@@ -70,10 +70,13 @@
     {
       "n": 1,
       "params": {
+        "pieces": 4,
         "cols": 2,
         "rows": 2,
         "picture": "sunny-day",
-        "ghost": true
+        "hint": 3,
+        "ghost": true,
+        "tray": 3
       },
       "goals": {
         "gold": 0,
@@ -83,10 +86,13 @@
     {
       "n": 2,
       "params": {
+        "pieces": 6,
         "cols": 2,
         "rows": 3,
         "picture": "cosy-house",
-        "ghost": true
+        "hint": 3,
+        "ghost": true,
+        "tray": 3
       },
       "goals": {
         "gold": 0,
@@ -96,10 +102,13 @@
     {
       "n": 3,
       "params": {
-        "cols": 3,
-        "rows": 3,
+        "pieces": 8,
+        "cols": 4,
+        "rows": 2,
         "picture": "little-boat",
-        "ghost": true
+        "hint": 3,
+        "ghost": true,
+        "tray": 3
       },
       "goals": {
         "gold": 1,
@@ -109,10 +118,13 @@
     {
       "n": 4,
       "params": {
+        "pieces": 9,
         "cols": 3,
         "rows": 3,
         "picture": "rocket",
-        "ghost": true
+        "hint": 3,
+        "ghost": true,
+        "tray": 3
       },
       "goals": {
         "gold": 1,
@@ -122,10 +134,13 @@
     {
       "n": 5,
       "params": {
+        "pieces": 12,
         "cols": 3,
         "rows": 4,
         "picture": "apple-tree",
-        "ghost": true
+        "hint": 3,
+        "ghost": true,
+        "tray": 3
       },
       "goals": {
         "gold": 1,
@@ -135,10 +150,13 @@
     {
       "n": 6,
       "params": {
+        "pieces": 12,
         "cols": 3,
         "rows": 4,
         "picture": "kitten",
-        "ghost": true
+        "hint": 2,
+        "ghost": true,
+        "tray": 3
       },
       "goals": {
         "gold": 2,
@@ -148,23 +166,29 @@
     {
       "n": 7,
       "params": {
-        "cols": 4,
+        "pieces": 12,
+        "cols": 3,
         "rows": 4,
         "picture": "aquarium",
-        "ghost": true
+        "hint": 1,
+        "ghost": true,
+        "tray": 3
       },
       "goals": {
         "gold": 2,
-        "silver": 5
+        "silver": 4
       }
     },
     {
       "n": 8,
       "params": {
-        "cols": 4,
-        "rows": 4,
+        "pieces": 15,
+        "cols": 3,
+        "rows": 5,
         "picture": "train",
-        "ghost": true
+        "hint": 2,
+        "ghost": true,
+        "tray": 3
       },
       "goals": {
         "gold": 2,
@@ -174,10 +198,13 @@
     {
       "n": 9,
       "params": {
-        "cols": 4,
-        "rows": 4,
+        "pieces": 15,
+        "cols": 3,
+        "rows": 5,
         "picture": "butterfly",
-        "ghost": false
+        "hint": 1,
+        "ghost": true,
+        "tray": 3
       },
       "goals": {
         "gold": 2,
@@ -187,10 +214,13 @@
     {
       "n": 10,
       "params": {
-        "cols": 4,
+        "pieces": 15,
+        "cols": 3,
         "rows": 5,
         "picture": "snowman",
-        "ghost": false
+        "hint": 0,
+        "ghost": false,
+        "tray": 3
       },
       "goals": {
         "gold": 3,
@@ -200,10 +230,13 @@
     {
       "n": 11,
       "params": {
-        "cols": 4,
+        "pieces": 15,
+        "cols": 3,
         "rows": 5,
         "picture": "balloon",
-        "ghost": false
+        "hint": 0,
+        "ghost": false,
+        "tray": 4
       },
       "goals": {
         "gold": 3,
@@ -213,10 +246,29 @@
     {
       "n": 12,
       "params": {
+        "pieces": 16,
         "cols": 4,
-        "rows": 5,
+        "rows": 4,
         "picture": "bee-meadow",
-        "ghost": false
+        "hint": 1,
+        "ghost": true,
+        "tray": 4
+      },
+      "goals": {
+        "gold": 3,
+        "silver": 6
+      }
+    },
+    {
+      "n": 13,
+      "params": {
+        "pieces": 16,
+        "cols": 4,
+        "rows": 4,
+        "picture": "little-car",
+        "hint": 0,
+        "ghost": false,
+        "tray": 4
       },
       "goals": {
         "gold": 3,
@@ -224,25 +276,15 @@
       }
     },
     {
-      "n": 13,
-      "params": {
-        "cols": 4,
-        "rows": 5,
-        "picture": "little-car",
-        "ghost": false
-      },
-      "goals": {
-        "gold": 4,
-        "silver": 8
-      }
-    },
-    {
       "n": 14,
       "params": {
+        "pieces": 20,
         "cols": 4,
         "rows": 5,
         "picture": "rainbow",
-        "ghost": false
+        "hint": 1,
+        "ghost": true,
+        "tray": 4
       },
       "goals": {
         "gold": 4,
@@ -252,10 +294,13 @@
     {
       "n": 15,
       "params": {
+        "pieces": 20,
         "cols": 4,
         "rows": 5,
         "picture": "good-night",
-        "ghost": false
+        "hint": 0,
+        "ghost": false,
+        "tray": 4
       },
       "goals": {
         "gold": 4,

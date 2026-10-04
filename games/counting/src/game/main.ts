@@ -4,6 +4,10 @@ import { MainMenu } from './scenes/MainMenu';
 import { Game } from './scenes/Game';
 import { GameOver } from './scenes/GameOver';
 import { DPR, LOGICAL_W, VIEW_H } from './dpr';
+import { setKidsMode } from './ui';
+
+// Детская игра (T8): обучение без текста, правила-строки молчат, меню — дорожкой.
+setKidsMode(true);
 
 const config: Phaser.Types.Core.GameConfig = {
   type: AUTO,

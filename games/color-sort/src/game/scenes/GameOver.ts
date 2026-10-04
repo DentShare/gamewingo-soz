@@ -39,7 +39,7 @@ export class GameOver extends Scene {
     this.time.delayedCall(320, () => phoenix.celebrate()); this.events.once('shutdown', () => phoenix.destroy());
     for (let i = 0; i < stars; i++) this.time.delayedCall(150 + i * 150, () => playSound('star'));
     const details = t(last.locale, 'result.details', { moves: last.moves, gold: level.goals.gold, time: activeTime(last.durationMs) });
-    const gap = starGap(level, { metric: 'moves', value: last.moves });
+    const gap = starGap(level.goals, last.moves);
     let bonusY = 274;
     if (gap) {
       makeCard(this, 20, 242, 360, 116);

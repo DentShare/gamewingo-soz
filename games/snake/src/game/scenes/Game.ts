@@ -1,10 +1,14 @@
 import { Scene, Math as PhaserMath } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, darken, setupCamera, makeBackButton, playSound } from '../ui';
+import {
+  applyTheme, darken, setupCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler, makeRecordGhost,
+  runFirstMoveTutorial, showRuleOnce, TOP_BAR_H, VIEW_BOTTOM,
+  type GameHeader, type PauseSheet, type RecordGhost, type FirstMoveTutorial, type Rect,
+} from '../ui';
 import { t } from '../../i18n';
 import { CHALLENGES } from '../../core/challenges';
-import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
+import { challengeStates, loadBests, type ChallengeDef } from '@gamewingo/game-progress';
 import {
   createSnakeGame, COLS, ROWS, type Dir, type Point, type SnakeGame,
 } from '../../core/snake';
@@ -13,7 +17,6 @@ import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
-import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
 import { DPR } from '../dpr';
 
 const W = 400;
@@ -22,9 +25,24 @@ const CELL = 24;
 const BOARD_W = COLS * CELL;
 const BOARD_H = ROWS * CELL;
 const BOARD_LEFT = (W - BOARD_W) / 2;
-const BOARD_TOP = 168;
+/**
+ * Поле — по центру видимой области под шапкой партии (счёт переехал в чип шапки,
+ * крупной цифры над полем больше нет). Не выше «шапка + строка испытания»,
+ * и так, чтобы под полем влезла подсказка «Свайпните…» на самом низком экране.
+ */
+const BOARD_TOP = Math.round(Math.min(
+  VIEW_BOTTOM - BOARD_H - 72,
+  Math.max(TOP_BAR_H + 56, TOP_BAR_H + (VIEW_BOTTOM - TOP_BAR_H - BOARD_H) / 2),
+));
+/** Строка активного испытания — прямо над полем. */
+const CHALLENGE_Y = BOARD_TOP - 26;
 /** Порог свайпа в px (доминирующая ось). */
 const SWIPE_MIN = 24;
+/**
+ * Нижняя граница, выше которой в обучении лежит первое яблоко: ниже — тёмная
+ * полоса подсказки (до трёх строк текста + «Пропустить») и её отступы.
+ */
+const TUTORIAL_SAFE_BOTTOM = VIEW_BOTTOM - 16 - 8 - 96 - 12;
 
 const SEG_TEX = 'snake-seg';
 const HEAD_TEX = 'snake-head';
@@ -62,8 +80,12 @@ export class Game extends Scene {
   private segs: Phaser.GameObjects.Image[] = [];
   private headC!: Phaser.GameObjects.Container;
   private foodC!: Phaser.GameObjects.Container;
-  private scoreText!: Phaser.GameObjects.Text;
-  private lengthText!: Phaser.GameObjects.Text;
+  private header?: GameHeader;
+  /** «Призрак» рекорда длины под шапкой: каждый забег — гонка с собой. */
+  private ghost?: RecordGhost;
+  private pause: PauseSheet | null = null;
+  /** Твины, замороженные паузой-шитом (пульс еды, вспышки) — их и только их продолжаем. */
+  private frozenTweens: Phaser.Tweens.Tween[] = [];
   private hintText!: Phaser.GameObjects.Text;
 
   /** Тело на предыдущем тике — для плавной интерполяции между клетками. */
@@ -72,7 +94,13 @@ export class Game extends Scene {
   private started = false;   // ждём первый свайп/стрелку
   private finished = false;
   private paused = false;    // PAUSE от приложения
-  private tutorialActive = false;
+  private sheetPaused = false; // пауза-шит от стрелки или системного «назад»
+  /** Обучение в один шаг: первое яблоко — настоящий ход (T6). */
+  private tutorial: FirstMoveTutorial | null = null;
+  /** GAME_START уже ушёл хосту: прощённое в обучении столкновение его не повторяет. */
+  private sessionStarted = false;
+  /** Короткая передышка после прощённого столкновения — свайп не стартует сразу. */
+  private inputLocked = false;
   private timer?: RoundTimer;
   private swipeFrom: { x: number; y: number } | null = null;
   /** Переиспользуемый буфер перевода экранных координат в логические. */
@@ -90,9 +118,20 @@ export class Game extends Scene {
     this.started = false;
     this.finished = false;
     this.paused = false;
-    this.tutorialActive = false;
+    this.tutorial = null;
+    this.sessionStarted = false;
+    this.inputLocked = false;
     this.timer = undefined;
     this.swipeFrom = null;
+    this.sheetPaused = false;
+    this.header = undefined;
+    this.ghost = undefined;
+    this.pause = null;
+    this.frozenTweens = [];
+    // Часы сцены переживают restart: «Начать заново» из паузы пришёл бы с замороженными таймерами.
+    this.time.paused = false;
+    // Системный «назад» ведёт туда же, куда стрелка: забег → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
@@ -105,7 +144,11 @@ export class Game extends Scene {
     this.feast12 = 0;
 
     this.ensureTextures();
-    this.core = createSnakeGame(COLS, ROWS, mulberry32(Math.floor(Math.random() * 2 ** 31)));
+    // «Как играть» из паузы — то же обучение на новом забеге.
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
+    const tutorial = howto || !hasOnboarded();
+    this.core = tutorial ? this.makeTutorialCore() : this.makeCore();
     this.prevBody = this.core.body.map((p) => ({ ...p }));
 
     this.buildHud();
@@ -115,24 +158,20 @@ export class Game extends Scene {
     this.renderSnake(1);
     this.bindInput();
 
-    // «Как играть» из меню: обучение поверх настоящего поля, без сессии и таймера.
-    if (this.registry.get('howto')) {
-      this.runHowto();
-      return;
-    }
-
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') { this.paused = true; this.timer?.pause(); }
-      else if (e.type === 'RESUME') { this.paused = false; this.timer?.resume(); }
+      // Пока открыт шит, RESUME приложения забег не запускает — это решает игрок кнопкой.
+      else if (e.type === 'RESUME') { this.paused = false; if (!this.sheetPaused) this.timer?.resume(); }
     });
     this.events.once('shutdown', off);
 
-    this.maybeShowOnboarding();
+    if (tutorial) this.startTutorial();
   }
 
   update(_time: number, delta: number) {
-    if (this.finished || !this.started || this.paused || this.tutorialActive) {
-      this.renderSnake(1);
+    if (this.finished || !this.started || this.paused || this.sheetPaused) {
+      // На паузе змейка стоит ровно там, где её застала пауза (доля тика сохраняется в acc).
+      this.renderSnake(this.started && !this.finished ? Math.min(1, this.acc / this.core.speedMs()) : 1);
       return;
     }
     // Испытания на выживание тикают от времени — обновляем строку раз в кадр недорого.
@@ -141,12 +180,13 @@ export class Game extends Scene {
     let tick = this.core.speedMs();
     // Догоняем пропущенные тики (например, после лага), но не больше пары за кадр.
     let guard = 0;
-    while (this.acc >= tick && !this.finished && guard++ < 3) {
+    // started сбрасывает прощённое в обучении столкновение — дальше змейка ждёт свайпа.
+    while (this.acc >= tick && !this.finished && this.started && guard++ < 3) {
       this.acc -= tick;
       this.doStep();
       tick = this.core.speedMs();
     }
-    this.renderSnake(this.finished ? 1 : Math.min(1, this.acc / tick));
+    this.renderSnake(this.finished || !this.started ? 1 : Math.min(1, this.acc / tick));
   }
 
   // ── Ход ──────────────────────────────────────────────────────────────────────
@@ -156,6 +196,8 @@ export class Game extends Scene {
     const res = this.core.step();
     if (res.ate) this.onAte();
     if (res.over) this.onCrash();
+    // Подсветка едет за головой змейки.
+    else this.tutorial?.refresh();
   }
 
   /** Съели еду: вспышка, обновление счёта и переезд еды в новую клетку. */
@@ -169,9 +211,10 @@ export class Game extends Scene {
       onComplete: () => fx.destroy(),
     });
 
-    this.scoreText.setText(String(this.core.score));
-    this.tweens.add({ targets: this.scoreText, scale: 1.18, duration: 110, yoyo: true, ease: 'Quad.easeOut' });
-    this.lengthText.setText(t(this.locale, 'game.length', { n: this.core.length }));
+    this.header?.setChip('score', String(this.core.score));
+    this.header?.pulseChip('score');
+    this.header?.setChip('length', t(this.locale, 'game.length', { n: this.core.length }));
+    this.ghost?.update(this.core.length);
 
     // «Жор»: сколько еды съедено в скользящее окно 12 секунд.
     const now = this.timer?.elapsedMs() ?? 0;
@@ -183,11 +226,19 @@ export class Game extends Scene {
     this.placeFood();
     this.foodC.setScale(0.4);
     this.tweens.add({ targets: this.foodC, scale: 1, duration: 220, ease: 'Back.easeOut' });
+
+    // Первое яблоко закрывает обучение: дальше обычный забег со счётом в шапке.
+    this.tutorial?.done();
   }
 
   /** Врезались: тряска, красная вспышка поля и переход к результату. */
   private onCrash() {
     if (this.finished) return;
+    // В обучении столкновение прощаем: правило — строкой, змейка снова на старте.
+    if (this.tutorial?.active) {
+      this.forgiveCrash();
+      return;
+    }
     this.finished = true;
     // Короткий удар в момент столкновения; вердикт забега прозвучит на экране итогов.
     playSound('wrong');
@@ -268,7 +319,8 @@ export class Game extends Scene {
 
   /** Команда поворота: первая — запускает партию (до неё змейка стоит и ждёт). */
   private command(dir: Dir) {
-    if (this.finished || this.tutorialActive) return;
+    // Под шитом паузы свайпы и стрелки клавиатуры не должны ни поворачивать, ни стартовать.
+    if (this.finished || this.inputLocked || this.sheetPaused) return;
     if (!this.started) this.startRun();
     this.core.turn(dir);
   }
@@ -277,47 +329,117 @@ export class Game extends Scene {
     this.started = true;
     this.acc = 0;
     this.timer = createRoundTimer(() => performance.now());
-    this.session.start();
+    if (!this.sessionStarted) {
+      this.sessionStarted = true;
+      this.session.start();
+    }
     this.timer.start();
-    this.tweens.add({
-      targets: this.hintText, alpha: 0, y: this.hintText.y + 8, duration: 240,
-      onComplete: () => this.hintText.setVisible(false),
-    });
+    // Приложение свёрнуто (PAUSE без RESUME) — часы запустит его RESUME.
+    if (this.paused) this.timer.pause();
+    if (this.hintText.visible) {
+      this.tweens.add({
+        targets: this.hintText, alpha: 0, y: this.hintText.y + 8, duration: 240,
+        onComplete: () => this.hintText.setVisible(false),
+      });
+    }
+    this.tutorial?.refresh();
   }
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
 
-  /** «Как играть» из меню: настоящее поле, но без сессии и таймера; по концу — в меню. */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
+  /**
+   * Обучение в один шаг: поле видно, змейка и яблоко обведены, внизу одна фраза.
+   * Забег и так начинается со свайпа, поэтому свайп — настоящий ход, а первое
+   * съеденное яблоко закрывает обучение. Столкновение до него прощается.
+   */
+  private startTutorial() {
+    this.header?.setChipsVisible(false);
+    // Подсказку жеста под полем заменяет полоса обучения.
+    this.tweens.killTweensOf(this.hintText);
+    this.hintText.setVisible(false);
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove'),
+      targets: () => [this.started ? this.headRect() : this.snakeRect(), this.foodRect()],
+      pad: 6,
+      radius: 12,
+      // Змейка едет под подсказкой — поле приглушаем мягче, чтобы видеть стены.
+      veilAlpha: 0.4,
+      onDone: () => {
         setOnboarded();
-        this.scene.start('MainMenu');
-      });
+        this.header?.setChipsVisible(true);
+        // «Пропустить» до первого свайпа — возвращаем подсказку жеста.
+        if (!this.started && !this.finished) {
+          this.hintText.setVisible(true).setAlpha(1);
+          this.tweens.add({
+            targets: this.hintText, alpha: 0.35, duration: 780, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+          });
+        }
+      },
     });
   }
 
-  /** Первая партия — показываем обучение один раз (змейка всё равно ждёт первого свайпа). */
-  private maybeShowOnboarding() {
-    if (hasOnboarded()) return;
-    this.tutorialActive = true;
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
-        setOnboarded();
-        this.tutorialActive = false;
-      });
+  /**
+   * Столкновение в обучении: вспышка, правило одной строкой (один раз на
+   * устройство) и новая змейка на старте. Сессия не перезапускается — GAME_START
+   * уже ушёл; часы забега начнутся заново со следующего свайпа.
+   */
+  private forgiveCrash() {
+    playSound('wrong');
+    this.cameras.main.shake(160, 0.008);
+    const flash = this.add
+      .rectangle(BOARD_LEFT + BOARD_W / 2, BOARD_TOP + BOARD_H / 2, BOARD_W, BOARD_H, COLORS.crash, 0.3)
+      .setDepth(7);
+    this.tweens.add({
+      targets: flash, alpha: 0, duration: 420, ease: 'Quad.easeOut',
+      onComplete: () => flash.destroy(),
     });
+    showRuleOnce(this, 'snake:crash', t(this.locale, 'rule.crash'));
+
+    this.core = this.makeTutorialCore();
+    this.prevBody = this.core.body.map((p) => ({ ...p }));
+    this.started = false;
+    this.acc = 0;
+    this.timer = undefined;
+    this.eatTimes = [];
+    this.swipeFrom = null;
+    this.placeFood();
+    this.renderSnake(1);
+    this.updateChallengeLine();
+    this.tutorial?.refresh();
+    // Палец ещё на экране после свайпа в стену — не стартуем сразу же заново.
+    this.inputLocked = true;
+    this.time.delayedCall(450, () => { this.inputLocked = false; });
   }
 
-  /** Три шага на настоящем поле: змейка → еда → границы. */
-  private tutorialSteps(): OnboardingStep[] {
-    return [
-      { textKey: 'onboarding.move', target: () => this.snakeRect(), pad: 8, radius: 14 },
-      { textKey: 'onboarding.food', target: () => this.foodRect(), pad: 14, radius: 14 },
-      { textKey: 'onboarding.crash', target: () => this.boardRect(), pad: 6, radius: 18 },
-    ];
+  private makeCore(): SnakeGame {
+    return createSnakeGame(COLS, ROWS, mulberry32(Math.floor(Math.random() * 2 ** 31)));
+  }
+
+  /**
+   * Забег для обучения: первое яблоко почти гарантированно достижимо — впереди
+   * по курсу или в нескольких клетках от головы, не позади хвоста и не под
+   * полосой подсказки. Дальше еда появляется как обычно.
+   */
+  private makeTutorialCore(): SnakeGame {
+    const maxRow = Math.floor((TUTORIAL_SAFE_BOTTOM - BOARD_TOP) / CELL) - 1;
+    let fallback: SnakeGame | null = null;
+    for (let i = 0; i < 200; i++) {
+      const core = this.makeCore();
+      fallback ??= core;
+      const head = core.body[0];
+      const f = core.food;
+      if (f.y > maxRow) continue;
+      if (f.x <= head.x) continue; // позади головы — нужен разворот
+      if (Math.abs(f.y - head.y) > 4 || f.x - head.x > 6) continue;
+      return core;
+    }
+    return fallback ?? this.makeCore();
+  }
+
+  private headRect(): Rect {
+    const h = this.core.body[0];
+    return { x: BOARD_LEFT + h.x * CELL, y: BOARD_TOP + h.y * CELL, w: CELL, h: CELL };
   }
 
   private snakeRect(): Rect {
@@ -337,31 +459,28 @@ export class Game extends Scene {
     return { x: BOARD_LEFT + f.x * CELL, y: BOARD_TOP + f.y * CELL, w: CELL, h: CELL };
   }
 
-  private boardRect(): Rect {
-    return { x: BOARD_LEFT, y: BOARD_TOP, w: BOARD_W, h: BOARD_H };
-  }
-
   // ── HUD ──────────────────────────────────────────────────────────────────────
 
+  /**
+   * Шапка каталога: стрелка (пауза), название игры и чипы счёта и длины.
+   * Раньше здесь были белая пилюля «Назад» (сразу терявшая забег) и крупный счёт
+   * по центру над полем; теперь счёт — в чипе шапки, дубля на поле нет.
+   */
   private buildHud() {
-    this.buildBackButton();
-    this.lengthText = this.add
-      .text(W - 20, 34, t(this.locale, 'game.length', { n: this.core.length }), {
-        fontFamily: FONT, fontSize: 15, color: COLORS.headMuted,
-      })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
-    // Счёт — крупно: аркада, его видно боковым зрением.
-    this.scoreText = this.add
-      .text(W / 2, 108, String(this.core.score), {
-        fontFamily: FONT, fontSize: 46, color: COLORS.headText, fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-    // Активное испытание с живым прогрессом — под счётом; когда всё пройдено, строки нет.
+    this.header = makeGameHeader(this, {
+      title: t(this.locale, 'app.title'),
+      chips: [
+        { id: 'score', text: String(this.core.score), widest: '8888' },
+        { id: 'length', text: t(this.locale, 'game.length', { n: this.core.length }), widest: t(this.locale, 'game.length', { n: 288 }) },
+      ],
+      onBack: () => this.openPause(),
+    });
+    this.ghost = makeRecordGhost(this, TOP_BAR_H + 3, loadBests('snake').lengthMax ?? 0);
+    this.ghost.update(this.core.length);
+    // Активное испытание с живым прогрессом — под шапкой; когда всё пройдено, строки нет.
     if (this.challenge) {
       this.challengeText = this.add
-        .text(W / 2, 146, this.challengeLabel(), {
+        .text(W / 2, CHALLENGE_Y, this.challengeLabel(), {
           fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
         })
         .setOrigin(0.5)
@@ -380,9 +499,60 @@ export class Game extends Scene {
     });
   }
 
-  /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
-  private buildBackButton() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+  // ── Пауза ────────────────────────────────────────────────────────────────────
+
+  /** Стрелка в шапке: пауза с честным выбором, а не мгновенная потеря забега. */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    this.freezeWorld();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      kind: 'run',
+      summary: t(this.locale, 'pause.summary', { score: this.core.score, n: this.core.length }),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => { this.pause = null; this.thawWorld(); },
+      onRestart: () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
+  }
+
+  /**
+   * Мир забега стоит: тик змейки (update не копит acc), часы забега (survivedSec,
+   * окно «жора»), таймеры сцены и уже идущие твины (пульс еды, вспышка съеденного).
+   * Твины шита создаются после заморозки и едут как обычно.
+   */
+  private freezeWorld() {
+    this.sheetPaused = true;
+    this.timer?.pause();
+    this.time.paused = true;
+    this.frozenTweens = this.tweens.getTweens().filter((tw) => tw.isPlaying());
+    for (const tw of this.frozenTweens) tw.pause();
+  }
+
+  private thawWorld() {
+    this.sheetPaused = false;
+    this.time.paused = false;
+    for (const tw of this.frozenTweens) tw.resume();
+    this.frozenTweens = [];
+    // Отсчёт свайпа начат до паузы — после неё начинаем заново.
+    this.swipeFrom = null;
+    // Если приложение тоже на паузе (PAUSE без RESUME), часы запустит его RESUME.
+    if (!this.paused) this.timer?.resume();
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.pause = null;
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
   }
 
   /** «Съешь 12 яблок за забег · 7/12» — активное испытание с прогрессом. */
@@ -411,9 +581,11 @@ export class Game extends Scene {
     this.challengeText?.setText(this.challengeLabel());
   }
 
-  private goBack() {
-    if (this.finished || this.tutorialActive) return;
+  private exitToMenu() {
+    if (this.finished) return;
     this.finished = true;
+    // Выход из паузы: часы и таймеры сцены снова идут, иначе fadeOut камеры не доиграет.
+    this.time.paused = false;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
   }

@@ -1,16 +1,19 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { applyTheme, setupCamera, makeBackButton, playSound, sparkle } from '../ui';
+import {
+  applyTheme, setupCamera, playSound, sparkle, makeGameHeader, openPauseSheet, setBackHandler, TOP_BAR_H,
+  runFirstMoveTutorial, showRuleOnce, type FirstMoveTutorial, type Rect,
+  type GameHeader, type PauseSheet,
+} from '../ui';
 import { COLORS, FONT } from '../palette';
 import { DPR } from '../dpr';
-import { levelAt } from '../../core/levels';
+import { GHOST_ALPHA, levelAt } from '../../core/levels';
 import { createJigsawGame, nearestSlot, slotCenter, type JigsawGame } from '../../core/jigsaw';
 import { mulberry32 } from '../../core/rng';
 import { computeScore } from '../../core/score';
 import { BASE_FRAME, buildPictureTexture, pieceFrameKey, PICTURE_SIZE } from '../picture';
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
-import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
@@ -20,18 +23,24 @@ const CX = W / 2;
 /** Поле сборки: квадрат под шапкой, пиксель в пиксель с текстурой картинки. */
 const BOARD = PICTURE_SIZE;
 const BOARD_LEFT = (W - BOARD) / 2;
-const BOARD_TOP = 96;
+const BOARD_TOP = TOP_BAR_H + 16; // поле сразу под шапкой партии
 /** Лоток с кусочками под полем. */
 const TRAY_TOP = BOARD_TOP + BOARD + 24;
 const TRAY_H = 104;
-/** Сколько кусочков лежит в лотке одновременно — детской руке хватает трёх. */
-const TRAY_SLOTS = 3;
-/** Кусочек в лотке не крупнее этого, иначе три штуки не помещаются в ряд. */
+/** Кусочек в лотке не крупнее этого — крупно, но с зазором между соседями. */
 const TRAY_PIECE_MAX = 78;
+/** Зазор между кусочками в лотке, когда их там четыре. */
+const TRAY_GAP = 8;
+/** Кусочек в руке во время обучения — над приглушением (900), под паузой (1000). */
+const TUTORIAL_DRAG_DEPTH = 920;
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
   private level = 1;
+  /** Партия — уровень дня: параметры уровня лестницы, расклад по зерну от даты. */
+  private daily = false;
+  /** Сколько кусочков лежит в лотке одновременно — рычаг уровня (3 или 4). */
+  private traySlots = 3;
   private session!: Session;
   private core!: JigsawGame;
   private timer?: RoundTimer;
@@ -41,13 +50,16 @@ export class Game extends Scene {
   private textureKey = '';
   private ghost?: Phaser.GameObjects.Image;
   private board!: Phaser.GameObjects.Graphics;
-  private progressText!: Phaser.GameObjects.Text;
+  private header?: GameHeader;
+  private pause: PauseSheet | null = null;
   private hintText!: Phaser.GameObjects.Text;
   /** Кусочки, лежащие в лотке: id → спрайт. */
   private trayViews = new Map<number, Phaser.GameObjects.Image>();
   private finished = false;
+  /** Партия стоит: пауза приложения (PAUSE от моста) или открытый шит паузы. */
   private paused = false;
-  private tutorialActive = false;
+  /** Обучение в один шаг: первый кусочек на своём месте — настоящий ход (T6). */
+  private tutorial: FirstMoveTutorial | null = null;
 
   constructor() {
     super('Game');
@@ -58,60 +70,76 @@ export class Game extends Scene {
     this.trayViews = new Map();
     this.finished = false;
     this.paused = false;
-    this.tutorialActive = false;
+    this.tutorial = null;
     this.ghost = undefined;
+    this.header = undefined;
+    this.pause = null;
+    // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.level = (this.registry.get('level') as number) ?? 1;
+    // Уровень дня: параметры уровня лестницы, но порядок кусочков по зерну от даты — один на всех.
+    this.daily = this.registry.get('mode') === 'dailyLevel';
     this.session = this.registry.get('session') as Session;
 
     const params = levelAt(this.level).params;
-    this.core = createJigsawGame(
-      { cols: params.cols, rows: params.rows },
-      mulberry32(Math.floor(Math.random() * 2 ** 31)),
-    );
+    this.traySlots = params.tray;
+    const seed = this.daily
+      ? (this.registry.get('dailySeed') as number)
+      : Math.floor(Math.random() * 2 ** 31);
+    this.core = createJigsawGame({ cols: params.cols, rows: params.rows }, mulberry32(seed));
     this.pieceW = BOARD / this.core.cols;
     this.pieceH = BOARD / this.core.rows;
     this.textureKey = buildPictureTexture(this, params.picture, this.core.cols, this.core.rows);
 
     this.buildHud();
-    this.buildBoard(params.ghost);
+    this.buildBoard(GHOST_ALPHA[params.hint] ?? 0);
     this.buildTray();
     this.refillTray();
     this.bindDrag();
 
-    // «Как играть» из меню: обучение поверх настоящего поля, без сессии и таймера.
-    if (this.registry.get('howto')) {
-      this.runHowto();
-      return;
-    }
-
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') { this.paused = true; this.timer?.pause(); }
-      else if (e.type === 'RESUME') { this.paused = false; this.timer?.resume(); }
+      // Приложение вернулось, но шит паузы открыт — партия ждёт «Продолжить».
+      // В обучении часы стоят до первого кусочка на месте.
+      else if (e.type === 'RESUME' && !this.pause?.open) {
+        this.paused = false;
+        if (!this.tutorial?.active) this.timer?.resume();
+      }
     });
     this.events.once('shutdown', off);
 
     this.timer = createRoundTimer(() => performance.now());
     this.session.start();
     this.timer.start();
-    this.maybeShowOnboarding();
+
+    // «Как играть» из паузы — то же обучение на новой партии.
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
+    if (howto || !hasOnboarded()) this.startTutorial();
   }
 
   // ── Экран ────────────────────────────────────────────────────────────────────
 
+  /**
+   * Шапка каталога: стрелка (пауза), «Картинка N» или «Уровень дня» и чип
+   * «собрано из скольких». Таймера и проигрыша у пазла нет — чип один.
+   * Раньше здесь были белая пилюля «Назад» и текстовый счётчик справа.
+   */
   private buildHud() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
-
-    this.progressText = this.add
-      .text(W - 20, 34, t(this.locale, 'game.progress', { n: 0, total: this.core.total }), {
-        fontFamily: FONT, fontSize: 15, color: COLORS.headMuted, fontStyle: 'bold',
-      })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
+    const total = this.core.total;
+    this.header = makeGameHeader(this, {
+      // Детская игра: в шапке название, а не «Картинка N» — номер ребёнку ничего не говорит.
+      title: t(this.locale, 'app.title'),
+      chips: [
+        { id: 'progress', text: this.progressLabel(), widest: t(this.locale, 'game.progress', { n: total, total }) },
+      ],
+      onBack: () => this.openPause(),
+    });
 
     this.hintText = this.add
       .text(CX, TRAY_TOP + TRAY_H + 22, t(this.locale, 'game.take'), {
@@ -122,17 +150,17 @@ export class Game extends Scene {
       .setResolution(DPR);
   }
 
-  /** Поле: сетка пустых клеток и (на ранних уровнях) бледная картинка-подсказка. */
-  private buildBoard(withGhost: boolean) {
+  /** Поле: сетка пустых клеток и бледная картинка-подсказка; `ghostAlpha` 0 — без неё. */
+  private buildBoard(ghostAlpha: number) {
     this.board = this.add.graphics();
     this.board.fillStyle(COLORS.slot, 1)
       .fillRoundedRect(BOARD_LEFT, BOARD_TOP, BOARD, BOARD, 14);
 
-    if (withGhost) {
+    if (ghostAlpha > 0) {
       this.ghost = this.add
         .image(BOARD_LEFT + BOARD / 2, BOARD_TOP + BOARD / 2, this.textureKey, BASE_FRAME)
         .setDisplaySize(BOARD, BOARD)
-        .setAlpha(0.32);
+        .setAlpha(ghostAlpha);
     }
 
     // Линии сетки — чтобы ребёнок видел, куда именно класть кусочек.
@@ -157,13 +185,14 @@ export class Game extends Scene {
 
   /** Позиция i-го места в лотке. */
   private trayPos(i: number): { x: number; y: number } {
-    const step = BOARD / TRAY_SLOTS;
+    const step = BOARD / this.traySlots;
     return { x: BOARD_LEFT + step * (i + 0.5), y: TRAY_TOP + TRAY_H / 2 };
   }
 
-  /** Масштаб кусочка в лотке: крупный, но чтобы три штуки помещались в ряд. */
+  /** Масштаб кусочка в лотке: крупный, но чтобы все места лотка помещались в ряд. */
   private trayScale(): number {
-    const fit = Math.min(TRAY_PIECE_MAX / this.pieceW, (TRAY_H - 18) / this.pieceH);
+    const maxW = Math.min(TRAY_PIECE_MAX, BOARD / this.traySlots - TRAY_GAP);
+    const fit = Math.min(maxW / this.pieceW, (TRAY_H - 18) / this.pieceH);
     return Math.min(1, fit);
   }
 
@@ -176,9 +205,9 @@ export class Game extends Scene {
     for (const [, view] of this.trayViews) taken.add(view.getData('trayIndex') as number);
 
     for (const piece of queue) {
-      if (this.trayViews.size >= TRAY_SLOTS) break;
+      if (this.trayViews.size >= this.traySlots) break;
       while (taken.has(slotIndex)) slotIndex++;
-      if (slotIndex >= TRAY_SLOTS) break;
+      if (slotIndex >= this.traySlots) break;
       taken.add(slotIndex);
       this.spawnTrayPiece(piece, slotIndex);
       slotIndex++;
@@ -212,8 +241,9 @@ export class Game extends Scene {
 
   private bindDrag() {
     this.input.on('dragstart', (_p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Image) => {
-      if (this.tutorialActive || this.finished || this.paused) return;
-      obj.setDepth(20);
+      if (this.finished || this.paused) return;
+      // В обучении кусочек в руке — над приглушением, иначе его «гасит» по пути к месту.
+      obj.setDepth(this.tutorial?.active ? TUTORIAL_DRAG_DEPTH : 20);
       // В руке кусочек показывается в натуральную величину поля — так видно, куда он встанет.
       this.tweens.add({
         targets: obj,
@@ -223,12 +253,17 @@ export class Game extends Scene {
     });
 
     this.input.on('drag', (_p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Image, x: number, y: number) => {
-      if (this.tutorialActive || this.finished || this.paused) return;
+      if (this.finished || this.paused) return;
       obj.setPosition(x, y);
     });
 
     this.input.on('dragend', (_p: Phaser.Input.Pointer, obj: Phaser.GameObjects.Image) => {
-      if (this.tutorialActive || this.finished || this.paused) return;
+      if (this.finished) return;
+      // Пауза посреди перетаскивания — кусочек возвращается в лоток, а не висит в воздухе.
+      if (this.paused) {
+        this.returnToTray(obj);
+        return;
+      }
       this.tryPlace(obj);
     });
   }
@@ -258,6 +293,8 @@ export class Game extends Scene {
     }
 
     playSound('ok');
+    // Первый кусочек на месте закрывает обучение: дальше обычная партия.
+    this.tutorial?.done();
 
     // Кусочек встал: фиксируем на поле ровно в клетке.
     const center = slotCenter(slot, this.core.cols, this.pieceW, this.pieceH);
@@ -276,9 +313,7 @@ export class Game extends Scene {
   }
 
   private afterPlace() {
-    this.progressText.setText(
-      t(this.locale, 'game.progress', { n: this.core.placed, total: this.core.total }),
-    );
+    this.header?.setChip('progress', this.progressLabel());
     if (this.core.isComplete) {
       this.ghost?.destroy();
       this.time.delayedCall(420, () => this.endGame());
@@ -314,6 +349,8 @@ export class Game extends Scene {
       targets: view, angle: { from: -6, to: 6 }, duration: 70, yoyo: true, repeat: 1,
       onComplete: () => view.setAngle(0),
     });
+    // Правило про ошибку — в момент первой ошибки, а не карточкой заранее.
+    showRuleOnce(this, 'jigsaw:wrong', t(this.locale, 'rule.wrong'));
     this.hintText.setText(t(this.locale, 'game.almost'));
     this.time.delayedCall(1400, () => this.hintText.setText(t(this.locale, 'game.take')));
   }
@@ -329,19 +366,61 @@ export class Game extends Scene {
     const score = computeScore({ pieces, wrongDrops });
 
     void this.session
-      .finish({ level: this.level, pieces, wrongDrops, durationMs })
+      .finish({ level: this.level, mode: this.daily ? 'dailyLevel' : 'level', pieces, wrongDrops, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
-      locale: this.locale, level: this.level, pieces, wrongDrops, durationMs, score,
+      locale: this.locale, level: this.level, daily: this.daily, pieces, wrongDrops, durationMs, score,
       picture: levelAt(this.level).params.picture,
     });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }
 
-  private goBack() {
-    if (this.finished || this.tutorialActive) return;
+  // ── Шапка партии и пауза ─────────────────────────────────────────────────────
+
+  /** «3 из 9» — сколько кусочков уже на поле. */
+  private progressLabel(): string {
+    return t(this.locale, 'game.progress', { n: this.core?.placed ?? 0, total: this.core?.total ?? 0 });
+  }
+
+  /** Стрелка в шапке: пауза с выбором, а не мгновенный выход. */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    this.paused = true;
+    this.timer?.pause();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      // Таймера и проигрыша нет — сводка короткая: сколько уже собрано.
+      summary: t(this.locale, 'pause.progress', { progress: this.progressLabel() }),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => {
+        this.pause = null;
+        this.paused = false;
+        // В обучении часы стоят до первого кусочка — «Продолжить» их не запускает.
+        if (!this.tutorial?.active) this.timer?.resume();
+      },
+      onRestart: () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
+  }
+
+  private exitToMenu() {
+    if (this.finished) return;
     this.finished = true;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
@@ -349,43 +428,70 @@ export class Game extends Scene {
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
 
-  /** «Как играть» из меню: настоящее поле, но без сессии и таймера; по концу — в меню. */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
+  /**
+   * Обучение в один шаг: поле видно, один кусочек в лотке и его место на поле
+   * обведены и пульсируют, внизу одна фраза. Перетащить кусочек — настоящий ход;
+   * часы и счётчик включаются после первого кусочка на месте. Ошибка
+   * объясняется в момент ошибки. Историю про картинку обещает меню — здесь
+   * её не повторяем.
+   */
+  private startTutorial() {
+    const piece = this.pickTutorialPiece();
+    if (piece === null) return;
+    this.timer?.pause();
+    this.header?.setChipsVisible(false);
+    // Строка «Возьми кусочек…» под лотком дублирует полосу обучения.
+    this.hintText.setVisible(false);
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove'),
+      targets: () => {
+        const view = this.trayViews.get(piece);
+        // Кусочек уже в руке или на месте — подсвечиваем только место.
+        return view ? [this.trayPieceRect(view), this.slotRect(piece)] : [this.slotRect(piece)];
+      },
+      pad: 4,
+      radius: 10,
+      onDone: () => {
         setOnboarded();
-        this.scene.start('MainMenu');
-      });
+        this.header?.setChipsVisible(true);
+        this.hintText.setVisible(true);
+        if (!this.pause?.open && !this.paused) this.timer?.resume();
+      },
     });
   }
 
-  /** Первая партия — показываем обучение один раз. */
-  private maybeShowOnboarding() {
-    if (hasOnboarded()) return;
-    this.tutorialActive = true;
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
-        setOnboarded();
-        this.tutorialActive = false;
-      });
-    });
+  /**
+   * Кусочек для первого хода: из лежащих в лотке — тот, чьё место на поле
+   * ближе всего к нему. Короткий путь пальца — малышу проще дотянуть.
+   */
+  private pickTutorialPiece(): number | null {
+    let best: number | null = null;
+    let bestDist = Infinity;
+    for (const [piece, view] of this.trayViews) {
+      const pos = this.trayPos(view.getData('trayIndex') as number);
+      const c = slotCenter(piece, this.core.cols, this.pieceW, this.pieceH);
+      const d = Math.hypot(BOARD_LEFT + c.x - pos.x, BOARD_TOP + c.y - pos.y);
+      if (d < bestDist) { bestDist = d; best = piece; }
+    }
+    return best;
   }
 
-  private tutorialSteps(): OnboardingStep[] {
-    return [
-      { textKey: 'onboarding.take', target: (): Rect => this.trayRect(), pad: 8, radius: 14 },
-      { textKey: 'onboarding.place', target: (): Rect => this.boardRect(), pad: 6, radius: 16 },
-      { textKey: 'onboarding.story', target: (): Rect => this.boardRect(), pad: 6, radius: 16 },
-    ];
+  /** Кусочек в лотке — по его месту в лотке, а не по текущему размеру (он «выпрыгивает»). */
+  private trayPieceRect(view: Phaser.GameObjects.Image): Rect {
+    const pos = this.trayPos(view.getData('trayIndex') as number);
+    const scale = this.trayScale();
+    const w = this.pieceW * scale;
+    const h = this.pieceH * scale;
+    return { x: pos.x - w / 2, y: pos.y - h / 2, w, h };
   }
 
-  private trayRect(): Rect {
-    return { x: BOARD_LEFT, y: TRAY_TOP, w: BOARD, h: TRAY_H };
-  }
-
-  private boardRect(): Rect {
-    return { x: BOARD_LEFT, y: BOARD_TOP, w: BOARD, h: BOARD };
+  /** Место кусочка на поле. */
+  private slotRect(piece: number): Rect {
+    const c = slotCenter(piece, this.core.cols, this.pieceW, this.pieceH);
+    return {
+      x: BOARD_LEFT + c.x - this.pieceW / 2, y: BOARD_TOP + c.y - this.pieceH / 2,
+      w: this.pieceW, h: this.pieceH,
+    };
   }
 }

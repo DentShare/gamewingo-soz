@@ -6,16 +6,20 @@ import { tokenizeWord } from '../../core/tokenizer';
 import { loadDictionary, type Dictionary } from '../../core/dictionary';
 import { createGame, type Game as CoreGame } from '../../core/gameState';
 import { pickDailyWord, dailyIndex } from '../../core/dailyWord';
-import { saveDaily, loadDaily, hasOnboarded, setOnboarded } from '../../core/persistence';
+import { saveDaily, loadDaily, hasOnboarded, setOnboarded, recordDailyStats } from '../../core/persistence';
+import { rareAnswers } from '../../core/rare';
 import { keyboardFor, ENTER, BACKSPACE, UZ_DIGRAPH_KEYS, type Key } from '../keyboards';
-import { paletteFor, statusColor, COLORS, FONT, type Palette } from '../palette';
-import { toast, applyTheme, setupCamera, makeBackButton, makeKeyCap, type KeyCap, playSound } from '../ui';
+import { paletteFor, statusColor, COLORS, FONT, HIGH_CONTRAST, type Palette } from '../palette';
+import {
+  toast, applyTheme, setupCamera, makeKeyCap, type KeyCap, playSound, makeGameHeader, openPauseSheet,
+  setBackHandler, TOP_BAR_H, VIEW_BOTTOM, runFirstMoveTutorial, showRuleOnce, uiText,
+  type FirstMoveTutorial, type Rect, type GameHeader, type PauseSheet,
+} from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
-import { createRoundTimer, type RoundTimer } from '../roundTimer';
-import { startOnboarding, type Rect } from '../onboarding';
+import { createRoundTimer, formatClock, type RoundTimer } from '../roundTimer';
 import confetti from 'canvas-confetti';
 
 import ansRu from '../../data/answers.ru.json';
@@ -28,11 +32,22 @@ const DATA: Record<Locale, { answers: string[]; allowed: string[] }> = {
   uz: { answers: ansUz, allowed: alwUz },
 };
 
+/** Поднабор редких слов по языку — считается один раз за сеанс (частоты по всему словарю). */
+const RARE = new Map<Locale, string[]>();
+function rarePool(locale: Locale): string[] {
+  let pool = RARE.get(locale);
+  if (!pool) {
+    pool = rareAnswers(DATA[locale].answers, DATA[locale].allowed, locale);
+    RARE.set(locale, pool);
+  }
+  return pool;
+}
+
 const TILE = 54;
 const GAP = 6;
 const BOARD_W = WORD_LENGTH * TILE + (WORD_LENGTH - 1) * GAP;
 const BOARD_X = (400 - BOARD_W) / 2;
-const BOARD_Y = 70;
+const BOARD_Y = TOP_BAR_H + 16; // поле сразу под шапкой партии
 
 interface Tile { rect: Phaser.GameObjects.Rectangle; text: Phaser.GameObjects.Text; }
 
@@ -54,12 +69,13 @@ export class Game extends Scene {
   private current: string[] = [];
   private timer!: RoundTimer;
   private finished = false;
-  private tutorialActive = false;
+  /** Обучение в один шаг: первый отправленный ряд — настоящий ход (T6). */
+  private tutorial: FirstMoveTutorial | null = null;
+  private header?: GameHeader;
+  private pause: PauseSheet | null = null;
 
-  // Зоны для обучения (заполняются при построении доски/клавиатуры).
-  private boardBounds!: Rect;
+  /** Клавиатура целиком — цель обучения (заполняется при построении). */
   private keyboardBounds!: Rect;
-  private enterKeyBounds!: Rect;
 
   constructor() {
     super('Game');
@@ -69,11 +85,15 @@ export class Game extends Scene {
     // Phaser переиспользует один экземпляр сцены между рестартами — сбрасываем изменяемое
     // состояние здесь (инициализаторы полей выполняются только при конструировании).
     this.finished = false;
-    this.tutorialActive = false;
+    this.tutorial = null;
     this.current = [];
     this.tiles = [];
     this.rowContainers = [];
     this.keyObjects = new Map();
+    this.header = undefined;
+    this.pause = null;
+    // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
@@ -87,11 +107,9 @@ export class Game extends Scene {
     this.session = this.registry.get('session') as Session;
     this.palette = paletteFor(!!this.registry.get('highContrast'));
 
-    // Режим «Как играть»: показываем обучение поверх пустого поля, по концу — в меню.
-    if (this.registry.get('howto')) {
-      this.runHowto();
-      return;
-    }
+    // «Как играть» из паузы — то же обучение на этой же партии (флаг одноразовый).
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
 
     const { answers, allowed } = DATA[this.locale];
     this.dict = loadDictionary(this.locale, answers, allowed);
@@ -114,7 +132,7 @@ export class Game extends Scene {
 
     this.buildBoard();
     this.buildKeyboard();
-    this.buildBackButton();
+    this.buildHeader();
 
     // Восстановить сохранённые ряды (daily, партия в процессе).
     if (this.mode === 'daily') {
@@ -127,6 +145,7 @@ export class Game extends Scene {
         this.refreshKeyColors();
       }
     }
+    this.syncAttempt();
 
     // Таймер + старт сессии.
     this.timer = createRoundTimer(() => performance.now());
@@ -135,70 +154,140 @@ export class Game extends Scene {
 
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') this.timer.pause();
-      else if (e.type === 'RESUME') this.timer.resume();
+      // Игрок сам поставил паузу — время стоит, пока он не нажмёт «Продолжить».
+      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorial?.active) this.timer.resume();
     });
     this.events.once('shutdown', off);
 
     this.bindPhysicalKeyboard();
-    this.maybeShowOnboarding();
+    if (howto || (!hasOnboarded() && this.coreGame.guessesUsed === 0)) this.startTutorial();
+    else this.announceRules();
   }
 
-  /** «Как играть» из меню: строим поле, показываем обучение, по завершении — обратно в меню. */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-    this.buildBoard();
-    this.buildKeyboard();
-    this.buildBackButton();
-    const back = () => {
-      setOnboarded();
-      this.scene.start('MainMenu');
+  update() {
+    const limit = this.params.timeLimitSec;
+    if (!limit || !this.header || !this.timer || this.finished) return;
+    const left = this.secondsLeft();
+    // Последние десять секунд — белый чип с красным текстом.
+    this.header.setChip('time', formatClock(left), left <= 10);
+    if (left <= 0) this.timeUp();
+  }
+
+  /** Сколько секунд осталось на слово (таймер стоит в паузе и в обучении). */
+  private secondsLeft(): number {
+    const elapsed = Math.floor((this.timer?.elapsedMs() ?? 0) / 1000);
+    return Math.max(0, this.params.timeLimitSec - elapsed);
+  }
+
+  /** Время вышло: слово не отгадано, как после последней попытки. */
+  private timeUp() {
+    if (this.finished || this.coreGame.status !== 'in_progress') return;
+    playSound('wrong');
+    this.say(t(this.locale, 'game.fail.time'));
+    this.coreGame.status = 'lost';
+    this.endGame(false);
+  }
+
+  /**
+   * Правила уровня — строкой перед стартом первого уровня, где они появились
+   * (строгий режим, редкие слова, таймер). Каждое — один раз за всё время;
+   * если на уровне новых два, второе идёт после первого, а не поверх.
+   */
+  private announceRules() {
+    if (this.mode !== 'practice') return;
+    const p = this.params;
+    const rules: Array<[string, string]> = [];
+    if (p.strict) rules.push(['soz:strict', t(this.locale, 'rule.strict')]);
+    if (p.rare) rules.push(['soz:rare', t(this.locale, 'rule.rare')]);
+    if (p.timeLimitSec) rules.push(['soz:timer', t(this.locale, 'rule.timer', { t: formatClock(p.timeLimitSec) })]);
+    const next = (i: number) => {
+      if (i >= rules.length || this.finished) return;
+      const [id, text] = rules[i];
+      // Показанная строка держится ≥ 2 с — следующую ставим после неё, уже виденную пропускаем.
+      if (showRuleOnce(this, id, text)) this.time.delayedCall(Math.max(2000, text.length * 45) + 500, () => next(i + 1));
+      else next(i + 1);
     };
-    this.time.delayedCall(360, () => {
-      startOnboarding(
-        this,
-        this.locale,
-        this.palette,
-        { board: this.boardBounds, keyboard: this.keyboardBounds, enterKey: this.enterKeyBounds },
-        back,
-      );
-    });
+    next(0);
   }
 
-  /** Первый запуск (свежая партия) — показываем обучение один раз. Таймер на паузе. */
-  private maybeShowOnboarding() {
-    if (this.finished || hasOnboarded() || this.coreGame.guessesUsed > 0) return;
-    this.tutorialActive = true;
+  /**
+   * Обучение в один шаг: поле видно, текущая строка и клавиатура обведены и
+   * пульсируют, внизу одна фраза. Первый отправленный ряд — настоящий ход; чип
+   * попытки и часы включаются после него. Что значат цвета — строкой в момент,
+   * когда они впервые появились на плитках.
+   */
+  private startTutorial() {
     this.timer.pause();
-    // Даём кадру отрисоваться (и завершиться fade-in камеры), затем открываем оверлей.
-    this.time.delayedCall(360, () => {
-      startOnboarding(
-        this,
-        this.locale,
-        this.palette,
-        { board: this.boardBounds, keyboard: this.keyboardBounds, enterKey: this.enterKeyBounds },
-        () => {
-          setOnboarded();
-          this.tutorialActive = false;
-          this.timer.resume();
-        },
-      );
+    this.header?.setChipsVisible(false);
+    const row = this.coreGame.guessesUsed;
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove'),
+      targets: () => [this.rowRect(this.coreGame.guessesUsed), this.keyboardBounds],
+      pad: 6,
+      radius: 12,
+      barTop: (h) => this.tutorialBarTop(h, row),
+      onDone: () => {
+        setOnboarded();
+        this.header?.setChipsVisible(true);
+        if (!this.pause?.open) this.timer.resume();
+        this.announceRules();
+      },
     });
   }
 
+  /**
+   * Полоса обучения живёт у нижнего края. На экранах 16:9 (логическая высота 720)
+   * узбекская клавиатура в четыре ряда уходит под неё — и «галочка» перекрыта.
+   * Тогда ставим полосу на пустые строки поля между текущей строкой и клавиатурой:
+   * они всё равно приглушены.
+   */
+  private tutorialBarTop(h: number, row: number): number {
+    const bottomTop = VIEW_BOTTOM - 16 - h - 8;
+    const kb = this.keyboardBounds;
+    if (kb.y + kb.h + 8 <= bottomTop) return bottomTop;
+    const gapTop = this.rowCenterY(row) + TILE / 2 + 8;
+    const gapBottom = kb.y - 8;
+    return gapBottom - gapTop >= h
+      ? (gapTop + gapBottom) / 2 - h / 2
+      : this.rowCenterY(row) - TILE / 2 - 8 - h; // последняя строка — над ней
+  }
+
+  /** Строка поля в координатах сцены. */
+  private rowRect(row: number): Rect {
+    return { x: BOARD_X, y: this.rowCenterY(row) - TILE / 2, w: BOARD_W, h: TILE };
+  }
+
+  /** Подсказка: во время обучения — над вуалью (900), иначе на обычной глубине. */
+  private say(message: string) {
+    toast(this, 200, 640, message, this.tutorial?.active ? { depth: 960 } : {});
+  }
+
+  /**
+   * Цвета плиток — одной строкой, когда они впервые появились. Под шапкой
+   * плашка закрыла бы первую строку, которую объясняет, — ставим её под раскрытый ряд.
+   */
+  private explainColors(row: number) {
+    const key = this.palette === HIGH_CONTRAST ? 'rule.colorsContrast' : 'rule.colors';
+    showRuleOnce(this, 'soz:colors', t(this.locale, key), { y: this.rowCenterY(row) + TILE / 2 + 10 });
+  }
+
+  /**
+   * Слово тренировки: случайное из ответов (на уровнях с редкими словами — из
+   * редкого поднабора), но не сегодняшнее слово дня — его не подсмотреть заранее.
+   */
   private randomPracticeWord(): string {
-    const dailyIdx = dailyIndex(this.dayId, this.dict.answers.length);
-    let idx = Math.floor(Math.random() * this.dict.answers.length);
-    if (this.dict.answers.length > 1 && idx === dailyIdx) idx = (idx + 1) % this.dict.answers.length;
-    return this.dict.answers[idx];
+    const answers = this.dict.answers;
+    const daily = answers[dailyIndex(this.dayId, answers.length)];
+    const pool = this.params.rare ? rarePool(this.locale) : answers;
+    const choices = pool.length > 1 ? pool.filter((w) => w !== daily) : pool;
+    return choices[Math.floor(Math.random() * choices.length)];
   }
 
   private colCenterX(col: number) { return BOARD_X + TILE / 2 + col * (TILE + GAP); }
   private rowCenterY(row: number) { return BOARD_Y + TILE / 2 + row * (TILE + GAP); }
 
   private buildBoard() {
-    const boardH = this.params.guesses * (TILE + GAP) - GAP;
-    this.boardBounds = { x: BOARD_X, y: BOARD_Y, w: BOARD_W, h: boardH };
     for (let r = 0; r < this.params.guesses; r++) {
       const container = this.add.container(0, 0);
       const rowTiles: Tile[] = [];
@@ -255,7 +344,6 @@ export class Game extends Scene {
         if (isSpecial) {
           // Символы ⏎/⌫ не входят в сабсет шрифта — рисуем векторные иконки (надёжно везде).
           this.drawSpecialKeyIcon(key, cx, y + kh / 2);
-          if (key === ENTER) this.enterKeyBounds = { x: cx - w / 2, y, w, h: kh };
         } else {
           this.keyObjects.set(key, cap);
         }
@@ -292,8 +380,13 @@ export class Game extends Scene {
 
   private bindPhysicalKeyboard() {
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
-      if (this.tutorialActive) return;
-      if (e.key === 'Escape') this.goBack();
+      // Escape — та же стрелка: открыть паузу, повторный — продолжить.
+      if (e.key === 'Escape') {
+        if (this.pause?.open) {
+          this.pause.close();
+          this.resumeFromPause();
+        } else this.openPause();
+      } else if (this.pause?.open) return;
       else if (e.key === 'Enter') this.onKey(ENTER);
       else if (e.key === 'Backspace') this.onKey(BACKSPACE);
       else if (e.key.length === 1) {
@@ -303,37 +396,108 @@ export class Game extends Scene {
     });
   }
 
-  /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню. */
-  private buildBackButton() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
-    // Справа — что именно сейчас играется: слово дня или уровень тренировки.
-    this.add
-      .text(386, 34, this.mode === 'daily'
-        ? t(this.locale, 'menu.daily')
-        : t(this.locale, 'game.level', { n: this.level }), {
-        fontFamily: FONT, fontSize: 14, color: COLORS.headMuted,
-      })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
+  // ── Шапка партии и пауза ─────────────────────────────────────────────────────
+
+  /**
+   * Шапка каталога: стрелка (пауза), «Слово дня» / «Уровень N» и чип попытки «3 / 6».
+   * Раньше здесь были белая пилюля «Назад» и подпись режима справа.
+   */
+  private buildHeader() {
+    this.header = makeGameHeader(this, {
+      title: this.mode === 'daily' ? t(this.locale, 'menu.daily') : t(this.locale, 'game.level', { n: this.level }),
+      chips: [
+        { id: 'attempt', text: this.attemptLabel(), widest: `${this.params.guesses} / ${this.params.guesses}` },
+        // Таймер уровня — обратный отсчёт; без лимита часов в шапке нет.
+        ...(this.params.timeLimitSec
+          ? [{ id: 'time', text: formatClock(this.params.timeLimitSec), widest: '88:88' }]
+          : []),
+      ],
+      onBack: () => this.openPause(),
+    });
   }
 
-  /** Выход в главное меню. Незавершённую партию слова дня сохраняем, чтобы прогресс не потерялся. */
-  private goBack() {
-    if (this.finished || this.tutorialActive) return;
-    if (this.mode === 'daily' && this.coreGame.guessesUsed > 0) {
-      saveDaily(this.locale, this.dayId, {
-        rows: this.coreGame.rows,
-        status: this.coreGame.status,
-        rewardClaimed: false,
-      });
+  /** Текущая попытка: «3 / 6»; после последней — «6 / 6», а не «7 / 6». */
+  private attemptLabel(): string {
+    const max = this.params.guesses;
+    const used = this.coreGame?.guessesUsed ?? 0;
+    return `${Math.min(max, used + 1)} / ${max}`;
+  }
+
+  private syncAttempt() {
+    this.header?.setChip('attempt', this.attemptLabel());
+  }
+
+  /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    this.timer?.pause();
+    const daily = this.mode === 'daily';
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      summary: this.pauseSummary(),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => this.resumeFromPause(),
+      // Слово дня одно на день: «заново» ему не нужно (сыгранные ряды остаются), а выход
+      // ничего не теряет — ряды сохраняются, поэтому и подпись выхода спокойная.
+      kind: daily ? 'saved' : 'level',
+      onRestart: daily ? undefined : () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        if (daily) this.saveDailyProgress();
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
+  }
+
+  private resumeFromPause() {
+    this.pause = null;
+    // В обучении часы стоят до первого ряда — «Продолжить» их не запускает.
+    if (!this.tutorial?.active) this.timer?.resume();
+  }
+
+  /** «попытка 3 / 6» и для слова дня — что сыгранные ряды не пропадут. */
+  private pauseSummary(): string {
+    const parts = [t(this.locale, 'pause.attempt', { a: this.attemptLabel() })];
+    if (this.params.timeLimitSec) {
+      parts.push(uiText(this.locale, 'pause.timerStopped'));
+      parts.push(uiText(this.locale, 'pause.left', { t: formatClock(this.secondsLeft()) }));
     }
+    if (this.mode === 'daily' && this.coreGame.guessesUsed > 0) parts.push(t(this.locale, 'pause.dailySaved'));
+    return parts.join(' · ');
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
+  }
+
+  /** Незавершённую партию слова дня сохраняем, чтобы прогресс не потерялся (и не переигрывался). */
+  private saveDailyProgress() {
+    if (this.mode !== 'daily' || !this.coreGame || this.coreGame.guessesUsed === 0) return;
+    saveDaily(this.locale, this.dayId, {
+      rows: this.coreGame.rows,
+      status: this.coreGame.status,
+      rewardClaimed: false,
+    });
+  }
+
+  /** Выход в главное меню. */
+  private exitToMenu() {
+    if (this.finished) return;
+    this.saveDailyProgress();
     this.finished = true; // блокируем ввод на время перехода
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
   }
 
   private onKey(key: Key) {
-    if (this.finished || this.tutorialActive) return;
+    if (this.finished || this.pause?.open) return;
     if (key === ENTER) return this.onEnter();
     if (key === BACKSPACE) return this.onBackspace();
     if (this.current.length >= WORD_LENGTH) return;
@@ -371,14 +535,14 @@ export class Game extends Scene {
     if (this.current.length < WORD_LENGTH) {
       playSound('wrong');
       this.shake(row);
-      toast(this, 200, 640, t(this.locale, 'game.invalidWord'));
+      this.say(t(this.locale, 'game.invalidWord'));
       return;
     }
     const word = this.current.join('');
     if (!this.dict.has(word)) {
       playSound('wrong');
       this.shake(row);
-      toast(this, 200, 640, t(this.locale, 'game.notInList'));
+      this.say(t(this.locale, 'game.notInList'));
       return;
     }
     const violation = this.coreGame.checkStrict(this.current);
@@ -388,15 +552,19 @@ export class Game extends Scene {
       const message = violation.kind === 'position'
         ? t(this.locale, 'game.strictPosition', { unit: violation.unit.toUpperCase(), n: violation.index + 1 })
         : t(this.locale, 'game.strictMissing', { unit: violation.unit.toUpperCase() });
-      toast(this, 200, 640, message);
+      this.say(message);
       return;
     }
     playSound('ok');
     this.coreGame.submit(this.current);
     this.current = [];
+    // Первый отправленный ряд и есть ход: вуаль уходит, раскрытие видно целиком.
+    this.tutorial?.done();
 
     this.revealRow(row, () => {
       this.refreshKeyColors();
+      this.explainColors(row);
+      this.syncAttempt();
       const status = this.coreGame.status;
       if (status === 'won') {
         this.winBounce(row);
@@ -487,8 +655,7 @@ export class Game extends Scene {
   }
 
   private refreshKeyColors() {
-    // На поздних уровнях подсветку отбирают: статусы букв приходится держать в голове.
-    if (!this.params.keyboardHints) return;
+    // Подсветка клавиатуры есть на всех уровнях: без неё верх лестницы держался на памяти и везении.
     for (const [key, obj] of this.keyObjects) {
       const st = this.coreGame.letterStatus(key);
       if (st) {
@@ -510,6 +677,8 @@ export class Game extends Scene {
 
     if (this.mode === 'daily') {
       saveDaily(this.locale, this.dayId, { rows, status: this.coreGame.status, rewardClaimed: false });
+      // Статистика слова дня — в момент завершения (запись идемпотентна по dayId).
+      recordDailyStats(this.locale, { dayId: this.dayId, solved, guessesUsed });
     }
 
     // Победу показываем дольше (отскок + конфетти), проигрыш — быстрее.

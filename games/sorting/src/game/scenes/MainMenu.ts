@@ -1,20 +1,27 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
-import { t } from '../../i18n';
 import {
-  makeButton,
   applyTheme,
   setupCamera,
-  makeTopBar,
+  setBackHandler,
   makeGameIcon,
-  makeLevelGrid,
-  makeLadderSummary,
-  type LevelTileState,
-  makeSoundToggle,
+  makeKidsTopBar,
+  makeKidsPathPager,
+  makeKidsPlayButton,
+  TOP_BAR_H,
+  C,
+  type KidsStop,
 } from '../ui';
-import { COLORS } from '../palette';
-import { LADDER, LADDER_SIZE } from '../../core/levels';
-import { isUnlocked, loadProgress, nextLevel, totalStars } from '@gamewingo/game-progress';
+import { COLORS, FIGURE_COLORS } from '../palette';
+import { drawFigure } from '../shapes';
+import { LADDER, LADDER_SIZE, levelAt } from '../../core/levels';
+import {
+  chapterLevels,
+  chapterOf,
+  isLadderComplete,
+  loadProgress,
+  nextLevel,
+} from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 
 const CX = 200;
@@ -26,6 +33,12 @@ const SLUG = 'sorting';
  */
 const HUB_URL = '../';
 
+/**
+ * Детское меню (T8, раздел 1g аудита): игрок 3–6 лет не читает. Иконка игры,
+ * дорожка из пяти кружков (глава), картинка режима — «по цвету» или «по
+ * форме» — и одна большая кнопка «играть». Ни «Уровень 3 из 15», ни замков:
+ * будущий кружок просто покачивается. Выход и звук — у «Родителям» (удержание 2 с).
+ */
 export class MainMenu extends Scene {
   private locale: Locale = 'ru';
 
@@ -39,46 +52,51 @@ export class MainMenu extends Scene {
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
-    makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
-
-    makeGameIcon(this, CX, 92, 64);
+    makeKidsTopBar(this, { locale: this.locale, onExit: () => this.exitToCatalog() });
+    // Системный «назад» в меню ничего не делает: выход — только через «Родителям».
+    setBackHandler(() => {});
 
     const progress = loadProgress(SLUG);
-    const next = nextLevel(progress, LADDER_SIZE);
+    const complete = isLadderComplete(progress, LADDER_SIZE);
+    // Всё пройдено — играем первый уровень, где не хватает звёзд, иначе первый.
+    const next = complete
+      ? LADDER.find((lv) => (progress.stars[lv.n - 1] ?? 0) < 3)?.n ?? 1
+      : nextLevel(progress, LADDER_SIZE);
 
-    makeLadderSummary(
-      this,
-      CX,
-      142,
-      t(this.locale, 'menu.ladder', { n: next, total: LADDER_SIZE }),
-      totalStars(progress),
-      LADDER_SIZE * 3,
-    );
+    makeGameIcon(this, CX, TOP_BAR_H + 84, 120);
 
-    // Лестница уровней: пройденные со звёздами, следующий выделен, дальше — замки.
-    const tiles: LevelTileState[] = LADDER.map((lv) => ({
-      n: lv.n,
-      unlocked: isUnlocked(progress, lv.n),
-      stars: progress.stars[lv.n - 1] ?? 0,
-      current: lv.n === next,
+    const chapters: KidsStop[][] = chapterLevels(LADDER_SIZE).map((levels) => levels.map((n) => {
+      const stars = progress.stars[n - 1] ?? 0;
+      return { n, stars, state: n === next ? 'current' : stars > 0 ? 'done' : 'future' };
     }));
-    const grid = makeLevelGrid(this, CX, 186, tiles, (n) => this.startLevel(n));
-
-    const belowGrid = 186 + grid.height + 24;
-    makeButton(this, CX, belowGrid, t(this.locale, 'menu.play', { n: next }), () => this.startLevel(next), {
-      primary: true,
+    const pager = makeKidsPathPager(this, CX, TOP_BAR_H + 172, {
+      chapters,
+      initial: chapterOf(next) - 1,
+      onPick: (n) => this.startLevel(n),
     });
-    makeButton(this, CX, belowGrid + 52, t(this.locale, 'menu.howto'), () => this.showHowto());
 
-    // Звук: беззвучный режим общий для каталога, поэтому виджет из дизайн-системы.
-    makeSoundToggle(this, CX, belowGrid + 108, {
-      on: t(this.locale, 'sound.on'),
-      off: t(this.locale, 'sound.off'),
-    });
+    // Режим картинкой: три цветных квадрата — «по цвету», три серые формы — «по форме».
+    const modeY = TOP_BAR_H + 172 + pager.height + 40;
+    this.drawMode(modeY, levelAt(next).params.mode);
+
+    makeKidsPlayButton(this, CX, modeY + 110, () => this.startLevel(next));
+  }
+
+  private drawMode(y: number, mode: 'color' | 'shape') {
+    const g = this.add.graphics();
+    const size = 34;
+    const xs = [CX - 52, CX, CX + 52];
+    if (mode === 'color') {
+      const colors = [FIGURE_COLORS.red, FIGURE_COLORS.yellow, FIGURE_COLORS.blue];
+      xs.forEach((x, i) => drawFigure(g, 'square', size, colors[i], x, y));
+    } else {
+      (['circle', 'square', 'triangle'] as const).forEach((shape, i) => drawFigure(g, shape, size, C.muted, xs[i], y));
+    }
   }
 
   private startLevel(n: number) {
     this.registry.set('level', n);
+    this.registry.set('mode', 'level');
     this.registry.set('locale', this.locale);
     this.scene.start('Game');
   }
@@ -91,13 +109,5 @@ export class MainMenu extends Scene {
       const hub = (this.registry.get('catalogUrl') as string) || HUB_URL;
       window.location.href = hub;
     }
-  }
-
-  /** «Как играть» — интерактивное обучение поверх настоящего поля; по концу → в меню. */
-  private showHowto() {
-    this.registry.set('howto', true);
-    this.registry.set('locale', this.locale);
-    this.registry.set('level', 1);
-    this.scene.start('Game');
   }
 }

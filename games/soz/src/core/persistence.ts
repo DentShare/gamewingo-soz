@@ -1,5 +1,6 @@
 import type { Row, GameStatus } from './gameState';
 import type { Locale } from './locale';
+import { recordDaily, sanitizeStats, type DailyOutcome, type DailyStats } from './stats';
 
 export interface DailyState { rows: Row[]; status: GameStatus; rewardClaimed: boolean; }
 
@@ -60,4 +61,35 @@ export function setHighContrast(on: boolean): void {
   } catch {
     /* quota / приватный режим — тихо игнорируем */
   }
+}
+
+/**
+ * Статистика слова дня — по языку, как и само слово дня (`dailyKey`): у RU и UZ
+ * разные слова и разные дни «сыграно», серии не смешиваются.
+ */
+export function statsKey(locale: Locale): string {
+  return `soz:stats:${locale}`;
+}
+
+export function loadStats(locale: Locale): DailyStats {
+  try {
+    const raw = localStorage.getItem(statsKey(locale));
+    return sanitizeStats(raw ? JSON.parse(raw) : null);
+  } catch {
+    return sanitizeStats(null);
+  }
+}
+
+/** Записать итог слова дня (один раз на день — см. `recordDaily`) и вернуть статистику. */
+export function recordDailyStats(locale: Locale, outcome: DailyOutcome): DailyStats {
+  const before = loadStats(locale);
+  const after = recordDaily(before, outcome);
+  if (after !== before) {
+    try {
+      localStorage.setItem(statsKey(locale), JSON.stringify(after));
+    } catch {
+      /* quota / приватный режим — статистика покажется, но не сохранится */
+    }
+  }
+  return after;
 }

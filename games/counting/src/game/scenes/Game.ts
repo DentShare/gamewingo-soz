@@ -6,14 +6,17 @@ import {
 import { mulberry32 } from '../../core/rng';
 import { levelAt } from '../../core/levels';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, setupCamera, makeGlyph, type GlyphName, makeBackButton, makeKeyCap, playSound } from '../ui';
+import {
+  applyTheme, setupCamera, makeGlyph, type GlyphName, makeKeyCap, playSound,
+  makeGameHeader, openPauseSheet, setBackHandler, type GameHeader, type PauseSheet,
+  runFirstMoveTutorial, showRuleOnce, type FirstMoveTutorial, type Rect,
+} from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
-import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
 import confetti from 'canvas-confetti';
 
 const W = 400;
@@ -58,6 +61,8 @@ export class Game extends Scene {
   private session?: Session;
   private core!: CountingGame;
   private level = 1;
+  /** Уровень дня: параметры уровня лестницы, но вопросы по зерну от даты — одни на всех. */
+  private daily = false;
   /** Сторона кнопки-цифры: зависит от того, сколько вариантов у уровня. */
   private padSize = PAD_SIZE;
   private timer?: RoundTimer;
@@ -69,14 +74,16 @@ export class Game extends Scene {
   /** Всплывающие цифры 1, 2, 3… при пересчёте — над предметами. */
   private helpLayer!: Phaser.GameObjects.Container;
   private pads: DigitPad[] = [];
-  private progressText!: Phaser.GameObjects.Text;
+  private header?: GameHeader;
+  private pause: PauseSheet | null = null;
   private feedbackText!: Phaser.GameObjects.Text;
 
   private cellSize = 0;
   private locked = false;          // на время похвалы/подсказки
   private finished = false;
-  private tutorialActive = false;
-  /** Идёт пересчёт-подсказка (используется обучением и смоук-тестами). */
+  /** Обучение в один шаг: первый верный ответ — настоящий ход (T6). */
+  private tutorial: FirstMoveTutorial | null = null;
+  /** Идёт пересчёт-подсказка (используется смоук-тестами). */
   private helping = false;
 
   constructor() {
@@ -90,9 +97,13 @@ export class Game extends Scene {
     this.cellSize = 0;
     this.locked = false;
     this.finished = false;
-    this.tutorialActive = false;
+    this.tutorial = null;
     this.helping = false;
     this.timer = undefined;
+    this.header = undefined;
+    this.pause = null;
+    // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
@@ -100,16 +111,11 @@ export class Game extends Scene {
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.session = this.registry.get('session') as Session | undefined;
     this.level = (this.registry.get('level') as number) ?? 1;
+    this.daily = this.registry.get('mode') === 'dailyLevel';
 
     this.buildHud();
     this.buildBoard();
     this.buildPads();
-
-    // «Как играть» из меню: обучение поверх настоящего поля, без сессии.
-    if (this.registry.get('howto')) {
-      this.runHowto();
-      return;
-    }
 
     this.core = this.newCore();
     this.renderQuestion();
@@ -119,93 +125,83 @@ export class Game extends Scene {
     this.timer.start();
     const off = this.session?.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') this.timer?.pause();
-      else if (e.type === 'RESUME') this.timer?.resume();
+      // Наша пауза открыта или идёт обучение — часы стоят до «Продолжить» / первого ответа.
+      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorial?.active) this.timer?.resume();
     });
     if (off) this.events.once('shutdown', off);
 
-    this.maybeShowOnboarding();
+    // «Как играть» из паузы — то же обучение на новой партии.
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
+    if (howto || !hasOnboarded()) this.startTutorial();
   }
 
-  /** Новая партия. `minCount` — минимум предметов в первом вопросе (для наглядного обучения). */
-  private newCore(minCount = 0): CountingGame {
+  /** Новая партия. Уровень дня — одно зерно на всех, поэтому и вопросы одинаковые. */
+  private newCore(): CountingGame {
     const { questions, maxCount, options } = levelAt(this.level).params;
     const opts = { questions, maxCount, options };
-    const seed = () => Math.floor(Math.random() * 2 ** 31);
-    for (let i = 0; i < 30; i++) {
-      const g = createCountingGame(mulberry32(seed()), opts);
-      if (g.question.count >= minCount) return g;
-    }
-    return createCountingGame(mulberry32(seed()), opts);
+    const seed = this.daily
+      ? (this.registry.get('dailySeed') as number)
+      : Math.floor(Math.random() * 2 ** 31);
+    return createCountingGame(mulberry32(seed), opts);
   }
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
 
-  /** «Как играть» из меню: настоящее поле + обучение, по концу — назад в меню. */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-    this.core = this.newCore(3);
-    this.renderQuestion();
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
-        setOnboarded();
-        this.scene.start('MainMenu');
-      });
-    });
-  }
-
-  /** Первая партия — показываем обучение один раз. Тапы заблокированы, время на паузе. */
-  private maybeShowOnboarding() {
-    if (hasOnboarded()) return;
-    this.tutorialActive = true;
-    this.timer?.pause();
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
-        setOnboarded();
-        this.clearHelp();
-        this.tutorialActive = false;
-        this.timer?.resume();
-      });
-    });
-  }
-
   /**
-   * Три шага на РЕАЛЬНОМ поле: предметы → кнопки-цифры → настоящий пересчёт
-   * (та же анимация, что и после ошибки).
+   * Обучение в один шаг: поле видно, обведена одна кнопка — верное число.
+   * Тап по ней — настоящий ответ; прогресс в шапке и часы включаются после него.
+   * Ошибка объясняется в момент ошибки (пересчёт + строка правила).
    */
-  private tutorialSteps(): OnboardingStep[] {
-    return [
-      { textKey: 'onboarding.count', target: () => this.boardRect(), pad: 8, radius: 20 },
-      { textKey: 'onboarding.tap', target: () => this.padsRect(), pad: 10, radius: 22 },
-      {
-        textKey: 'onboarding.help',
-        target: () => this.boardRect(),
-        pad: 8,
-        radius: 20,
-        prepare: () => this.runCountHelp(),
+  private startTutorial() {
+    this.timer?.pause();
+    this.header?.setChipsVisible(false);
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove', { n: this.core.question.count }),
+      // Во время пересчёта-подсказки приоткрываем и поле: ребёнок должен видеть цифры над предметами.
+      targets: () => (this.helping ? [this.boardRect(), this.answerPadRect()] : [this.answerPadRect()]),
+      pad: 6,
+      radius: 24,
+      onDone: () => {
+        setOnboarded();
+        this.header?.setChipsVisible(true);
+        if (!this.pause?.open) this.timer?.resume();
       },
-    ];
+    });
   }
 
   private boardRect(): Rect {
     return { x: BOARD.x, y: BOARD.y, w: BOARD.w, h: BOARD.h };
   }
 
-  private padsRect(): Rect {
+  /** Кнопка с верным ответом на текущий вопрос. */
+  private answerPadRect(): Rect {
+    const pad = this.pads.find((p) => p.value === this.core.question.count) ?? this.pads[0];
     const half = this.padSize / 2;
-    const xs = this.pads.map((p) => p.x);
-    const left = Math.min(...xs) - half;
-    return { x: left, y: PAD_Y - half, w: Math.max(...xs) + half - left, h: this.padSize };
+    return { x: pad.x - half, y: pad.y - half, w: this.padSize, h: this.padSize };
   }
 
-  // ── HUD ──────────────────────────────────────────────────────────────────────
+  // ── Шапка партии, вопрос, похвала ───────────────────────────────────────────
 
+  /**
+   * Шапка каталога: стрелка (пауза), «Уровень N» / «Уровень дня» и чип
+   * прогресса «3 из 5». Таймера и проигрыша у «Счёта» нет — других чипов не нужно.
+   */
   private buildHud() {
-    this.buildBackButton();
-    this.progressText = this.add
-      .text(W - 20, 34, '', { fontFamily: FONT, fontSize: 16, color: COLORS.headMuted })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
+    const total = levelAt(this.level).params.questions;
+    this.header = makeGameHeader(this, {
+      // Детская игра: в шапке название, а не «Уровень N» — номер ребёнку ничего не говорит.
+      title: t(this.locale, 'app.title'),
+      chips: [
+        {
+          id: 'progress',
+          text: t(this.locale, 'game.progress', { n: 1, total }),
+          widest: t(this.locale, 'game.progress', { n: total, total }),
+        },
+      ],
+      onBack: () => this.openPause(),
+    });
 
     this.add
       .text(W / 2, 92, t(this.locale, 'game.question'), {
@@ -223,13 +219,53 @@ export class Game extends Scene {
       .setAlpha(0);
   }
 
-  /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
-  private buildBackButton() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+  /** Прогресс партии в чипе: «3 из 5». */
+  private updateProgress() {
+    this.header?.setChip(
+      'progress',
+      t(this.locale, 'game.progress', { n: this.core.asked, total: this.core.total }),
+    );
   }
 
-  private goBack() {
-    if (this.finished || this.tutorialActive) return;
+  /** Стрелка в шапке: пауза с честным выбором, а не мгновенный выход. */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    this.timer?.pause();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      summary: this.pauseSummary(),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      // В обучении часы стоят до первого верного ответа — «Продолжить» их не запускает.
+      onResume: () => { this.pause = null; if (!this.tutorial?.active) this.timer?.resume(); },
+      onRestart: () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
+  }
+
+  /** «вопрос 3 из 5 · ошибок: 1» — таймера нет, поэтому про него ни слова. */
+  private pauseSummary(): string {
+    return [
+      t(this.locale, 'pause.progress', { n: this.core.asked, total: this.core.total }),
+      t(this.locale, 'pause.mistakes', { n: this.core.mistakes }),
+    ].join(' · ');
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
+  }
+
+  private exitToMenu() {
+    if (this.finished) return;
     this.finished = true;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
@@ -281,9 +317,7 @@ export class Game extends Scene {
     const q = this.core.question;
     this.renderItems(q.count, ITEMS[q.itemIndex]);
     q.options.forEach((n, i) => this.pads[i].setValue(n));
-    this.progressText.setText(
-      t(this.locale, 'game.progress', { n: this.core.asked, total: this.core.total }),
-    );
+    this.updateProgress();
   }
 
   // ── Кнопки-цифры ─────────────────────────────────────────────────────────────
@@ -293,10 +327,13 @@ export class Game extends Scene {
     // Кнопки ужимаются под их число, но не мельче 56 px — иначе тяжело попасть пальцем.
     const size = Math.max(56, Math.min(PAD_SIZE, Math.floor((W - 32 - (count - 1) * PAD_GAP) / count)));
     this.padSize = size;
-    const total = count * size + (count - 1) * PAD_GAP;
+    // Шесть кнопок по 56 px со штатным зазором шире экрана (406 > 400) — крайние
+    // обрезались. Зазор ужимаем так, чтобы ряд оставлял по 8 px с краёв.
+    const gap = Math.min(PAD_GAP, Math.floor((W - 16 - count * size) / Math.max(1, count - 1)));
+    const total = count * size + (count - 1) * gap;
     const left = (W - total) / 2 + size / 2;
     for (let i = 0; i < count; i++) {
-      this.pads.push(this.makePad(left + i * (size + PAD_GAP), PAD_Y, size));
+      this.pads.push(this.makePad(left + i * (size + gap), PAD_Y, size));
     }
   }
 
@@ -326,16 +363,16 @@ export class Game extends Scene {
   // ── Ответ ────────────────────────────────────────────────────────────────────
 
   private onPick(pad: DigitPad) {
-    if (this.finished || this.locked || this.tutorialActive || this.helping) return;
+    if (this.finished || this.locked || this.helping) return;
     const res = this.core.answer(pad.value);
     this.locked = true;
     playSound(res.correct ? 'ok' : 'wrong');
 
     if (res.correct) {
+      // Первый верный ответ закрывает обучение: дальше обычная партия.
+      this.tutorial?.done();
       this.celebrate();
-      this.progressText.setText(
-        t(this.locale, 'game.progress', { n: this.core.asked, total: this.core.total }),
-      );
+      this.updateProgress();
       if (res.done) {
         this.time.delayedCall(1000, () => this.endGame());
       } else {
@@ -350,11 +387,15 @@ export class Game extends Scene {
 
     // Ошибка — не наказание: кнопка мягко качается и запускается наглядный пересчёт.
     pad.wobble();
+    // Правило про ошибку — в момент первой ошибки, а не карточкой заранее.
+    showRuleOnce(this, 'counting:mistake', t(this.locale, 'rule.mistake'));
     this.showFeedback(t(this.locale, 'game.help'), COLORS.helpText);
     this.runCountHelp(() => {
       this.hideFeedback();
       this.locked = false;
+      this.tutorial?.refresh();
     });
+    this.tutorial?.refresh();
   }
 
   /** Верный ответ: предметы подпрыгивают, летят искорки, конфетти и похвала. */
@@ -459,10 +500,12 @@ export class Game extends Scene {
     const { correct, mistakes } = this.core;
 
     void this.session
-      ?.finish({ level: this.level, correct, mistakes, durationMs })
+      ?.finish({ level: this.level, mode: this.daily ? 'dailyLevel' : 'level', correct, mistakes, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
-    this.registry.set('lastGame', { level: this.level, locale: this.locale, correct, mistakes, durationMs });
+    this.registry.set('lastGame', {
+      level: this.level, daily: this.daily, locale: this.locale, correct, mistakes, durationMs,
+    });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }

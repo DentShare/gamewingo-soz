@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createRoundTimer } from './roundTimer';
+import { createRoundTimer, formatClock } from './roundTimer';
 
 describe('createRoundTimer', () => {
   it('исключает паузу из elapsedMs', () => {
@@ -19,5 +19,14 @@ describe('createRoundTimer', () => {
     timer.start();
     t = 100 + 3200;
     expect(timer.elapsedMs()).toBe(3200);
+  });
+});
+
+describe('formatClock', () => {
+  it('минуты и секунды', () => {
+    expect(formatClock(300)).toBe('5:00');
+    expect(formatClock(9)).toBe('0:09');
+    expect(formatClock(0)).toBe('0:00');
+    expect(formatClock(-3)).toBe('0:00');
   });
 });

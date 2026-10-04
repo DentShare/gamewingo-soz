@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  createBoard, createBoardFromTiles, solvedTiles, randomWalk,
+  createBoard, createBoardFromTiles, solvedTiles, randomWalk, tilesInPlace,
 } from './board';
 import { mulberry32 } from './rng';
 import { computeScore, baseFor } from './score';
@@ -45,17 +45,6 @@ describe('move', () => {
     expect(b.tiles[empty]).toBe(val);
     expect(b.tiles[near]).toBe(0);
   });
-
-  it('resetMoves обнуляет счётчик, не трогая расклад', () => {
-    const b = createBoard(3, mulberry32(11));
-    const empty = b.tiles.indexOf(0);
-    const near = Math.floor(empty / 3) > 0 ? empty - 3 : empty + 3;
-    expect(b.move(near)).toBe(true);
-    const snapshot = [...b.tiles];
-    b.resetMoves();
-    expect(b.moves).toBe(0);
-    expect([...b.tiles]).toEqual(snapshot);
-  });
 });
 
 describe('решаемость', () => {
@@ -98,5 +87,14 @@ describe('score', () => {
   });
   it('поздний уровень ценится выше раннего', () => {
     expect(baseFor(15)).toBeGreaterThan(baseFor(1));
+  });
+});
+
+describe('tilesInPlace', () => {
+  it('собранное поле — все плитки на месте, пустая не считается', () => {
+    expect(tilesInPlace(solvedTiles(4))).toBe(15);
+  });
+  it('один ход от собранного — одна плитка не на месте', () => {
+    expect(tilesInPlace([1, 2, 3, 4, 5, 6, 7, 0, 8])).toBe(7);
   });
 });

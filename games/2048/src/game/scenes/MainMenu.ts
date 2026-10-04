@@ -8,14 +8,13 @@ import {
   setupCamera,
   makeTopBar,
   makeRecordBadge,
-  makeMilestoneBar,
   makeChallengeList,
   type ChallengeRowState,
-  makeSoundToggle,
+  setBackHandler,
 } from '../ui';
-import { CHALLENGES, CHALLENGES_TOTAL, MILESTONES } from '../../core/challenges';
+import { CHALLENGES, CHALLENGES_TOTAL } from '../../core/challenges';
 import {
-  challengeStates, milestoneStates, nextMilestone, loadBests,
+  challengeStates, loadBests,
 } from '@gamewingo/game-progress';
 import { COLORS, FONT, tileColor, tileTextColor } from '../palette';
 import { DPR } from '../dpr';
@@ -45,6 +44,8 @@ export class MainMenu extends Scene {
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
+    // Системный «назад» из меню — тот же выход в каталог, что и стрелка.
+    setBackHandler(() => this.exitToCatalog());
     this.buildLogo(t(this.locale, 'app.title'));
 
     // Личный рекорд — главная цифра партийной игры.
@@ -54,16 +55,6 @@ export class MainMenu extends Scene {
       label: t(this.locale, 'menu.record'),
     });
 
-    // Полоса до следующей вехи-номинала.
-    const miles = milestoneStates(SLUG, MILESTONES);
-    const next = nextMilestone(miles);
-    makeMilestoneBar(this, CX, 252, {
-      label: next
-        ? t(this.locale, 'menu.nextMilestone', { n: next.target, r: next.reward })
-        : t(this.locale, 'menu.milestonesDone'),
-      value: next ? Math.round(bests.maxTile ?? 0) : 1,
-      target: next ? next.target : 1,
-    });
 
     // Испытания: выполненные, активное и пара следующих.
     const states = challengeStates(SLUG, CHALLENGES);
@@ -74,13 +65,13 @@ export class MainMenu extends Scene {
       done: s.done,
       active: s.active,
     }));
-    const list = makeChallengeList(this, CX, 282, {
+    const list = makeChallengeList(this, CX, 252, {
       header: t(this.locale, 'menu.challenges', { k: doneCount, n: CHALLENGES_TOTAL }),
       rows,
     });
 
     // Незаконченная партия — «Продолжить» первым, новая партия — под ним.
-    let y = 282 + list.height + 34;
+    let y = 252 + list.height + 34;
     const saved = loadSave();
     if (saved) {
       makeButton(this, CX, y, `${t(this.locale, 'menu.continue')} · ${saved.score}`,
@@ -90,14 +81,7 @@ export class MainMenu extends Scene {
     makeButton(this, CX, y, t(this.locale, 'menu.play'), () => this.startGame(false), {
       primary: !saved,
     });
-    y += 52;
-    makeButton(this, CX, y, t(this.locale, 'menu.howto'), () => this.showHowto());
-
-    // Звук: беззвучный режим общий для каталога, поэтому виджет из дизайн-системы.
-    makeSoundToggle(this, CX, y + 56, {
-      on: t(this.locale, 'sound.on'),
-      off: t(this.locale, 'sound.off'),
-    });
+    // «Как играть» и звук живут в паузе партии — меню короче на два ряда.
   }
 
   /** Выход в каталог: событие мосту (реальный WebView вернётся к списку), а в вебе — переход на хаб. */
@@ -137,13 +121,6 @@ export class MainMenu extends Scene {
   private startGame(resume: boolean) {
     if (!resume) clearSave();
     this.registry.set('resume', resume);
-    this.registry.set('locale', this.locale);
-    this.scene.start('Game');
-  }
-
-  /** «Как играть» — интерактивное обучение поверх настоящего поля; по концу → обратно в меню. */
-  private showHowto() {
-    this.registry.set('howto', true);
     this.registry.set('locale', this.locale);
     this.scene.start('Game');
   }

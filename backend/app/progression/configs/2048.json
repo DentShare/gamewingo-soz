@@ -185,37 +185,5 @@
       "metric": "score",
       "target": 30000
     }
-  ],
-  "milestones": [
-    {
-      "id": "tile128",
-      "metric": "maxTile",
-      "target": 128,
-      "reward": 10
-    },
-    {
-      "id": "tile256",
-      "metric": "maxTile",
-      "target": 256,
-      "reward": 13
-    },
-    {
-      "id": "tile512",
-      "metric": "maxTile",
-      "target": 512,
-      "reward": 16
-    },
-    {
-      "id": "tile1024",
-      "metric": "maxTile",
-      "target": 1024,
-      "reward": 21
-    },
-    {
-      "id": "tile2048",
-      "metric": "maxTile",
-      "target": 2048,
-      "reward": 30
-    }
   ]
 }

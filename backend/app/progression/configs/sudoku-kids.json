@@ -105,8 +105,8 @@
         "timeLimitSec": 0
       },
       "goals": {
-        "gold": 55,
-        "silver": 110
+        "gold": 50,
+        "silver": 100
       }
     },
     {
@@ -118,8 +118,8 @@
         "timeLimitSec": 0
       },
       "goals": {
-        "gold": 65,
-        "silver": 130
+        "gold": 55,
+        "silver": 110
       }
     },
     {
@@ -127,6 +127,32 @@
       "params": {
         "size": 4,
         "clues": 8,
+        "mistakeLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 65,
+        "silver": 130
+      }
+    },
+    {
+      "n": 5,
+      "params": {
+        "size": 4,
+        "clues": 7,
+        "mistakeLimit": 0,
+        "timeLimitSec": 0
+      },
+      "goals": {
+        "gold": 70,
+        "silver": 140
+      }
+    },
+    {
+      "n": 6,
+      "params": {
+        "size": 4,
+        "clues": 7,
         "mistakeLimit": 3,
         "timeLimitSec": 0
       },
@@ -136,42 +162,16 @@
       }
     },
     {
-      "n": 5,
-      "params": {
-        "size": 4,
-        "clues": 7,
-        "mistakeLimit": 3,
-        "timeLimitSec": 120
-      },
-      "goals": {
-        "gold": 75,
-        "silver": 110
-      }
-    },
-    {
-      "n": 6,
+      "n": 7,
       "params": {
         "size": 4,
         "clues": 6,
-        "mistakeLimit": 2,
-        "timeLimitSec": 100
-      },
-      "goals": {
-        "gold": 70,
-        "silver": 95
-      }
-    },
-    {
-      "n": 7,
-      "params": {
-        "size": 6,
-        "clues": 24,
-        "mistakeLimit": 0,
+        "mistakeLimit": 3,
         "timeLimitSec": 0
       },
       "goals": {
-        "gold": 100,
-        "silver": 200
+        "gold": 75,
+        "silver": 140
       }
     },
     {
@@ -179,7 +179,7 @@
       "params": {
         "size": 6,
         "clues": 22,
-        "mistakeLimit": 0,
+        "mistakeLimit": 4,
         "timeLimitSec": 0
       },
       "goals": {
@@ -191,13 +191,13 @@
       "n": 9,
       "params": {
         "size": 6,
-        "clues": 20,
-        "mistakeLimit": 0,
+        "clues": 22,
+        "mistakeLimit": 3,
         "timeLimitSec": 0
       },
       "goals": {
-        "gold": 140,
-        "silver": 260
+        "gold": 120,
+        "silver": 240
       }
     },
     {
@@ -205,7 +205,7 @@
       "params": {
         "size": 6,
         "clues": 19,
-        "mistakeLimit": 4,
+        "mistakeLimit": 3,
         "timeLimitSec": 0
       },
       "goals": {
@@ -217,12 +217,12 @@
       "n": 11,
       "params": {
         "size": 6,
-        "clues": 18,
-        "mistakeLimit": 4,
+        "clues": 19,
+        "mistakeLimit": 3,
         "timeLimitSec": 300
       },
       "goals": {
-        "gold": 160,
+        "gold": 150,
         "silver": 260
       }
     },
@@ -230,12 +230,12 @@
       "n": 12,
       "params": {
         "size": 6,
-        "clues": 17,
+        "clues": 16,
         "mistakeLimit": 3,
         "timeLimitSec": 300
       },
       "goals": {
-        "gold": 170,
+        "gold": 165,
         "silver": 260
       }
     },
@@ -244,25 +244,25 @@
       "params": {
         "size": 6,
         "clues": 16,
-        "mistakeLimit": 3,
-        "timeLimitSec": 270
+        "mistakeLimit": 2,
+        "timeLimitSec": 300
       },
       "goals": {
         "gold": 165,
-        "silver": 240
+        "silver": 260
       }
     },
     {
       "n": 14,
       "params": {
         "size": 6,
-        "clues": 15,
+        "clues": 14,
         "mistakeLimit": 2,
-        "timeLimitSec": 260
+        "timeLimitSec": 300
       },
       "goals": {
-        "gold": 160,
-        "silver": 230
+        "gold": 170,
+        "silver": 260
       }
     },
     {

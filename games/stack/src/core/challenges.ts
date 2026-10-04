@@ -1,4 +1,4 @@
-import { buildChallenges, buildMilestones } from '@gamewingo/game-progress';
+import { buildChallenges } from '@gamewingo/game-progress';
 
 /**
  * Прогрессия «Башни» — от механики: забег один и тот же, растёт мастерство.
@@ -38,14 +38,3 @@ export const CHALLENGES = buildChallenges([
 
 export const CHALLENGES_TOTAL = CHALLENGES.length;
 
-/** Вехи по высоте башни. Награда растёт со ступенью. */
-export const MILESTONES = buildMilestones([
-  ['blocks10', 'blocks', 10, 10],
-  ['blocks15', 'blocks', 15, 12],
-  ['blocks20', 'blocks', 20, 15],
-  ['blocks26', 'blocks', 26, 18],
-  ['blocks33', 'blocks', 33, 21],
-  ['blocks40', 'blocks', 40, 24],
-  ['blocks50', 'blocks', 50, 27],
-  ['blocks60', 'blocks', 60, 30],
-]);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generate, createSumsGame } from './sums';
+import { generate, createSumsGame, surelyExtraCells, type Puzzle } from './sums';
 import { mulberry32 } from './rng';
 import { LADDER, levelAt, perfectCrosses } from './levels';
 import { computeScore, baseFor, MAX_SCORE } from './score';
@@ -151,6 +151,61 @@ describe('очки', () => {
   it('очки не выходят за MAX_SCORE — на него смотрит антифрод', () => {
     for (const level of LADDER) {
       expect(computeScore({ level: level.n, moves: 0 })).toBeLessThanOrEqual(MAX_SCORE);
+    }
+  });
+});
+
+/** Все решения перебором — только для маленьких полей (до 4×4 = 2¹⁶ масок). */
+function allSolutions(p: Puzzle): boolean[][] {
+  const { size, cells, rowTargets, colTargets } = p;
+  const total = size * size;
+  const out: boolean[][] = [];
+  for (let mask = 0; mask < 1 << total; mask++) {
+    const rows = new Array<number>(size).fill(0);
+    const cols = new Array<number>(size).fill(0);
+    for (let i = 0; i < total; i++) {
+      if (!((mask >> i) & 1)) continue;
+      rows[Math.floor(i / size)] += cells[i];
+      cols[i % size] += cells[i];
+    }
+    if (rows.every((v, k) => v === rowTargets[k]) && cols.every((v, k) => v === colTargets[k])) {
+      out.push(Array.from({ length: total }, (_, i) => ((mask >> i) & 1) === 1));
+    }
+  }
+  return out;
+}
+
+describe('surelyExtraCells — цель первого хода в обучении', () => {
+  it('на 3×3 и 4×4 помеченное лишним не входит ни в одно решение', () => {
+    for (const lvl of [1, 2, 3]) {
+      for (let seed = 1; seed <= 25; seed++) {
+        const p = generate(levelAt(lvl).params, rnd(seed));
+        const sols = allSolutions(p);
+        for (const i of surelyExtraCells(p)) {
+          expect(sols.every((s) => !s[i]), `уровень ${lvl}, seed ${seed}, клетка ${i}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('на всей лестнице не противоречит задуманному решению и почти всегда находит клетку', () => {
+    let empty = 0, total = 0;
+    for (const { n, params } of LADDER) {
+      for (let seed = 1; seed <= 20; seed++) {
+        const p = generate(params, rnd(seed * 31 + n));
+        const extra = surelyExtraCells(p);
+        for (const i of extra) expect(p.solution[i], `уровень ${n}, seed ${seed}`).toBe(false);
+        total++;
+        if (extra.length === 0) empty++;
+      }
+    }
+    // Пусто — обучение берёт клетку из задуманного решения; это редкость, а не правило.
+    expect(empty / total).toBeLessThan(0.1);
+  });
+
+  it('на первом уровне клетка находится всегда', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      expect(surelyExtraCells(generate(levelAt(1).params, rnd(seed))).length, `seed ${seed}`).toBeGreaterThan(0);
     }
   });
 });

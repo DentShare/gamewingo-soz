@@ -1,30 +1,39 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
 import { t } from '../../i18n';
-import { makeButton, applyTheme, setupCamera, makeStarRow, makeBonusChip, playSound, makePhoenix } from '../ui';
-import { COLORS, FONT } from '../palette';
-import { DPR } from '../dpr';
-import { computeScore } from '../../core/score';
-import { levelAt, LADDER_SIZE } from '../../core/levels';
 import {
-  recordLevelResult, recordEndlessResult, starsFor, loadProgress, isUnlocked,
-  dailyMissions, grantRoundBonuses, type RecordResult,
+  setBackHandler, applyTheme, setupCamera, makeBonusChip, playSound, makeLadderResult, uiText, pluralForm,
+} from '../ui';
+import { COLORS } from '../palette';
+import { computeScore } from '../../core/score';
+import { levelAt, levelInfo, formatSec, LADDER_SIZE, type Phrase } from '../../core/levels';
+import {
+  settleLadderRound, starsFor, starGap, chapterOf, loadProgress, isUnlocked, type Stars,
 } from '@gamewingo/game-progress';
-import type { Session } from '../../bridge/session';
 import confetti from 'canvas-confetti';
 
 interface LastGame {
   level: number;
+  /** Партия была уровнем дня. */
+  daily?: boolean;
   locale: Locale;
   moves: number;
   durationMs: number;
   /** Поле собрано до исчерпания лимитов ходов и времени. */
   cleared: boolean;
+  /** Плиток на своих местах к концу партии — «докуда дошли» при провале. */
+  inPlace?: number;
+  /** Плиток на поле всего (без пустой клетки). */
+  tiles?: number;
 }
 
-const CX = 200;
 const SLUG = 'fifteen';
 
+/**
+ * Итог уровня (T4, раздел 1d аудита): звёзды, «почти» до третьей звезды,
+ * расшифровка бонусов и кнопка, которая называет, что дальше. Очков и
+ * лидерборда нет: звёзды считаются по ходам, а топ по уровню ничего не значит.
+ */
 export class GameOver extends Scene {
   constructor() {
     super('GameOver');
@@ -33,173 +42,89 @@ export class GameOver extends Scene {
   create() {
     applyTheme(this);
     setupCamera(this);
+    // Системный «назад» с экрана итогов — в меню игры.
+    setBackHandler(() => this.scene.start('MainMenu'));
     this.cameras.main.fadeIn(220, ...COLORS.fade);
-    const session = this.registry.get('session') as Session;
     const last = this.registry.get('lastGame') as LastGame;
     const loc = last.locale;
 
     const level = levelAt(last.level);
-    let score = 0;
-    let starCount = 0;
-    const missionsBefore = dailyMissions();
-    let record: RecordResult | null = null;
+    const score = last.cleared ? computeScore({ level: last.level, moves: last.moves, durationMs: last.durationMs }) : 0;
+    const starCount = last.cleared ? starsFor(level.goals, last.moves) : 0;
+    // Итог одним вызовом: лестница, счётчики дня и бонусы с разбивкой.
+    const { bonus, lines } = settleLadderRound({
+      slug: SLUG, n: last.level, total: LADDER_SIZE,
+      mode: last.daily ? 'dailyLevel' : 'level',
+      cleared: last.cleared, stars: (starCount || 1) as Stars, score,
+    });
 
+    playSound(last.cleared ? 'win' : 'lose');
     if (last.cleared) {
-      score = computeScore({ level: last.level, moves: last.moves, durationMs: last.durationMs });
-      const stars = starsFor(level.goals, last.moves);
-      starCount = stars;
-      record = recordLevelResult({ slug: SLUG, n: last.level, stars, score });
       confetti({ disableForReducedMotion: true, particleCount: 90, spread: 70, origin: { y: 0.4 } });
-    } else {
-      // Проваленный уровень в лестницу не пишется, но идёт в счётчики дня — игрок всё же играл.
-      recordEndlessResult(SLUG, 0);
     }
-    // Бонусы за партию: первый проход уровня + закрывшиеся задания дня.
-    const bonus = grantRoundBonuses({ slug: SLUG, n: last.level, record, missionsBefore });
+
+    // «Почти»: сколько ходов не хватило до третьей звезды — повод переиграть сразу.
+    const gap = last.cleared ? starGap(level.goals, last.moves) : null;
+    const time = formatSec(Math.floor(last.durationMs / 1000));
+
+    const nextN = last.level + 1;
+    const hasNext = !last.daily && last.cleared && nextN <= LADDER_SIZE && isUnlocked(loadProgress(SLUG), nextN);
+    const intro = hasNext ? levelInfo(nextN).intro : null;
+
+    const screen = makeLadderResult(this, {
+      locale: loc,
+      caption: last.daily
+        ? uiText(loc, 'result.dailyLevel')
+        : uiText(loc, 'result.levelChapter', { n: last.level, k: chapterOf(last.level) }),
+      title: t(loc, last.cleared ? 'result.title' : 'result.failed'),
+      stars: starCount,
+      // Провал — докуда дошли: «На месте плиток: 11 из 15».
+      note: last.cleared || last.inPlace === undefined || !last.tiles
+        ? undefined
+        : t(loc, 'result.inPlaceOf', { k: last.inPlace, n: last.tiles }),
+      almost: gap && {
+        title: uiText(loc, 'result.almostStar', {
+          gap: t(loc, `result.gapMoves.${pluralForm(gap.missing)}`, { n: gap.missing }),
+        }),
+        detail: t(loc, 'result.almostDetail', { moves: last.moves, need: gap.threshold, time }),
+        againLabel: uiText(loc, 'result.again'),
+        onAgain: () => this.play(last.level, last.daily),
+      },
+      lines,
+      total: bonus.total,
+      primary: hasNext
+        ? {
+          label: intro
+            ? uiText(loc, 'result.nextIntro', { n: nextN, intro: this.phrase(loc, intro) })
+            : uiText(loc, 'result.next', { n: nextN }),
+          onClick: () => this.play(nextN),
+        }
+        : { label: uiText(loc, 'result.again'), onClick: () => this.play(last.level, last.daily) },
+      onMenu: () => this.scene.start('MainMenu'),
+      mood: last.cleared ? 'happy' : 'sad',
+    });
+
     const bonusChip = makeBonusChip(this, 386, 30);
     if (bonus.total > 0) {
       // Чип создан после начисления — откатываем показ на баланс «до»,
       // чтобы прилёт «+N» докрутил его до нового, а не удвоил прибавку.
       bonusChip.setValue(bonus.balance - bonus.total);
-      this.time.delayedCall(900, () => {
+      this.time.delayedCall(1100, () => {
         playSound('coin');
-        bonusChip.award(bonus.total, CX, 196);
+        bonusChip.award(bonus.total, screen.awardFrom.x, screen.awardFrom.y);
       });
     }
-
-
-    const title = this.add
-      .text(CX, 96, t(loc, last.cleared ? 'result.title' : 'result.failed'), {
-        fontFamily: FONT, fontSize: 30, color: COLORS.headText, fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR)
-      .setScale(0.7)
-      .setAlpha(0);
-    this.tweens.add({ targets: title, scale: 1, alpha: 1, duration: 380, delay: 120, ease: 'Back.easeOut' });
-
-    this.add
-      .text(CX, 134, t(loc, 'result.level', { n: last.level, total: LADDER_SIZE }), {
-        fontFamily: FONT, fontSize: 15, color: COLORS.headMuted,
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-
-    playSound(last.cleared ? 'win' : 'lose');
-
-    // Маскот каталога реагирует на итог: радуется победе, никнет при провале.
-    const phoenix = makePhoenix(this, 322, 648, 84, { facing: 'left' });
-    this.time.delayedCall(320, () => (last.cleared ? phoenix.celebrate() : phoenix.sink()));
-    this.events.once('shutdown', () => phoenix.destroy());
-    // Звёзды звенят по очереди — итог читается на слух, не только глазами.
-    for (let i = 0; i < starCount; i++) {
-      this.time.delayedCall(340 + i * 160, () => playSound('star'));
-    }
-    const stars = makeStarRow(this, CX, 186, starCount, 22).setScale(0);
-    this.tweens.add({ targets: stars, scale: 1, duration: 380, delay: 300, ease: 'Back.easeOut' });
-
-    const sec = Math.floor(last.durationMs / 1000);
-    const time = `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
-    this.appear(
-      this.add
-        .text(CX, 240, t(loc, 'result.score', { score }), {
-          fontFamily: FONT, fontSize: 26, color: COLORS.headText, fontStyle: 'bold',
-        })
-        .setOrigin(0.5)
-        .setResolution(DPR),
-      520,
-    );
-    this.appear(
-      this.add
-        .text(CX, 274, t(loc, 'result.moves', { moves: last.moves, time }), {
-          fontFamily: FONT, fontSize: 16, color: COLORS.headMuted,
-        })
-        .setOrigin(0.5)
-        .setResolution(DPR),
-      580,
-    );
-
-    const hint = this.hintText(loc, last, record);
-    if (hint) {
-      this.appear(
-        this.add
-          .text(CX, 308, hint, { fontFamily: FONT, fontSize: 17, color: COLORS.headText, fontStyle: 'bold' })
-          .setOrigin(0.5)
-          .setResolution(DPR),
-        640,
-      );
-    }
-
-    this.buildButtons(loc, last);
-    this.buildLeaderboard(loc, session);
   }
 
-  /** Кнопки итога: следующий уровень (если открылся), повтор, меню. */
-  private buildButtons(loc: Locale, last: LastGame) {
-    const nextN = last.level + 1;
-    const hasNext = last.cleared && nextN <= LADDER_SIZE && isUnlocked(loadProgress(SLUG), nextN);
-    let y = 366;
-
-    if (hasNext) {
-      const next = makeButton(this, CX, y, t(loc, 'result.nextLevel', { n: nextN }), () => this.play(nextN), {
-        primary: true,
-      });
-      this.appear(next.root, 700);
-      y += 50;
-    }
-
-    const again = makeButton(this, CX, y, t(loc, 'result.playAgain'), () => this.play(last.level), {
-      primary: !hasNext,
-    });
-    this.appear(again.root, hasNext ? 760 : 700);
-    y += 50;
-
-    const menu = makeButton(this, CX, y, t(loc, 'result.menu'), () => this.scene.start('MainMenu'));
-    this.appear(menu.root, hasNext ? 820 : 770);
+  /** Фраза из core → строка на языке игрока. */
+  private phrase(loc: Locale, p: Phrase): string {
+    return t(loc, p.key, p.vars);
   }
 
-  private play(n: number) {
+  private play(n: number, daily = false) {
     this.registry.set('level', n);
+    // Уровень дня переигрывается тем же раскладом: зерно в реестре осталось с меню.
+    this.registry.set('mode', daily ? 'dailyLevel' : 'level');
     this.scene.start('Game');
-  }
-
-  /** Одна строка о том, что изменилось: открылся уровень, побит рекорд или стоит попробовать снова. */
-  private hintText(loc: Locale, last: LastGame, record: RecordResult | null): string {
-    if (!last.cleared) return t(loc, 'result.tryAgain');
-    if (record?.unlockedNext && last.level < LADDER_SIZE) return t(loc, 'result.unlocked', { n: last.level + 1 });
-    if (record?.isRecord) return t(loc, 'result.newBest');
-    return '';
-  }
-
-  private buildLeaderboard(loc: Locale, session: Session) {
-    const lbTitle = this.add
-      .text(CX, 540, t(loc, 'result.leaderboard'), {
-        fontFamily: FONT, fontSize: 17, color: COLORS.headText, fontStyle: 'bold',
-      })
-      .setOrigin(0.5)
-      .setResolution(DPR);
-    const listText = this.add
-      .text(CX, 566, '…', { fontFamily: FONT, fontSize: 15, color: COLORS.headMuted, align: 'center' })
-      .setOrigin(0.5, 0)
-      .setResolution(DPR);
-    this.appear(lbTitle, 860);
-    this.appear(listText, 900);
-    void session.leaderboard(5).then((entries) => {
-      if (!entries.length) {
-        listText.setText(t(loc, 'error.network'));
-        return;
-      }
-      listText.setText(
-        entries.map((e) => `${e.rank}. ${e.name}  ${e.score}${e.isCurrentUser ? '  ←' : ''}`).join('\n'),
-      );
-    });
-  }
-
-  /** Появление снизу вверх с fade. */
-  private appear(obj: { y: number; setAlpha(a: number): unknown }, delay: number) {
-    const toY = obj.y;
-    obj.setAlpha(0);
-    obj.y = toY + 14;
-    this.tweens.add({ targets: obj as object, y: toY, alpha: 1, duration: 300, delay, ease: 'Quad.easeOut' });
   }
 }

@@ -2,7 +2,7 @@ import {Scene} from 'phaser';
 import type {Locale} from '../../core/locale';
 import {BOARD_H,BOARD_W,cellsOf,createBlockDrop,ghostY,hardDrop,rotate,shift,step,type BlockDropState,type ShapeType} from '../../core/blockDrop';
 import {COLORS,FONT,BLOCK_COLORS} from '../palette';
-import {applyTheme,setupCamera,makeBackButton,makeButton,makeCard,makeChip,playSound,toast,EASE,DUR,sparkle,C} from '../ui';
+import {applyTheme,setupCamera,makeBackButton,makeButton,makeCard,makeChip,openPauseSheet,guardBrowserBack,playSound,toast,EASE,DUR,sparkle,C} from '../ui';
 import {DPR} from '../dpr';
 import {t} from '../../i18n';
 import type {Session} from '../../bridge/session';
@@ -17,14 +17,21 @@ export class Game extends Scene{
   private fixed:Phaser.GameObjects.Rectangle[]=[];private active:Phaser.GameObjects.Rectangle[]=[];private ghost:Phaser.GameObjects.Rectangle[]=[];
   private scoreChip?:ReturnType<typeof makeChip>;private linesChip?:ReturnType<typeof makeChip>;private speedChip?:ReturnType<typeof makeChip>;
   private fallEvent?:Phaser.Time.TimerEvent;private timer?:RoundTimer;private busy=false;private finished=false;private howto=false;
+  private pauseReasons=new Set<'host'|'hidden'|'sheet'>();
+  private worldTweens:Phaser.Tweens.Tween[]=[];
+  private pauseSheet?:ReturnType<typeof openPauseSheet>;
   constructor(){super('Game');}
   create(){
-    this.fixed=[];this.active=[];this.ghost=[];this.busy=false;this.finished=false;applyTheme(this);setupCamera(this);this.cameras.main.fadeIn(200,...COLORS.fade);
+    this.fixed=[];this.active=[];this.ghost=[];this.busy=false;this.finished=false;this.timer=undefined;this.pauseReasons.clear();this.worldTweens=[];this.pauseSheet=undefined;this.time.paused=false;applyTheme(this);setupCamera(this);this.cameras.main.fadeIn(200,...COLORS.fade);
     this.locale=(this.registry.get('locale') as Locale)??'ru';this.session=this.registry.get('session') as Session|undefined;this.howto=Boolean(this.registry.get('howto'));this.registry.set('howto',false);
     this.state=createBlockDrop(this.randomType());this.next=this.randomType();this.buildHud();this.buildBoard();this.buildControls();this.paint(false);
     if(this.howto)this.buildTutorial();else{this.timer=createRoundTimer(()=>performance.now());this.timer.start();this.session?.start();}
     this.startFall();this.bindKeyboard();
-    const off=this.session?.onApp((event:AppToGameEvent)=>{if(event.type==='PAUSE'){this.timer?.pause();if(this.fallEvent)this.fallEvent.paused=true;}else if(event.type==='RESUME'){this.timer?.resume();if(this.fallEvent)this.fallEvent.paused=false;}});if(off)this.events.once('shutdown',off);
+    const off=this.session?.onApp((event:AppToGameEvent)=>{if(event.type==='PAUSE'){this.setPaused('host',true);this.openPause();}else if(event.type==='RESUME')this.setPaused('host',false);});
+    const onVisibility=()=>{this.setPaused('hidden',document.hidden);if(document.hidden)this.openPause();};
+    document.addEventListener('visibilitychange',onVisibility);if(document.hidden)onVisibility();
+    const offBack=guardBrowserBack(()=>{if(this.pauseSheet?.open)this.exitToMenu();else this.openPause();});
+    this.events.once('shutdown',()=>{off?.();offBack();document.removeEventListener('visibilitychange',onVisibility);this.time.paused=false;this.pauseSheet?.close();});
   }
   private randomType():ShapeType{return TYPES[Math.floor(Math.random()*TYPES.length)];}
   private buildHud(){makeBackButton(this,62,34,t(this.locale,'menu.back'),()=>this.goBack());this.scoreChip=makeChip(this,185,34,t(this.locale,'game.score',{n:0}),92);this.linesChip=makeChip(this,282,34,t(this.locale,'game.lines',{n:0}),88);this.speedChip=makeChip(this,360,34,t(this.locale,'game.level',{n:1}),72);this.add.text(W/2,78,t(this.locale,'game.hint'),{fontFamily:FONT,fontSize:13,color:COLORS.headMuted}).setOrigin(.5).setResolution(DPR);}
@@ -33,10 +40,15 @@ export class Game extends Scene{
   private buildTutorial(){makeCard(this,28,660,344,52).setDepth(30);this.add.text(W/2,686,`${t(this.locale,'onboarding.take')}\n${t(this.locale,'onboarding.goal')}`,{fontFamily:FONT,fontSize:12,color:COLORS.headText,align:'center',wordWrap:{width:320}}).setOrigin(.5).setResolution(DPR).setDepth(31);}
   private startFall(){this.fallEvent?.remove();this.fallEvent=this.time.addEvent({delay:this.dropDelay(),loop:true,callback:()=>this.autoStep()});}
   private dropDelay():number{return Math.max(230,780-Math.floor(this.state.lines/8)*70);}
-  private autoStep(){if(this.busy||this.finished)return;const result=step(this.state,this.next);this.applyResult(result.state,result.locked,result.clearedLines,true);}
-  private bindKeyboard(){this.input.keyboard?.on('keydown-LEFT',()=>this.command('left'));this.input.keyboard?.on('keydown-RIGHT',()=>this.command('right'));this.input.keyboard?.on('keydown-UP',()=>this.command('rotate'));this.input.keyboard?.on('keydown-SPACE',()=>this.command('drop'));}
+  private autoStep(){if(this.busy||this.finished||this.pauseReasons.size)return;const result=step(this.state,this.next);this.applyResult(result.state,result.locked,result.clearedLines,true);}
+  private bindKeyboard(){
+    const keyboard=this.input.keyboard;
+    const bindings=[['keydown-LEFT','left'],['keydown-RIGHT','right'],['keydown-UP','rotate'],['keydown-SPACE','drop']] as const;
+    const handlers=bindings.map(([event,action])=>{const handler=()=>this.command(action);keyboard?.on(event,handler);return {event,handler};});
+    this.events.once('shutdown',()=>handlers.forEach(({event,handler})=>keyboard?.off(event,handler)));
+  }
   private command(action:'left'|'right'|'rotate'|'drop'){
-    if(this.busy||this.finished)return;
+    if(this.busy||this.finished||this.pauseReasons.size)return;
     if(action==='left'){const next=shift(this.state,-1);if(next!==this.state){this.state=next;this.paint(false);playSound('tap');}return;}
     if(action==='right'){const next=shift(this.state,1);if(next!==this.state){this.state=next;this.paint(false);playSound('tap');}return;}
     if(action==='rotate'){const next=rotate(this.state);if(next!==this.state){this.state=next;this.paint(false);playSound('tap');}return;}
@@ -44,7 +56,7 @@ export class Game extends Scene{
   }
   private applyResult(state:BlockDropState,locked:boolean,cleared:number,animate:boolean){
     this.state=state;if(locked){this.next=this.randomType();playSound(cleared?'star':'ok');if(cleared){sparkle(this,W/2,BOARD_Y+(BOARD_H-1)*CELL,{colors:[COLORS.primary,COLORS.accent,COLORS.gold],count:22});toast(this,W/2,520,t(this.locale,'game.cleared'));}this.startFall();}
-    this.paint(animate&&!locked);if(state.over){this.finished=true;this.fallEvent?.remove();this.time.delayedCall(450,()=>this.endGame());}
+    this.paint(animate&&!locked);if(state.over){this.finished=true;this.timer?.pause();this.fallEvent?.remove();this.time.delayedCall(450,()=>this.endGame());}
   }
   private paint(animate:boolean){
     this.fixed.forEach((v)=>v.destroy());this.fixed=[];
@@ -55,6 +67,24 @@ export class Game extends Scene{
     this.scoreChip?.setText(t(this.locale,'game.score',{n:this.state.score}));this.linesChip?.setText(t(this.locale,'game.lines',{n:this.state.lines}));this.speedChip?.setText(t(this.locale,'game.level',{n:Math.floor(this.state.lines/8)+1}));
   }
   private makeBlock(x:number,y:number,color:number,alpha:number,depth:number){return this.add.rectangle(BOARD_X+x*CELL+CELL/2,BOARD_Y+y*CELL+CELL/2,CELL-3,CELL-3,color,alpha).setStrokeStyle(1,C.white,.55).setDepth(depth);}
-  private goBack(){if(this.finished)return;this.finished=true;this.fallEvent?.remove();this.cameras.main.fadeOut(180,...COLORS.fade);this.cameras.main.once('camerafadeoutcomplete',()=>this.scene.start('MainMenu'));}
-  private endGame(){if(this.howto){this.scene.start('MainMenu');return;}const durationMs=Math.round(this.timer?.elapsedMs()??0);void this.session?.finish({score:this.state.score,lines:this.state.lines,pieces:this.state.pieces,durationMs});this.registry.set('lastGame',{locale:this.locale,score:this.state.score,lines:this.state.lines,pieces:this.state.pieces,durationMs});this.cameras.main.fadeOut(220,...COLORS.fade);this.cameras.main.once('camerafadeoutcomplete',()=>this.scene.start('GameOver'));}
+  private setPaused(reason:'host'|'hidden'|'sheet',paused:boolean){
+    const wasPaused=this.pauseReasons.size>0;
+    if(paused)this.pauseReasons.add(reason);else this.pauseReasons.delete(reason);
+    const isPaused=this.pauseReasons.size>0;
+    this.time.paused=isPaused;
+    if(isPaused){this.timer?.pause();if(!wasPaused){this.worldTweens=this.tweens.getTweens().filter(tween=>tween.isPlaying());this.worldTweens.forEach(tween=>tween.pause());}}
+    else if(wasPaused){if(!this.finished&&!this.howto)this.timer?.resume();this.worldTweens.forEach(tween=>tween.resume());this.worldTweens=[];}
+  }
+  private goBack(){this.openPause();}
+  private openPause(){
+    if(this.finished||this.pauseSheet?.open)return;
+    this.setPaused('sheet',true);
+    this.pauseSheet=openPauseSheet(this,{locale:this.locale,kind:'run',summary:t(this.locale,'game.score',{n:this.state.score}),sound:{on:t(this.locale,'sound.on'),off:t(this.locale,'sound.off')},
+      onResume:()=>{this.pauseSheet=undefined;this.setPaused('sheet',false);},
+      onRestart:()=>{this.time.paused=false;this.scene.restart();},
+      onExit:()=>this.exitToMenu(),
+      onHowto:()=>{this.registry.set('howto',true);this.time.paused=false;this.scene.restart();}});
+  }
+  private exitToMenu(){this.finished=true;this.timer?.pause();this.fallEvent?.remove();this.time.paused=false;this.pauseSheet?.close();this.scene.start('MainMenu');}
+  private endGame(){if(this.howto){this.scene.start('MainMenu');return;}this.timer?.pause();this.finished=true;const durationMs=Math.round(this.timer?.elapsedMs()??0);this.registry.set('rewardPromise',this.session?.finish({score:this.state.score,lines:this.state.lines,pieces:this.state.pieces,durationMs})??null);this.registry.set('lastGame',{locale:this.locale,score:this.state.score,lines:this.state.lines,pieces:this.state.pieces,durationMs});this.cameras.main.fadeOut(220,...COLORS.fade);this.cameras.main.once('camerafadeoutcomplete',()=>this.scene.start('GameOver'));}
 }

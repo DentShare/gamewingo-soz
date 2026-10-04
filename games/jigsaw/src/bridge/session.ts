@@ -4,7 +4,14 @@ import type {
 import { computeScore } from '../core/score';
 import type { Locale } from '../core/locale';
 
-export interface FinishInput { level: number; pieces: number; wrongDrops: number; durationMs: number; }
+export interface FinishInput {
+  level: number;
+  /** level — картинка лестницы; dailyLevel — уровень дня (свой тариф на сервере). */
+  mode?: 'level' | 'dailyLevel';
+  pieces: number;
+  wrongDrops: number;
+  durationMs: number;
+}
 
 export interface Session {
   locale: Locale; theme?: BrandTheme; sessionId: string; ready(): void;
@@ -48,7 +55,7 @@ export function createSession(
       try {
         return await api.submitScore({
           sessionId, gameId: 'jigsaw', score, durationMs: input.durationMs,
-          meta: { pieces: input.pieces, wrongDrops: input.wrongDrops },
+          meta: { level: input.level, mode: input.mode ?? 'level', pieces: input.pieces, wrongDrops: input.wrongDrops },
         });
       } catch (err) {
         bridge.error(String(err));

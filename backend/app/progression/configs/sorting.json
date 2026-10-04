@@ -78,7 +78,7 @@
     {
       "n": 1,
       "params": {
-        "total": 8,
+        "total": 6,
         "mode": "color",
         "bins": 3
       },
@@ -90,7 +90,7 @@
     {
       "n": 2,
       "params": {
-        "total": 10,
+        "total": 8,
         "mode": "color",
         "bins": 3
       },
@@ -102,6 +102,18 @@
     {
       "n": 3,
       "params": {
+        "total": 10,
+        "mode": "color",
+        "bins": 3
+      },
+      "goals": {
+        "gold": 0,
+        "silver": 2
+      }
+    },
+    {
+      "n": 4,
+      "params": {
         "total": 12,
         "mode": "color",
         "bins": 3
@@ -112,7 +124,19 @@
       }
     },
     {
-      "n": 4,
+      "n": 5,
+      "params": {
+        "total": 14,
+        "mode": "color",
+        "bins": 3
+      },
+      "goals": {
+        "gold": 1,
+        "silver": 3
+      }
+    },
+    {
+      "n": 6,
       "params": {
         "total": 10,
         "mode": "shape",
@@ -124,35 +148,11 @@
       }
     },
     {
-      "n": 5,
-      "params": {
-        "total": 12,
-        "mode": "shape",
-        "bins": 3
-      },
-      "goals": {
-        "gold": 1,
-        "silver": 3
-      }
-    },
-    {
-      "n": 6,
-      "params": {
-        "total": 14,
-        "mode": "shape",
-        "bins": 3
-      },
-      "goals": {
-        "gold": 1,
-        "silver": 3
-      }
-    },
-    {
       "n": 7,
       "params": {
         "total": 12,
-        "mode": "color",
-        "bins": 4
+        "mode": "shape",
+        "bins": 3
       },
       "goals": {
         "gold": 1,
@@ -163,8 +163,8 @@
       "n": 8,
       "params": {
         "total": 14,
-        "mode": "color",
-        "bins": 4
+        "mode": "shape",
+        "bins": 3
       },
       "goals": {
         "gold": 1,
@@ -175,8 +175,8 @@
       "n": 9,
       "params": {
         "total": 16,
-        "mode": "color",
-        "bins": 4
+        "mode": "shape",
+        "bins": 3
       },
       "goals": {
         "gold": 2,
@@ -186,13 +186,13 @@
     {
       "n": 10,
       "params": {
-        "total": 12,
+        "total": 18,
         "mode": "shape",
-        "bins": 4
+        "bins": 3
       },
       "goals": {
-        "gold": 1,
-        "silver": 3
+        "gold": 2,
+        "silver": 4
       }
     },
     {
@@ -210,13 +210,13 @@
     {
       "n": 12,
       "params": {
-        "total": 16,
-        "mode": "shape",
+        "total": 14,
+        "mode": "color",
         "bins": 4
       },
       "goals": {
-        "gold": 2,
-        "silver": 4
+        "gold": 1,
+        "silver": 3
       }
     },
     {

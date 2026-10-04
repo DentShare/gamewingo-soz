@@ -3,75 +3,92 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#f26522" />
+<meta name="theme-color" content="#F76624" />
 <title>Игры WinGo</title>
 <style>
-  /* Токены из макета Figma (WinGo · Games). */
+  /*
+   * Токены — только из docs/DESIGN.md (они же packages/game-ui/src/tokens.ts).
+   * Своих цветов здесь нет: если чего-то не хватает — сначала строка в DESIGN.md.
+   */
   :root {
-    --orange: #F76624;        /* кнопка «Начать игру», активный язык */
-    --chip-bg: #FFDDBF;
-    --chip-ink: #FA7700;
-    --icon-bg: #FFEBE2;
+    --primary: #F76624;
+    --primary-pressed: #DC5314;
+    --primary-soft: #FF9A5E;
+    --gold: #D99A12;
+    --gold-soft: #FFF3CF;
+    --gold-text: #C47F05;       /* CSS-токен gold в tokens.ts: золото для текста */
+    --success: #3AA657;
     --ink: #1A1A1A;
     --muted: #8E97A7;
-    --card: #FFFFFF;
     --bg: #F9F9F9;
+    --surface: #FFFFFF;
+    --tint: #FFEBE2;
+    --chip-bg: #FFDDBF;
+    --chip-ink: #FA7700;
+    --line: #D9D9D9;
     --divider: rgba(217, 217, 217, .4);
+    --slot: #F1F2F4;            /* пустая дорожка прогресс-бара */
+    --on-bar: rgba(255, 255, 255, .22);   /* чипы на шапке */
+    --top-bar: linear-gradient(270deg, #FF7700 0%, #FD7B03 49.52%, #FF5001 100%);
+    /* Оттенки перьев феникса (PHOENIX_SHADES) — только для маскота. */
+    --px-deep: #B9440F;
+    --px-head-edge: #E25A1B;
+    --px-tail-mid: #F0733A;
+    --px-wing-light: #FF8A47;
+    --px-peach: #FFB27A;
+    --px-gold-light: #F2C14E;
+    --px-gold-pale: #FFD36B;
+    --px-beak-dark: #B07A0A;
     /* Макет свёрстан на SF Pro — берём системный шрифт платформы. */
     --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, sans-serif;
-    --font-rounded: ui-rounded, 'SF Pro Rounded', var(--font);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; }
   body {
     font-family: var(--font); color: var(--ink); background: var(--bg);
-    min-height: 100vh; -webkit-font-smoothing: antialiased;
+    min-height: 100vh; -webkit-font-smoothing: antialiased; overflow-x: hidden;
   }
-  /* Растительный фон макета — мягкое приближение без растровых ассетов. */
-  body::before {
-    content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .4;
-    background:
-      radial-gradient(52vw 38vw at -14% 6%, #F2D4CC 0%, rgba(242, 212, 204, 0) 70%),
-      radial-gradient(52vw 38vw at 114% 92%, #F2D4CC 0%, rgba(242, 212, 204, 0) 70%);
-  }
+  body.locked { overflow: hidden; }
+  button { font-family: inherit; }
 
   /* ── Шапка ─────────────────────────────────────────────────────────── */
   .topbar {
-    position: sticky; top: 0; z-index: 10;
-    background: linear-gradient(270deg, #FF7700 0%, #FD7B03 49.52%, #FF5001 100%);
+    position: sticky; top: 0; z-index: 10; background: var(--top-bar);
     padding: max(env(safe-area-inset-top, 0px), 12px) 20px 0;
   }
   .navrow { position: relative; display: flex; align-items: center; height: 46px; }
   .navrow h1 {
-    position: absolute; left: 40px; right: 40px; margin: 0; text-align: center;
+    position: absolute; left: 40px; right: 40px; margin: 0; text-align: center; pointer-events: none;
     font-size: 20px; line-height: 25px; letter-spacing: -.45px; font-weight: 590; color: #fff;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .back {
-    width: 32px; height: 32px; display: grid; place-items: center;
+    position: relative; width: 32px; height: 32px; display: grid; place-items: center;
     background: none; border: 0; padding: 0; color: #fff; cursor: pointer;
   }
   .back:active { opacity: .6; }
+  /* Тап-зона ≥ 44 px вокруг мелких элементов шапки. */
+  .back::after, .pill::after { content: ''; position: absolute; inset: -9px -6px; }
 
-  /* ── Счётчик бонусов в шапке ───────────────────────────────────────── */
-  .bonus {
-    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
-    display: flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px 0 8px;
-    border-radius: 13px; background: rgba(255, 255, 255, .22);
-    color: #fff; font-size: 14px; font-weight: 590;
+  .top-right { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; gap: 6px; align-items: center; }
+  .pill {
+    position: relative; height: 26px; border: 0; border-radius: 13px; background: var(--on-bar);
+    color: #fff; display: flex; align-items: center; cursor: pointer; font-variant-numeric: tabular-nums;
   }
-  .bonus .coin, .fly-bonus .coin {
-    width: 16px; height: 16px; border-radius: 50%; flex: none;
-    background: radial-gradient(circle at 35% 30%, #FFF3CF 0%, #F3C64B 45%, #D99A12 100%);
+  .pill:active { opacity: .75; }
+  .lang-chip { padding: 0 9px; font-size: 12px; font-weight: 700; }
+  .bonus { gap: 5px; padding: 0 10px 0 8px; font-size: 14px; font-weight: 590; }
+  .coin {
+    width: 16px; height: 16px; border-radius: 50%; flex: none; display: inline-block;
+    background: radial-gradient(circle at 35% 30%, var(--gold-soft) 0%, var(--gold) 88%);
   }
   .bonus.pulse { animation: bonus-pulse .28s ease-out; }
-  @keyframes bonus-pulse {
-    50% { transform: translateY(-50%) scale(1.18); }
-  }
+  @keyframes bonus-pulse { 50% { transform: scale(1.18); } }
 
   /* Летящий «+N»: рождается в центре, transition уводит его в чип. */
   .fly-bonus {
     position: fixed; z-index: 40; display: flex; align-items: center; gap: 6px;
-    color: #D99A12; font-weight: 700; font-size: 22px; pointer-events: none;
+    color: var(--gold); font-weight: 700; font-size: 22px; pointer-events: none;
     transform: translate(-50%, -50%) scale(.2); opacity: 0;
     transition: transform .55s cubic-bezier(.55, 0, .85, .36), left .55s cubic-bezier(.55, 0, .85, .36),
                 top .55s cubic-bezier(.55, 0, .85, .36), opacity .2s linear;
@@ -79,343 +96,250 @@
   .fly-bonus .coin { width: 20px; height: 20px; }
 
   .wrap {
-    max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px;
-    padding: 20px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
+    max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;
+    padding: 16px 20px calc(env(safe-area-inset-bottom, 0px) + 24px);
   }
   #sections { display: flex; flex-direction: column; gap: 20px; }
 
-  /* ── Переключатель языка ───────────────────────────────────────────── */
-  /* Полоса с маскотом: объясняет механику серии и держит бренд на главной. */
+  /* ── Карточки ──────────────────────────────────────────────────────── */
+  .card { background: var(--surface); border-radius: 12px; padding: 12px; }
+  .card-col { display: flex; flex-direction: column; gap: 10px; }
+  .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .card-head h2, .card-head h3 {
+    margin: 0; font-size: 15px; line-height: 20px; letter-spacing: -.23px; font-weight: 590; flex: none;
+  }
+  .sub { font-size: 12px; line-height: 16px; color: var(--muted); }
+  .card-head .sub { text-align: right; }
+  .tap { cursor: pointer; }
+  .tap:active { background: var(--tint); }
+
+  .chip {
+    flex: none; font-size: 12px; line-height: 16px; font-weight: 700; padding: 3px 6px;
+    border-radius: 8px; background: var(--chip-bg); color: var(--chip-ink); font-variant-numeric: tabular-nums;
+  }
+  .chip.ok { background: var(--success); color: #fff; }
+
+  /* «Продолжить» */
+  .continue { display: flex; gap: 12px; align-items: center; }
+  .continue .ico { width: 56px; height: 56px; }
+  .continue .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .continue .name { font-size: 15px; line-height: 20px; letter-spacing: -.23px; font-weight: 590; }
+  .continue .gold { font-size: 12px; line-height: 16px; font-weight: 590; color: var(--gold-text); }
+  .btn-play {
+    flex: none; height: 36px; padding: 0 14px; border: 0; border-radius: 12px;
+    background: var(--primary); color: #fff; font-size: 14px; font-weight: 590; cursor: pointer;
+  }
+  .btn-play:active { background: var(--primary-pressed); }
+
+  /* Иконка игры: файл hub/icons/<slug>.svg на мягкой подложке. */
+  .ico { flex: none; border-radius: 12px; background: var(--tint); display: block; object-fit: cover; }
+
+  /* Приветствие с фениксом — только у новичка, пока нечего «Продолжить». */
   .greet {
-    display: flex; align-items: center; gap: 12px; margin: 14px 0 2px;
-    background: var(--card); border: 1px solid var(--divider); border-radius: 14px;
-    padding: 8px 14px 8px 10px;
+    display: flex; align-items: center; gap: 12px; background: var(--surface);
+    border: 1px solid var(--divider); border-radius: 14px; padding: 8px 14px 8px 10px;
   }
   .greet p { margin: 0; font-size: 14px; line-height: 1.35; color: var(--muted); }
-  .greet .phoenix { flex: none; }
-  .greet .phoenix .wing { transform-origin: 30px 30px; }
-  .greet.flap .phoenix .wing { animation: flap .46s ease-out 2; }
-  @keyframes flap { 0%, 100% { transform: rotate(0) } 50% { transform: rotate(-26deg) } }
-  @media (prefers-reduced-motion: reduce) { .greet.flap .phoenix .wing { animation: none } }
+  .greet svg { flex: none; overflow: visible; }
 
-  .langs { display: flex; gap: 8px; }
-  .lang {
-    flex: 1; height: 40px; display: grid; place-items: center; border-radius: 12px;
-    background: var(--card); color: var(--ink);
-    font-size: 12px; line-height: 16px; font-weight: 590; cursor: pointer;
+  /* Полоса недели: пройденные — success, сегодня — primary, будущие — surface. */
+  .week { display: flex; gap: 6px; }
+  .day {
+    flex: 1; min-width: 0; height: 44px; border-radius: 8px; border: 1px solid transparent;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    color: #fff; font-variant-numeric: tabular-nums;
   }
-  .lang.active { background: var(--orange); color: #fff; }
+  .week.tall .day { height: 48px; }
+  .day b { font-size: 11px; line-height: 13px; font-weight: 590; }
+  .day span { font-size: 11px; line-height: 13px; font-weight: 700; }
+  .week.tall .day span { font-size: 12px; line-height: 14px; }
+  .day.done { background: var(--success); }
+  .day.today { background: var(--primary); }
+  .day.next, .day.miss { background: var(--surface); border-color: var(--line); color: var(--muted); }
+  .day.miss { opacity: .6; }
 
-  /* ── Секции ────────────────────────────────────────────────────────── */
-  section { display: flex; flex-direction: column; gap: 8px; }
-  .section-title {
-    margin: 0; font-size: 17px; line-height: 22px; letter-spacing: -.43px; font-weight: 590;
+  /* Задания дня */
+  .mission { display: flex; align-items: center; gap: 10px; min-height: 36px; border-radius: 8px; }
+  .mission.tap { margin: 0 -4px; padding: 0 4px; }
+  .mission .dot {
+    width: 18px; height: 18px; border-radius: 50%; flex: none; display: grid; place-items: center;
+    background: var(--tint);
   }
-  .card {
-    display: flex; flex-direction: column; gap: 12px;
-    background: var(--card); border-radius: 12px; padding: 12px;
-  }
+  .mission .dot::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+  .mission .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .mission .line { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; line-height: 17px; }
+  .mission .line span:last-child { color: var(--muted); flex: none; font-variant-numeric: tabular-nums; }
+  .bar { height: 4px; border-radius: 2px; background: var(--slot); overflow: hidden; }
+  .bar i { display: block; height: 4px; background: var(--primary); }
+  .mission.done .dot { background: var(--success); }
+  .mission.done .dot::after { background: #fff; }
+  .mission.done .line span:first-child { color: var(--muted); }
+  .mission.done .bar i { background: var(--success); }
 
-  /* ── Карточка игры ─────────────────────────────────────────────────── */
-  .item { display: flex; flex-direction: column; gap: 12px; cursor: pointer; }
-  .item + .item { padding-top: 12px; border-top: 1px solid var(--divider); }
-  .row { display: flex; gap: 12px; align-items: center; }
-  .thumb {
-    width: 82px; height: 82px; flex: none; border-radius: 12px;
-    background: var(--icon-bg); display: grid; place-items: center;
+  /* ── Каталог: сетка в две колонки ──────────────────────────────────── */
+  section { display: flex; flex-direction: column; gap: 12px; }
+  .section-title { margin: 0; font-size: 17px; line-height: 22px; letter-spacing: -.43px; font-weight: 590; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .tile {
+    background: var(--surface); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px;
+    cursor: pointer; text-decoration: none; color: inherit; min-width: 0;
   }
-  .thumb text { font-family: var(--font-rounded); }
-  .thumb-img { width: 82px; height: 82px; display: block; border-radius: 12px; }
-  .meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-  .meta h3 { margin: 0; font-size: 15px; line-height: 20px; letter-spacing: -.23px; font-weight: 590; }
-  .meta .desc { margin: 0; font-size: 12px; line-height: 16px; color: var(--muted); }
-  .chips { display: flex; gap: 4px; flex-wrap: wrap; }
-  .chip {
-    font-family: var(--font-rounded); font-weight: 700; font-size: 12px; line-height: 22px;
-    padding: 4px 8px; border-radius: 8px; background: var(--chip-bg); color: var(--chip-ink);
-  }
+  .tile:active { background: var(--tint); }
+  .tile .ico { width: 48px; height: 48px; border-radius: 10px; }
+  .tile h3 { margin: 0; font-size: 15px; line-height: 20px; letter-spacing: -.23px; font-weight: 590; overflow-wrap: anywhere; }
+  .tile .sub { font-variant-numeric: tabular-nums; }
+  .tile.soon { opacity: .55; cursor: default; }
 
-  .cta {
-    width: 100%; height: 40px; border: 0; border-radius: 12px; background: var(--orange);
-    color: #fff; font-family: inherit; font-size: 15px; line-height: 20px;
-    letter-spacing: -.23px; font-weight: 590; cursor: pointer;
+  /* ── Экран «Бонусы» — слой поверх хаба ─────────────────────────────── */
+  .screen {
+    position: fixed; inset: 0; z-index: 30; background: var(--bg); overflow-y: auto; overflow-x: hidden;
+    -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
   }
-  .cta:active { opacity: .85; }
+  .screen[hidden] { display: none; }
+  .screen .topbar { padding-bottom: 20px; }
+  .balance-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 8px; color: #fff; }
+  .balance-row .cap { font-size: 12px; line-height: 16px; color: rgba(255, 255, 255, .8); }
+  .balance-row .big {
+    font-size: 34px; line-height: 1.1; font-weight: 700; display: flex; align-items: center; gap: 8px;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .balance-row .big .coin { width: 24px; height: 24px; }
+  .balance-row .right { text-align: right; }
+  .balance-row .mid { font-size: 20px; line-height: 25px; font-weight: 700; white-space: nowrap; }
+  .screen .wrap { gap: 12px; }
+  .source { display: flex; align-items: center; gap: 12px; }
+  .source .ico { width: 44px; height: 44px; border-radius: 10px; }
+  .source .badge {
+    width: 44px; height: 44px; border-radius: 10px; flex: none; background: var(--tint); color: var(--primary);
+    display: grid; place-items: center; font-size: 18px; font-weight: 700;
+  }
+  .source .badge.ok { background: var(--success); color: #fff; }
+  .source .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .source .txt b { font-size: 15px; line-height: 20px; font-weight: 590; letter-spacing: -.23px; }
 
-  /* ── «Скоро» ───────────────────────────────────────────────────────── */
-  .item.soon { opacity: .55; cursor: default; }
-  .chip.soon { background: #ECEEF1; color: var(--muted); }
+  /* ── Феникс v2 (макет «Хаб · полоса приветствия», система 120×120) ─── */
+  .px * { transform-box: view-box; }
+  .px-shadow { transform-origin: 60px 98px; animation: pxShadow 1.8s ease-in-out infinite; }
+  .px-root   { transform-origin: 60px 98px; }
+  .px-tail   { transform-origin: 53px 77px; animation: pxSway 2.3s ease-in-out infinite; }
+  .px-wingb  { transform-origin: 60px 60px; }
+  .px-body   { transform-origin: 58px 91px; animation: pxBreath 1.8s ease-in-out infinite; }
+  .px-head   { transform-origin: 64px 50px; animation: pxHeadBob 2.7s ease-in-out infinite; }
+  .px-crest  { transform-origin: 60px 28px; animation: pxCrest 1.6s ease-in-out infinite; }
+  .px-eye    { transform-origin: 72px 35px; animation: pxBlink 3.4s linear infinite; }
+  .px-wingf  { transform-origin: 57px 58px; animation: pxWing 3.1s ease-in-out infinite; }
+  /* Бонус за вход прилетел — птица подпрыгивает и дважды машет. */
+  .greet.cheer .px-root  { animation: pxHop .9s cubic-bezier(.34, 1.56, .64, 1) 1; }
+  .greet.cheer .px-wingf { animation: pxFlap .32s ease-out 2; }
+  .greet.cheer .px-wingb { animation: pxFlapBack .32s ease-out 2; }
+  @keyframes pxBreath { 0%, 100% { transform: scaleY(1) } 50% { transform: scaleY(1.035) } }
+  @keyframes pxSway { 0%, 100% { transform: rotate(-3deg) } 50% { transform: rotate(3deg) } }
+  @keyframes pxCrest { 0%, 100% { transform: rotate(3deg) } 50% { transform: rotate(-4deg) } }
+  @keyframes pxWing { 0%, 100% { transform: rotate(0) } 50% { transform: rotate(-3deg) } }
+  @keyframes pxHeadBob { 0%, 100% { transform: translateY(0) rotate(0) } 50% { transform: translateY(-1.5px) rotate(2deg) } }
+  @keyframes pxBlink { 0%, 92%, 100% { transform: scaleY(1) } 95% { transform: scaleY(.08) } }
+  @keyframes pxShadow { 0%, 100% { transform: scaleX(1); opacity: .14 } 50% { transform: scaleX(1.05); opacity: .11 } }
+  @keyframes pxHop {
+    0% { transform: translateY(0) } 35% { transform: translateY(-14px) }
+    70% { transform: translateY(0) scale(1.08, .92) } 85% { transform: translateY(0) scale(.97, 1.03) } 100% { transform: translateY(0) }
+  }
+  @keyframes pxFlap { 0%, 100% { transform: rotate(0) } 50% { transform: rotate(-34deg) } }
+  @keyframes pxFlapBack { 0%, 100% { transform: rotate(0) } 50% { transform: rotate(22deg) } }
+  /* Уменьшить движение: остаются только дыхание и моргание. */
+  @media (prefers-reduced-motion: reduce) {
+    .px-shadow, .px-tail, .px-head, .px-crest, .px-wingf,
+    .greet.cheer .px-root, .greet.cheer .px-wingf, .greet.cheer .px-wingb { animation: none; }
+    .bonus.pulse { animation: none; }
+  }
 </style>
 </head>
 <body>
   <header class="topbar">
     <div class="navrow">
-      <button class="back" id="back" aria-label="Назад">
+      <button class="back" id="back" type="button" aria-label="Назад">
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
           <path d="M18.5 5.5 8.5 16l10 10.5" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
       <h1 id="hTitle">Игры</h1>
-      <div class="bonus" id="bonusChip" aria-label="Бонусы">
-        <span class="coin"></span><span id="bonusVal">0</span>
+      <div class="top-right">
+        <button class="pill lang-chip" id="langChip" type="button">RU</button>
+        <button class="pill bonus" id="bonusChip" type="button" aria-label="Бонусы">
+          <span class="coin"></span><span id="bonusVal">0</span>
+        </button>
       </div>
     </div>
   </header>
 
   <main class="wrap">
-    <div class="langs">
-      <div class="lang active" data-lang="ru">Русский</div>
-      <div class="lang" data-lang="uz">Oʻzbekcha</div>
-    </div>
-
-    <div class="greet" id="greet">
-      <svg class="phoenix" viewBox="0 0 64 72" width="52" height="58" aria-hidden="true">
-        <polygon points="28.8,42.32 22.75,47.22 22.05,55.69 22.08,63.01 26.4,57.1 30.82,49.84" fill="#d99a12"/>
-        <polygon points="28.8,42.32 20.01,45.01 15.6,54 12.48,62.05 19.8,57.47 27.8,51.46" fill="#f76624"/>
-        <polygon points="28.8,42.32 21.37,41.4 14.89,46.49 9.69,51.31 16.72,50.38 24.77,48.63" fill="#dc5314"/>
-        <polygon points="33.28,31.44 34.47,23.45 28.07,19.09 21.99,15.91 23.14,22.67 25.32,30.11" fill="#dc5314"/>
-        <ellipse cx="32" cy="35.28" rx="12.16" ry="16" fill="#f76624"/>
-        <ellipse cx="35.84" cy="37.84" rx="7.04" ry="10.24" fill="#ff9a5e"/>
-        <circle cx="37.76" cy="16.72" r="9.92" fill="#f76624"/>
-        <polygon points="45.44,14.8 56.32,18 45.44,20.56" fill="#d99a12"/>
-        <polygon points="37.76,9.68 39.71,6.42 38.81,2.28 37.76,-1.2 36.71,2.28 35.81,6.42" fill="#d99a12"/>
-        <polygon points="33.92,10.32 34.16,5.75 31.08,1.55 28.2,-1.84 28.97,2.55 30.25,7.59" fill="#ff9a5e"/>
-        <polygon points="30.08,12.88 28.87,9.52 25.34,7.69 22.19,6.35 24.09,9.2 26.55,12.32" fill="#d99a12"/>
-        <circle cx="40.96" cy="15.44" r="1.92" fill="#1a1a1a"/>
-        <circle cx="41.73" cy="14.61" r="0.7" fill="#fff"/>
-        <g class="wing">
-        <polygon points="31.36,30.16 27,23.2 19.05,23.85 12.14,25.23 17.54,29.76 24.19,34.16" fill="#dc5314"/>
-        <polygon points="31.36,30.16 28.89,20.08 19.1,17.8 10.29,16.79 14.96,24.33 21.19,32.22" fill="#f76624"/>
-        <polygon points="31.36,30.16 32.06,22.06 25.49,17.21 19.32,13.59 20.85,20.58 23.44,28.32" fill="#ff9a5e"/>
-        </g>
-      </svg>
-      <p id="greetText"></p>
-    </div>
-
+    <div id="top"></div>
+    <div id="today"></div>
     <div id="sections"></div>
   </main>
 
-<script>
-  // Иконки каталога: hub/icons/<slug>.svg, генерируются `node scripts/gen-icons.mjs`.
-  // Для slug'а без файла рисуется векторный запасной вариант из ICONS ниже.
-  const FILE_ICONS = new Set([
-    'soz', 'pairs', 'fifteen', '2048', 'sudoku-kids',
-    'stack', 'flyer', 'targets', 'snake', 'sorting', 'counting',
-    'quiz', 'jigsaw', 'sums', 'color-sort',
-  ]);
+  <!-- Экран «Бонусы»: по тапу на счётчик, закрывается стрелкой и системным «назад». -->
+  <div class="screen" id="bonusScreen" hidden role="dialog" aria-modal="true" aria-labelledby="bTitle">
+    <header class="topbar">
+      <div class="navrow">
+        <button class="back" id="bonusBack" type="button" aria-label="Назад">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <path d="M18.5 5.5 8.5 16l10 10.5" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <h1 id="bTitle">Бонусы</h1>
+      </div>
+      <div class="balance-row">
+        <div>
+          <div class="cap" id="bBalCap"></div>
+          <div class="big"><span class="coin"></span><span id="bBal">0</span></div>
+        </div>
+        <div class="right">
+          <div class="cap" id="bLeftCap"></div>
+          <div class="mid" id="bLeft"></div>
+        </div>
+      </div>
+    </header>
+    <div class="wrap" id="bonusBody"></div>
+  </div>
 
-  // Векторный запасной набор — инлайн-SVG (ноль запросов, чёткие на любом DPR).
-  const ICONS = {
-    sorting: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
-      <rect x="2" y="8" width="44" height="32" rx="8" fill="#fff" stroke="#f2ded0" stroke-width="1.5"/>
-      <circle cx="13" cy="18" r="5" fill="#f26522"/>
-      <rect x="19" y="13" width="10" height="10" rx="2.8" fill="#4e9b90"/>
-      <path d="M35 12.6 40 22H30Z" fill="#eb9d2e"/>
-      <rect x="8" y="25" width="10" height="10" rx="2.8" fill="#eb9d2e"/>
-      <circle cx="24" cy="30" r="5" fill="#4e9b90"/>
-      <path d="M35 24.6 40 34H30Z" fill="#f26522"/></svg>`,
-    counting: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
-      <rect x="4" y="7" width="40" height="34" rx="9" fill="#fff" stroke="#f2ded0" stroke-width="1.5"/>
-      <text x="17" y="33" text-anchor="middle" font-size="26" font-weight="700" fill="#f26522">3</text>
-      <circle cx="33" cy="16.5" r="3.8" fill="#4e9b90"/>
-      <circle cx="33" cy="24.5" r="3.8" fill="#eb9d2e"/>
-      <circle cx="33" cy="32.5" r="3.8" fill="#4e9b90"/></svg>`,
-    stack: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
-      <rect x="6" y="33" width="36" height="10" rx="4" fill="#f26522"/>
-      <rect x="10" y="22" width="29" height="10" rx="4" fill="#eb9d2e"/>
-      <rect x="7" y="11" width="27" height="10" rx="4" fill="#4e9b90"/>
-      <rect x="12" y="3" width="20" height="8" rx="3.6" fill="#ffc79a"/></svg>`,
-    flyer: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
-      <rect x="2" y="0" width="12" height="19" rx="3" fill="#f5841f"/>
-      <rect x="2" y="31" width="12" height="17" rx="3" fill="#f5841f"/>
-      <rect x="34" y="0" width="12" height="14" rx="3" fill="#f9a664"/>
-      <rect x="34" y="26" width="12" height="22" rx="3" fill="#f9a664"/>
-      <circle cx="24" cy="24" r="8" fill="#eb9d2e"/>
-      <circle cx="27" cy="21.4" r="2.3" fill="#fff"/></svg>`,
-    targets: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
-      <circle cx="24" cy="24" r="17" fill="#f26522"/>
-      <circle cx="24" cy="24" r="11.5" fill="#fff"/>
-      <circle cx="24" cy="24" r="6.5" fill="#f26522"/>
-      <circle cx="24" cy="24" r="2.6" fill="#fff"/></svg>`,
-    snake: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
-      <rect x="4" y="26" width="13" height="13" rx="4" fill="#4e9b90"/>
-      <rect x="16" y="26" width="13" height="13" rx="4" fill="#6bb3a9"/>
-      <rect x="16" y="15" width="13" height="13" rx="4" fill="#6bb3a9"/>
-      <rect x="28" y="15" width="13" height="13" rx="4" fill="#4e9b90"/>
-      <circle cx="37" cy="20" r="1.7" fill="#fff"/>
-      <circle cx="12" cy="11" r="5.5" fill="#f26522"/></svg>`,
-    soz: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
-      <rect x="3" y="4" width="13.5" height="13" rx="3.6" fill="#c7cdd6"/>
-      <rect x="17.5" y="4" width="13.5" height="13" rx="3.6" fill="#eb9d2e"/>
-      <rect x="32" y="4" width="13.5" height="13" rx="3.6" fill="#c7cdd6"/>
-      <rect x="3" y="18" width="13.5" height="13" rx="3.6" fill="#4e9b90"/>
-      <rect x="17.5" y="18" width="13.5" height="13" rx="3.6" fill="#c7cdd6"/>
-      <rect x="32" y="18" width="13.5" height="13" rx="3.6" fill="#eb9d2e"/>
-      <rect x="3" y="32" width="13.5" height="13" rx="3.6" fill="#4e9b90"/>
-      <rect x="17.5" y="32" width="13.5" height="13" rx="3.6" fill="#4e9b90"/>
-      <rect x="32" y="32" width="13.5" height="13" rx="3.6" fill="#4e9b90"/></svg>`,
-    pairs: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
-      <g transform="rotate(-9 15 24)">
-        <rect x="5" y="10" width="19" height="28" rx="5" fill="#f26522"/>
-        <circle cx="14.5" cy="24" r="4" fill="#fff" opacity=".85"/>
-      </g>
-      <g transform="rotate(8 33 24)">
-        <rect x="24" y="10" width="19" height="28" rx="5" fill="#fff" stroke="#f2ded0" stroke-width="1.5"/>
-        <circle cx="33.5" cy="24" r="4.4" fill="#4e9b90"/>
-      </g></svg>`,
-    fifteen: `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
-      <rect x="4" y="4" width="40" height="40" rx="9" fill="#fff" stroke="#f2ded0" stroke-width="1.5"/>
-      <rect x="8.5" y="8.5" width="14.5" height="14.5" rx="4.2" fill="#f26522"/>
-      <rect x="25" y="8.5" width="14.5" height="14.5" rx="4.2" fill="#f5841f"/>
-      <rect x="8.5" y="25" width="14.5" height="14.5" rx="4.2" fill="#eb9d2e"/>
-      <g font-size="11" font-weight="700" fill="#fff" text-anchor="middle">
-        <text x="15.7" y="20">1</text><text x="32.2" y="20">2</text><text x="15.7" y="36.5">3</text>
-      </g></svg>`,
-    '2048': `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
-      <rect x="4.5" y="16" width="13" height="16" rx="4.2" fill="#ffd7b8"/>
-      <rect x="17.5" y="16" width="13" height="16" rx="4.2" fill="#f5a05a"/>
-      <rect x="30.5" y="16" width="13" height="16" rx="4.2" fill="#f26522"/>
-      <g font-size="11" font-weight="700" text-anchor="middle">
-        <text x="11" y="28" fill="#d1590f">2</text>
-        <text x="24" y="28" fill="#fff">4</text>
-        <text x="37" y="28" fill="#fff">8</text>
-      </g></svg>`,
-    'sudoku-kids': `<svg viewBox="0 0 48 48" width="58" height="58" aria-hidden="true">
-      <rect x="4" y="4" width="40" height="40" rx="9" fill="#fff" stroke="#f2ded0" stroke-width="1.5"/>
-      <path d="M14.5 5v38M33.5 5v38M5 14.5h38M5 33.5h38" stroke="#f8ece4" stroke-width="1"/>
-      <path d="M24 5v38M5 24h38" stroke="#f0dccd" stroke-width="1.8"/>
-      <g font-size="10" font-weight="700" text-anchor="middle">
-        <text x="9.7" y="18" fill="#f26522">1</text>
-        <text x="19.2" y="37" fill="#4e9b90">2</text>
-        <text x="38.7" y="18" fill="#eb9d2e">3</text>
-      </g></svg>`,
-  };
+<!-- @gamewingo/game-progress бандлом (window.WingoProgress): кладёт scripts/build-catalog.mjs. -->
+<script src="progress.js"></script>
+<script>
+  // Все правила прогресса и экономики — в пакете game-progress. Хаб только рисует.
+  // Нет бандла (сломанная сборка) — каталог всё равно открывается, без прогресса.
+  const P = window.WingoProgress || null;
 
   // Каталог игр. URL относительные — хаб и игры живут в одном Vercel-проекте
-  // (см. scripts/build-catalog.mjs); абсолютные URL для приложения — в manifest.json.
+  // (scripts/build-catalog.mjs); абсолютные URL для приложения — в games/manifest.json.
+  // kind: 'ladder' — лестница уровней, 'arcade' — забеги с испытаниями.
+  // metric: чем меряется рекорд аркады — тем же, что показывает её меню (bests.score).
 
   // Малышам: нет таймера и проигрыша, ошибка — мягкая подсказка.
   const KIDS = [
-    {
-      id: 'sorting',
-      title: { ru: 'Сортировка', uz: 'Saralash' },
-      desc: { ru: 'Разложи фигурки по цвету и форме', uz: 'Shakllarni rang va shaklga ajrat' },
-      url: 'sorting/',
-      tags: ['RU', 'UZ', { ru: '3–6 лет', uz: '3–6 yosh', accent: true }],
-    },
-    {
-      id: 'counting',
-      title: { ru: 'Счёт', uz: 'Sanoq' },
-      desc: { ru: 'Посчитай предметы и найди цифру', uz: 'Buyumlarni sanab, raqamni top' },
-      url: 'counting/',
-      tags: ['RU', 'UZ', { ru: '4–7 лет', uz: '4–7 yosh', accent: true }],
-    },
-    {
-      id: 'jigsaw',
-      title: { ru: 'Пазл', uz: 'Rasm yigʻish' },
-      desc: {
-        ru: 'Собери картинку и узнай про неё историю',
-        uz: 'Rasmni yigʻ va u haqida hikoya bil',
-      },
-      url: 'jigsaw/',
-      tags: ['RU', 'UZ', { ru: '3–7 лет', uz: '3–7 yosh', accent: true }],
-    },
+    { id: 'sorting', kind: 'ladder', title: { ru: 'Сортировка', uz: 'Saralash' } },
+    { id: 'counting', kind: 'ladder', title: { ru: 'Счёт', uz: 'Sanoq' } },
+    { id: 'jigsaw', kind: 'ladder', title: { ru: 'Пазл', uz: 'Rasm yigʻish' } },
   ];
   // Аркады: заходишь и играешь — партия на 30–60 секунд, управление одним пальцем.
   const ARCADE = [
-    {
-      id: 'stack',
-      title: { ru: 'Башня', uz: 'Minora' },
-      desc: { ru: 'Тап — блок падает. Строй башню выше', uz: 'Bosing — blok tushadi. Minorani balandroq quring' },
-      url: 'stack/',
-      tags: ['RU', 'UZ', { ru: 'Один тап', uz: 'Bir bosish', accent: true }],
-    },
-    {
-      id: 'flyer',
-      title: { ru: 'Полёт', uz: 'Parvoz' },
-      desc: { ru: 'Тапай и пролетай сквозь проёмы', uz: 'Bosing va teshiklardan uching' },
-      url: 'flyer/',
-      tags: ['RU', 'UZ', { ru: 'Один тап', uz: 'Bir bosish', accent: true }],
-    },
-    {
-      id: 'targets',
-      title: { ru: 'Меткий глаз', uz: 'Nishonga ur' },
-      desc: { ru: 'Бей по целям 60 секунд — держи серию', uz: '60 soniya nishonga ur — ketma-ketlikni ushla' },
-      url: 'targets/',
-      tags: ['RU', 'UZ', { ru: 'Реакция', uz: 'Reaksiya', accent: true }],
-    },
-    {
-      id: 'snake',
-      title: { ru: 'Змейка', uz: 'Ilon' },
-      desc: { ru: 'Свайпай, ешь и расти', uz: 'Suring, yeng va oʻsing' },
-      url: 'snake/',
-      tags: ['RU', 'UZ', { ru: 'Классика', uz: 'Klassika', accent: true }],
-    },
+    { id: 'block-drop', kind: 'arcade', total: 0, metric: 'score', title: { ru: 'Блок-дроп', uz: 'Bloklar' } },
+    { id: 'stack', kind: 'arcade', metric: 'score', title: { ru: 'Башня', uz: 'Minora' } },
+    { id: 'flyer', kind: 'arcade', metric: 'score', title: { ru: 'Полёт', uz: 'Parvoz' } },
+    { id: 'targets', kind: 'arcade', metric: 'score', title: { ru: 'Меткий глаз', uz: 'Nishonga ur' } },
+    { id: 'snake', kind: 'arcade', metric: 'score', title: { ru: 'Змейка', uz: 'Ilon' } },
   ];
   const PUZZLES = [
-    {
-      id: 'color-sort',
-      title: { ru: 'Цветные колбы', uz: 'Rangli idishlar' },
-      desc: { ru: 'Переливай цвета и собирай колбы — 10 уровней', uz: 'Ranglarni quyib idishlarni toʻldir — 10 bosqich' },
-      url: 'color-sort/',
-      tags: ['RU', 'UZ', { ru: '6+ лет', uz: '6+ yosh', accent: true }],
-    },
-    {
-      id: 'soz',
-      title: { ru: '5 букв', uz: '5 harf' },
-      desc: { ru: 'Угадай слово из 5 букв за 6 попыток', uz: '5 harfli soʻzni 6 urinishda top' },
-      url: 'soz/',
-      tags: ['RU', 'UZ', { ru: 'Слова', uz: 'Soʻzlar', accent: true }],
-    },
-    {
-      id: 'pairs',
-      title: { ru: 'Найди пару', uz: 'Juftini top' },
-      desc: { ru: 'Открывай карточки и находи пары', uz: 'Kartochkalarni ochib juftlarni top' },
-      url: 'pairs/',
-      tags: ['RU', 'UZ', { ru: 'Детям', uz: 'Bolalarga', accent: true }],
-    },
-    {
-      id: 'fifteen',
-      title: { ru: 'Пятнашки', uz: 'Boshqotirma 15' },
-      desc: { ru: 'Собери числа по порядку', uz: 'Raqamlarni tartib bilan yigʻ' },
-      url: 'fifteen/',
-      tags: ['RU', 'UZ', { ru: 'Логика', uz: 'Mantiq', accent: true }],
-    },
-    {
-      id: '2048',
-      title: { ru: '2048', uz: '2048' },
-      desc: { ru: 'Сливай плитки и дойди до 2048', uz: 'Plitkalarni qoʻshib 2048 ga yet' },
-      url: '2048/',
-      tags: ['RU', 'UZ', { ru: 'Логика', uz: 'Mantiq', accent: true }],
-    },
-    {
-      id: 'sudoku-kids',
-      title: { ru: 'Мини-судоку', uz: 'Mini sudoku' },
-      desc: { ru: 'Судоку 4×4 и 6×6 для детей', uz: 'Bolalar uchun 4×4 va 6×6 sudoku' },
-      url: 'sudoku-kids/',
-      tags: ['RU', 'UZ', { ru: 'Детям', uz: 'Bolalarga', accent: true }],
-    },
-    {
-      id: 'quiz',
-      title: { ru: 'Викторина', uz: 'Viktorina' },
-      desc: {
-        ru: 'Вопросы и интересные факты: космос, животные, деньги',
-        uz: 'Savollar va qiziqarli faktlar: kosmos, hayvonlar, pul',
-      },
-      url: 'quiz/',
-      tags: ['RU', 'UZ', { ru: 'Факты', uz: 'Faktlar', accent: true }],
-    },
-    {
-      id: 'sums',
-      title: { ru: 'Суммы', uz: 'Yigʻindilar' },
-      desc: {
-        ru: 'Вычеркни лишние числа, чтобы сошлись суммы',
-        uz: 'Yigʻindilar toʻgʻri kelishi uchun ortiqcha sonlarni oʻchir',
-      },
-      url: 'sums/',
-      tags: ['RU', 'UZ', { ru: 'Логика', uz: 'Mantiq', accent: true }],
-    },
+    { id: 'color-sort', kind: 'ladder', total: 10, title: { ru: 'Цветные колбы', uz: 'Rangli idishlar' } },
+    { id: 'soz', kind: 'ladder', title: { ru: '5 букв', uz: '5 harf' } },
+    { id: 'pairs', kind: 'ladder', title: { ru: 'Найди пару', uz: 'Juftini top' } },
+    { id: 'fifteen', kind: 'ladder', title: { ru: 'Пятнашки', uz: 'Boshqotirma 15' } },
+    // 2048 — аркада по механике: бесконечная партия с испытаниями, рекорд — счёт.
+    { id: '2048', kind: 'arcade', metric: 'score', title: { ru: '2048', uz: '2048' } },
+    { id: 'sudoku-kids', kind: 'ladder', title: { ru: 'Мини-судоку', uz: 'Mini sudoku' } },
+    { id: 'quiz', kind: 'ladder', title: { ru: 'Викторина', uz: 'Viktorina' } },
+    { id: 'sums', kind: 'ladder', title: { ru: 'Суммы', uz: 'Yigʻindilar' } },
   ];
   const SOON = [];
 
@@ -425,23 +349,94 @@
     { key: 'puzzles', games: PUZZLES },
     { key: 'soon', games: SOON, soon: true },
   ];
+  const ALL = KIDS.concat(ARCADE, PUZZLES);
+  const byId = (id) => ALL.find((g) => g.id === id) || null;
+  const TOTAL = 15; // ступеней в лестнице и испытаний в аркаде
 
+  /** Число с пробелом-разделителем разрядов: 1 240. */
+  const num = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  /** Русское множественное: 1 день, 2 дня, 5 дней. */
+  function plural(n, one, few, many) {
+    const a = Math.abs(n) % 100, b = a % 10;
+    if (a > 10 && a < 20) return many;
+    if (b === 1) return one;
+    if (b >= 2 && b <= 4) return few;
+    return many;
+  }
+
+  // Строки хаба — RU и UZ парой. Узбекский — латиница.
   const STR = {
     ru: {
-      title: 'Игры', back: 'Назад', play: 'Начать игру',
-      kids: 'Малышам • без проигрыша', arcade: 'Аркады • играй сразу',
+      title: 'Игры', back: 'Назад', bonuses: 'Бонусы', langName: 'Язык: русский',
+      kids: 'Малышам · без проигрыша', arcade: 'Аркады · играй сразу',
       puzzles: 'Головоломки', soon: 'Скоро', soonBadge: 'Скоро',
       greet: 'Заходите каждый день — серия бонусов растёт',
+      cont: 'Продолжить', play: 'Играть',
+      contLevel: (g, n) => `${g} · уровень ${n}`,
+      contRecord: (g, n) => `${g} · рекорд ${num(n)}`,
+      contChallenge: (k, t) => `испытание ${k} / ${t}`,
+      stLadder: (n, a, b) => `Уровень ${n} · ★ ${a} / ${b}`,
+      // Рекорда ещё нет (закрыто испытание, но очков не записано) — не пишем «Рекорд 0».
+      stArcade: (r, k, t) => (r > 0 ? `Рекорд ${num(r)} · ` : '') + `испытание ${k}/${t}`,
+      stNew: 'Не начато',
+      today: 'Сегодня',
+      days: (n) => `${n} ${plural(n, 'день', 'дня', 'дней')}`,
+      todaySub: (d, m) => `Серия ${d} · завтра +${m}`,
+      week: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+      mission: {
+        levels: (n) => `Пройти ${n} ${plural(n, 'уровень', 'уровня', 'уровней')}`,
+        stars: (n) => `Собрать ${n} ${plural(n, 'звезду', 'звезды', 'звёзд')}`,
+        score: (n) => `Набрать ${num(n)} ${plural(n, 'очко', 'очка', 'очков')}`,
+        variety: (n) => `Сыграть в ${n} ${plural(n, 'разную игру', 'разные игры', 'разных игр')}`,
+      },
+      balance: 'Баланс', leftToday: 'Ещё сегодня', upTo: (n) => `до +${num(n)}`,
+      streakTitle: (d) => `Серия входов · ${d}`, tomorrow: (m) => `завтра +${m}`,
+      afterGap: (n) => `Пропустите день — серия начнётся с +${n}`,
+      missions: 'Задания дня', refresh: (t) => `обновятся через ${t}`,
+      hm: (h, m) => `${h} ч ${m} мин`,
+      word: 'Слово дня', wordTodo: 'Отгадайте слово в «5 букв»',
+      wordDone: (t) => `Получено · новое слово через ${t}`,
+      recordWeek: 'Неделя рекордов',
+      recordTodo: 'Побейте свой рекорд в любой аркаде · раз в неделю',
+      recordDone: 'Получено на этой неделе · снова с понедельника',
     },
     uz: {
-      title: 'Oʻyinlar', back: 'Orqaga', play: 'Oʻynashni boshlash',
-      kids: 'Kichkintoylarga • yutqazish yoʻq', arcade: 'Arkada • darrov oʻyna',
+      title: 'Oʻyinlar', back: 'Orqaga', bonuses: 'Bonuslar', langName: 'Til: oʻzbekcha',
+      kids: 'Kichkintoylarga · yutqazish yoʻq', arcade: 'Arkada · darrov oʻyna',
       puzzles: 'Boshqotirmalar', soon: 'Tez orada', soonBadge: 'Tez orada',
       greet: 'Har kuni kiring — bonus seriyasi oʻsadi',
+      cont: 'Davom etish', play: 'Oʻynash',
+      contLevel: (g, n) => `${g} · ${n}\u2011daraja`,
+      contRecord: (g, n) => `${g} · rekord ${num(n)}`,
+      contChallenge: (k, t) => `sinov ${k} / ${t}`,
+      stLadder: (n, a, b) => `${n}\u2011daraja · ★ ${a} / ${b}`,
+      stArcade: (r, k, t) => (r > 0 ? `Rekord ${num(r)} · ` : '') + `sinov ${k}/${t}`,
+      stNew: 'Boshlanmagan',
+      today: 'Bugun',
+      days: (n) => `${n} kun`,
+      todaySub: (d, m) => `Seriya ${d} · ertaga +${m}`,
+      week: ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'],
+      mission: {
+        levels: (n) => `${n} ta darajani oʻting`,
+        stars: (n) => `${n} ta yulduz yigʻing`,
+        score: (n) => `${num(n)} ochko toʻplang`,
+        variety: (n) => `${n} xil oʻyin oʻynang`,
+      },
+      balance: 'Balans', leftToday: 'Bugun yana', upTo: (n) => `+${num(n)} gacha`,
+      streakTitle: (d) => `Kirish seriyasi · ${d}`, tomorrow: (m) => `ertaga +${m}`,
+      afterGap: (n) => `Bir kun oʻtkazib yuborsangiz — seriya +${n} dan boshlanadi`,
+      missions: 'Kunlik vazifalar', refresh: (t) => `${t}dan keyin yangilanadi`,
+      hm: (h, m) => `${h} soat ${m} daq.`,
+      word: 'Kun soʻzi', wordTodo: '«5 harf»da soʻzni toping',
+      wordDone: (t) => `Olindi · yangi soʻz ${t}dan keyin`,
+      recordWeek: 'Rekordlar haftasi',
+      recordTodo: 'Istalgan arkadada rekordingizni yangilang · haftada bir marta',
+      recordDone: 'Bu hafta olindi · dushanbadan yana',
     },
   };
 
-  let lang = localStorage.getItem('wingoHubLang') || 'ru';
+  let lang = 'ru';
+  try { lang = localStorage.getItem('wingoHubLang') === 'uz' ? 'uz' : 'ru'; } catch (err) { /* приватный режим */ }
 
   /**
    * Событие приложению — тот же транспорт, что и в @gamewingo/game-bridge
@@ -458,61 +453,282 @@
     return false;
   }
 
-  function chipsHtml(tags) {
-    return tags.map((t) => (typeof t === 'string'
-      ? `<span class="chip">${t}</span>`
-      : `<span class="chip${t.accent ? ' accent' : ''}">${t[lang]}</span>`)).join('');
+  // Язык уезжает в игру параметром: ключ wingoHubLang игра тоже читает, но по
+  // ссылке с ?lang= игру можно переслать, и она откроется на нужном языке.
+  const gameUrl = (id) => `${id}/?lang=${lang}`;
+  const openGame = (id) => { if (byId(id)) window.location.href = gameUrl(id); };
+
+  const iconHtml = (id, size) =>
+    `<img class="ico" src="icons/${id}.svg" width="${size}" height="${size}" alt="" loading="lazy" />`;
+
+  // ── Данные из game-progress ────────────────────────────────────────────────
+
+  function statusOf(g) {
+    return P ? P.gameStatus(g.id, g.kind, g.total ?? TOTAL, g.metric || 'score') : { started: false };
+  }
+  /** Текущее испытание аркады: закрыто k — идёт k+1 (как «испытание 4/15» в меню игры). */
+  const currentChallenge = (st) => Math.min((st.challengesDone || 0) + 1, st.total || TOTAL);
+
+  function statusLine(g, s) {
+    const st = statusOf(g);
+    if (!st.started) return s.stNew;
+    if (g.kind === 'arcade') return st.total === 0 ? s.stArcade(st.record || 0, 0, 0).split(' · ')[0] : s.stArcade(st.record || 0, currentChallenge(st), st.total);
+    return s.stLadder(st.level, st.stars, st.maxStars);
   }
 
-  /** Иконка игры: файл из макета, если он есть, иначе векторный запасной вариант. */
-  function iconHtml(id) {
-    return FILE_ICONS.has(id)
-      ? `<img class="thumb-img" src="icons/${id}.svg" width="82" height="82" alt="" loading="lazy" />`
-      : (ICONS[id] || '');
+  /** Кошелёк читаем только ради ключей наград (слово дня, неделя рекордов). */
+  function walletHas(key) {
+    try {
+      const raw = JSON.parse(localStorage.getItem('wingo:bonus') || '{}');
+      return Array.isArray(raw.keys) && raw.keys.includes(key);
+    } catch (err) { return false; }
   }
 
-  function itemHtml(g, s, soon) {
-    const chips = soon ? `<span class="chip soon">${s.soonBadge}</span>` : chipsHtml(g.tags);
-    const cta = soon ? '' : `<button class="cta" type="button">${s.play}</button>`;
-    return `
-      <article class="item${soon ? ' soon' : ''}"${soon ? '' : ` data-url="${g.url}"`}>
-        <div class="row">
-          <div class="thumb">${iconHtml(g.id)}</div>
-          <div class="meta">
-            <h3>${g.title[lang]}</h3>
-            <p class="desc">${g.desc[lang]}</p>
-            <div class="chips">${chips}</div>
+  /** До полуночи по Ташкенту (UTC+5) — тогда меняются задания и слово дня. */
+  function untilMidnight(s) {
+    const DAY = 86400e3;
+    const left = DAY - ((Date.now() + 5 * 3600e3) % DAY);
+    return s.hm(Math.floor(left / 3600e3), Math.floor((left % 3600e3) / 60e3));
+  }
+
+  /** Какая игра закрывает задание — туда и ведёт тап по нему. */
+  function gameForMission(m) {
+    const last = P.getLastPlayed();
+    const lastGame = last && byId(last.slug);
+    const firstLadder = ALL.find((g) => g.kind === 'ladder');
+    switch (m.kind) {
+      case 'levels': return lastGame || firstLadder;
+      case 'stars': return lastGame && lastGame.kind === 'ladder' ? lastGame : firstLadder;
+      case 'score': return ALL.find((g) => g.kind === 'arcade');
+      case 'variety': {
+        const played = P.loadCounters().slugs;
+        return ALL.find((g) => !played.includes(g.id)) || lastGame || ALL[0];
+      }
+      default: return null;
+    }
+  }
+
+  // ── Разметка блоков ────────────────────────────────────────────────────────
+
+  function weekHtml(s, tall) {
+    const T = P.TARIFF;
+    const dayId = P.computeDayId();
+    const todayIdx = (dayId + 3) % 7; // день 0 — четверг, неделя с понедельника (как computeWeekId)
+    const pv = P.checkinPreview(dayId);
+    const firstOfRun = dayId - pv.run + 1; // первый день текущей серии
+    const cells = s.week.map((name, i) => {
+      const d = dayId - todayIdx + i;
+      let cls, val;
+      if (i < todayIdx) {
+        cls = d >= firstOfRun ? 'done' : 'miss';
+        val = d >= firstOfRun ? '✓' : '–';
+      } else if (i === todayIdx) {
+        cls = 'today'; val = `+${pv.today}`;
+      } else {
+        cls = 'next'; val = `+${Math.min(T.checkinBase * (pv.run + i - todayIdx), T.checkinCap)}`;
+      }
+      return `<div class="day ${cls}"><b>${name}</b><span>${val}</span></div>`;
+    });
+    return `<div class="week${tall ? ' tall' : ''}">${cells.join('')}</div>`;
+  }
+
+  function missionsHtml(s) {
+    const T = P.TARIFF;
+    return P.dailyMissions().map((m) => {
+      const g = m.done ? null : gameForMission(m);
+      const pct = Math.round((100 * m.progress) / Math.max(1, m.target));
+      const val = m.kind === 'score' ? `${num(m.progress)} / ${num(m.target)}` : `${m.progress} / ${m.target}`;
+      return `
+        <div class="mission${m.done ? ' done' : ''}${g ? ' tap' : ''}"${g ? ` data-go="${g.id}" role="link" tabindex="0"` : ''}>
+          <span class="dot"></span>
+          <div class="body">
+            <div class="line"><span>${s.mission[m.kind](m.target)}</span><span>${val}</span></div>
+            <div class="bar"><i style="width:${pct}%"></i></div>
           </div>
-        </div>
-        ${cta}
-      </article>`;
+          <span class="chip${m.done ? ' ok' : ''}">+${T.mission}</span>
+        </div>`;
+    }).join('');
   }
+
+  /** Сверху: «Продолжить» последнюю игру, а у новичка — приветствие с фениксом. */
+  function topHtml(s) {
+    const last = P && P.getLastPlayed();
+    const g = last && byId(last.slug);
+    if (!g) return `<div class="greet" id="greet">${phoenixSvg(56)}<p>${s.greet}</p></div>`;
+    const st = statusOf(g);
+    const name = g.title[lang];
+    const line1 = g.kind === 'arcade' ? s.contRecord(name, st.record || 0) : s.contLevel(name, st.level);
+    const line2 = g.kind === 'arcade'
+      ? s.contChallenge(currentChallenge(st), st.total)
+      : `★ ${st.stars} / ${st.maxStars}`;
+    return `
+      <div class="card continue tap" data-go="${g.id}" role="link" tabindex="0">
+        ${iconHtml(g.id, 56)}
+        <div class="txt">
+          <div class="sub">${s.cont}</div>
+          <div class="name">${line1}</div>
+          <div class="gold">${line2}</div>
+        </div>
+        <button class="btn-play" type="button" data-go="${g.id}">${s.play}</button>
+      </div>`;
+  }
+
+  function todayHtml(s) {
+    const pv = P.checkinPreview();
+    return `
+      <div class="card card-col">
+        <div class="card-head"><h2>${s.today}</h2><span class="sub">${s.todaySub(s.days(pv.run), pv.tomorrow)}</span></div>
+        ${weekHtml(s, false)}
+        ${missionsHtml(s)}
+      </div>`;
+  }
+
+  function tileHtml(g, s, soon) {
+    const line = soon ? s.soonBadge : statusLine(g, s);
+    return `
+      <a class="tile${soon ? ' soon' : ''}"${soon ? '' : ` href="${gameUrl(g.id)}" data-go="${g.id}"`}>
+        ${iconHtml(g.id, 48)}
+        <h3>${g.title[lang]}</h3>
+        <div class="sub">${line}</div>
+      </a>`;
+  }
+
+  /**
+   * Заголовок шапки — по центру, пока не упирается в чипы справа; на узком экране
+   * с длинным словом (UZ, 360 px) сдвигается влево, но не залезает под чипы.
+   */
+  function fitTitle() {
+    const h1 = document.getElementById('hTitle');
+    const row = h1.parentElement;
+    const right = row.querySelector('.top-right').offsetWidth + 8;
+    h1.style.left = '40px'; h1.style.right = right + 'px';
+    const range = document.createRange();
+    range.selectNodeContents(h1);
+    const need = Math.ceil(range.getBoundingClientRect().width);
+    // Помещается симметрично — центр как в макете; иначе центр в свободной части.
+    if (need <= row.clientWidth - 2 * right) h1.style.left = right + 'px';
+  }
+  window.addEventListener('resize', () => fitTitle());
 
   function render() {
     const s = STR[lang];
     document.documentElement.lang = lang;
+    document.title = lang === 'uz' ? 'WinGo oʻyinlari' : 'Игры WinGo';
     document.getElementById('hTitle').textContent = s.title;
-    document.getElementById('greetText').textContent = s.greet;
     document.getElementById('back').setAttribute('aria-label', s.back);
-    document.querySelectorAll('.lang').forEach((el) =>
-      el.classList.toggle('active', el.dataset.lang === lang));
+    document.getElementById('bonusBack').setAttribute('aria-label', s.back);
+    document.getElementById('bonusChip').setAttribute('aria-label', s.bonuses);
+    const chip = document.getElementById('langChip');
+    chip.textContent = lang.toUpperCase();
+    chip.setAttribute('aria-label', s.langName);
+    fitTitle();
 
+    document.getElementById('top').innerHTML = topHtml(s);
+    document.getElementById('today').innerHTML = P ? todayHtml(s) : '';
     // Пустые секции (например «Скоро») не рисуются вовсе.
     document.getElementById('sections').innerHTML = SECTIONS
       .filter((sec) => sec.games.length > 0)
       .map((sec) => `
         <section>
           <h2 class="section-title">${s[sec.key]}</h2>
-          <div class="card">${sec.games.map((g) => itemHtml(g, s, sec.soon)).join('')}</div>
+          <div class="grid">${sec.games.map((g) => tileHtml(g, s, sec.soon)).join('')}</div>
         </section>`)
       .join('');
+    if (isBonusOpen()) renderBonus();
   }
 
-  document.getElementById('sections').addEventListener('click', (e) => {
-    const item = e.target.closest('.item[data-url]');
-    // Язык уезжает в игру параметром: ключ wingoHubLang игра тоже читает, но по
-    // ссылке с ?lang= игру можно переслать, и она откроется на нужном языке.
-    if (item) window.location.href = `${item.dataset.url}?lang=${lang}`;
+  // ── Экран «Бонусы» ────────────────────────────────────────────────────────
+
+  const bonusScreen = document.getElementById('bonusScreen');
+  let bonusTimer = 0;
+  const isBonusOpen = () => !bonusScreen.hidden;
+
+  function renderBonus() {
+    if (!P) return;
+    const s = STR[lang];
+    const T = P.TARIFF;
+    const dayId = P.computeDayId();
+    const pv = P.checkinPreview(dayId);
+    const outlook = P.dailyOutlook(dayId);
+    const wordDone = walletHas(`soz-daily-${dayId}`);
+    const weekDone = walletHas(`record-week-${P.computeWeekId(dayId)}`);
+    const last = P.getLastPlayed();
+    const lastGame = last && byId(last.slug);
+    const arcade = lastGame && lastGame.kind === 'arcade' ? lastGame : ALL.find((g) => g.kind === 'arcade');
+    const daysLeft = 7 - ((dayId + 3) % 7); // сколько дней недели осталось, считая сегодня
+
+    document.getElementById('bTitle').textContent = s.bonuses;
+    document.getElementById('bBalCap').textContent = s.balance;
+    document.getElementById('bBal').textContent = num(P.bonusBalance());
+    document.getElementById('bLeftCap').textContent = s.leftToday;
+    document.getElementById('bLeft').textContent = s.upTo(outlook.remaining);
+
+    document.getElementById('bonusBody').innerHTML = `
+      <div class="card card-col">
+        <div class="card-head"><h3>${s.streakTitle(s.days(pv.run))}</h3><span class="sub">${s.tomorrow(pv.tomorrow)}</span></div>
+        ${weekHtml(s, true)}
+        <div class="sub">${s.afterGap(pv.afterGap)}</div>
+      </div>
+      <div class="card card-col">
+        <div class="card-head"><h3>${s.missions}</h3><span class="sub">${s.refresh(untilMidnight(s))}</span></div>
+        ${missionsHtml(s)}
+      </div>
+      <div class="card source tap" data-go="soz" role="link" tabindex="0">
+        ${iconHtml('soz', 44)}
+        <div class="txt"><b>${s.word}</b><span class="sub">${wordDone ? s.wordDone(untilMidnight(s)) : s.wordTodo}</span></div>
+        <span class="chip${wordDone ? ' ok' : ''}">+${T.daily}</span>
+      </div>
+      <div class="card source${weekDone ? '' : ' tap'}"${weekDone ? '' : ` data-go="${arcade.id}" role="link" tabindex="0"`}>
+        <div class="badge${weekDone ? ' ok' : ''}">${weekDone ? '✓' : daysLeft}</div>
+        <div class="txt"><b>${s.recordWeek}</b><span class="sub">${weekDone ? s.recordDone : s.recordTodo}</span></div>
+        <span class="chip${weekDone ? ' ok' : ''}">+${T.recordWeek}</span>
+      </div>`;
+  }
+
+  function showBonus() {
+    bonusScreen.hidden = false;
+    bonusScreen.scrollTop = 0;
+    document.body.classList.add('locked');
+    renderBonus();
+    clearInterval(bonusTimer);
+    bonusTimer = setInterval(renderBonus, 30e3); // «обновятся через …» идёт вместе с часами
+  }
+  function hideBonus() {
+    bonusScreen.hidden = true;
+    document.body.classList.remove('locked');
+    clearInterval(bonusTimer);
+    render(); // на хабе могли устареть задания и статусы
+  }
+
+  // Экран — запись в истории: системный «назад» закрывает его, а не уводит из хаба.
+  document.getElementById('bonusChip').addEventListener('click', () => {
+    if (!P || isBonusOpen()) return;
+    history.pushState({ hubBonus: true }, '');
+    showBonus();
+  });
+  document.getElementById('bonusBack').addEventListener('click', () => {
+    if (history.state && history.state.hubBonus) history.back(); // закроет popstate
+    else hideBonus();
+  });
+  window.addEventListener('popstate', () => {
+    const want = !!(history.state && history.state.hubBonus);
+    if (want && !isBonusOpen()) showBonus();
+    else if (!want && isBonusOpen()) hideBonus();
+  });
+
+  // ── Навигация ─────────────────────────────────────────────────────────────
+
+  // Любой элемент с data-go ведёт в игру: плитка каталога, «Продолжить», задание дня.
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-go]');
+    if (!el) return;
+    e.preventDefault();
+    openGame(el.dataset.go);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const el = e.target.closest && e.target.closest('[data-go][role="link"]');
+    if (el) { e.preventDefault(); openGame(el.dataset.go); }
   });
 
   // Назад: просим приложение закрыть раздел игр; вне WebView — обычная история браузера.
@@ -520,49 +736,103 @@
     if (!postToApp({ type: 'GAME_EXIT', sessionId: '' }) && history.length > 1) history.back();
   });
 
-  document.querySelectorAll('.lang').forEach((el) =>
-    el.addEventListener('click', () => {
-      lang = el.dataset.lang;
-      try { localStorage.setItem('wingoHubLang', lang); } catch (err) { /* приватный режим */ }
-      render();
-    }));
+  // Язык — чип в шапке: тап переключает RU ↔ UZ, выбор запоминается для хаба и игр.
+  document.getElementById('langChip').addEventListener('click', () => {
+    lang = lang === 'ru' ? 'uz' : 'ru';
+    try { localStorage.setItem('wingoHubLang', lang); } catch (err) { /* приватный режим */ }
+    render();
+  });
 
-  render();
+  // ── Феникс v2 ─────────────────────────────────────────────────────────────
+  // Геометрия — packages/game-ui/src/phoenix.ts: система 120×120, якорь у ног (60,98).
+  // Перо — сужающаяся капля вдоль угла a (featherPath там же), опахало — капля
+  // поменьше поверх. Разметка — макет «Хаб · полоса приветствия», без углей.
+
+  function feather(x, y, len, w, a, bulge) {
+    const bl = bulge === undefined ? 0.3 : bulge;
+    const dx = Math.cos(a), dy = Math.sin(a), nx = -dy, ny = dx;
+    const at = (t, k) => `${(x + dx * len * t + nx * w * k).toFixed(1)} ${(y + dy * len * t + ny * w * k).toFixed(1)}`;
+    const side = (t) => bl * 2.6 * Math.sin(Math.PI * t) * (1 - t * 0.35);
+    let d = `M${at(0, 0)}`;
+    for (let i = 1; i <= 8; i++) d += `L${at(i / 8, side(i / 8))}`;
+    for (let i = 8; i >= 0; i--) d += `L${at(i / 8, -side(i / 8))}`;
+    return `${d}Z`;
+  }
+  function vane(x, y, len, w, a) {
+    return feather(x + Math.cos(a) * len * 0.14, y + Math.sin(a) * len * 0.14, len * 0.72, w * 0.42, a, 0.28);
+  }
+  const path = (d, color, extra) => `<path d="${d}" style="fill:var(${color})"${extra || ''}></path>`;
+
+  let phoenixMarkup = '';
+  function phoenixSvg(size) {
+    if (!phoenixMarkup) {
+      const PI = Math.PI;
+      // Хвост — у основания (53,77), пять перьев, у трёх средних светлое опахало.
+      const tail = [
+        path(feather(0, 0, 27, 6.5, PI * 0.97, 0.28), '--px-deep'),
+        path(feather(0, 0, 33, 8, PI * 0.86), '--primary-pressed'),
+        path(vane(0, 0, 33, 8, PI * 0.86), '--px-tail-mid'),
+        path(feather(0, 0, 40, 9.5, PI * 0.72, 0.32), '--primary'),
+        path(vane(0, 0, 40, 9.5, PI * 0.72), '--px-peach'),
+        path(feather(0, 0, 34, 8.5, PI * 0.60), '--gold'),
+        path(vane(0, 0, 34, 8.5, PI * 0.60), '--px-gold-light'),
+        path(feather(0, 0, 27, 6, PI * 0.50, 0.28), '--primary-soft'),
+      ].join('');
+      // Дальнее крыло — у плеча (60,60), темнее и чуть прозрачнее.
+      const wingB = [
+        path(feather(0, 0, 25, 8, PI * 1.21, 0.3), '--px-deep'),
+        path(feather(0, 0, 30, 10, PI * 1.30, 0.34), '--primary-pressed'),
+      ].join('');
+      // Хохолок — четыре пера от макушки (голова (64,50), хохолок (60,28)).
+      const crest = [
+        path(feather(53, 31, 16, 4.2, -PI * 0.78, 0.26), '--gold'),
+        path(feather(59, 27, 21, 5, -PI * 0.64, 0.26), '--primary-soft'),
+        path(feather(65, 26, 17, 4.5, -PI * 0.50, 0.26), '--gold'),
+        path(feather(69, 28, 12, 3.4, -PI * 0.40, 0.26), '--px-gold-pale'),
+      ].join('');
+      // Ближнее крыло — у плеча (57,58): три маховых и кроющие.
+      const wingF = [
+        path(feather(0, 0, 31, 10, PI * 1.08, 0.34), '--primary-pressed'),
+        path(feather(0, 0, 39, 12, PI * 1.18, 0.36), '--primary'),
+        path(vane(0, 0, 39, 12, PI * 1.18), '--px-wing-light'),
+        path(feather(0, 0, 32, 10, PI * 1.30, 0.32), '--primary-soft'),
+        path(feather(0, 0, 15, 6, PI * 1.06, 0.3), '--px-deep'),
+        path(feather(0, 0, 16, 6, PI * 1.18, 0.3), '--px-deep'),
+      ].join('');
+      const stop = (o, c) => `<stop offset="${o}" style="stop-color:var(${c})"></stop>`;
+      phoenixMarkup = `
+        <defs>
+          <radialGradient id="pxBody" cx="62%" cy="30%" r="75%">${stop(0, '--primary-soft')}${stop(0.55, '--primary')}${stop(1, '--primary-pressed')}</radialGradient>
+          <radialGradient id="pxHead" cx="60%" cy="32%" r="70%">${stop(0, '--primary-soft')}${stop(0.6, '--primary')}${stop(1, '--px-head-edge')}</radialGradient>
+        </defs>
+        <ellipse class="px-shadow" cx="60" cy="98" rx="22" ry="4" style="fill:var(--ink)" opacity=".14"></ellipse>
+        <g class="px-root">
+          <g class="px-tail"><g transform="translate(53 77)">${tail}</g></g>
+          <g class="px-wingb" opacity=".92"><g transform="translate(60 60)">${wingB}</g></g>
+          <g class="px-body">
+            <ellipse cx="58" cy="66" rx="19" ry="25" fill="url(#pxBody)"></ellipse>
+            <ellipse cx="52" cy="72" rx="10" ry="15" style="fill:var(--primary-pressed)" opacity=".3"></ellipse>
+            <ellipse cx="64" cy="70" rx="11" ry="16" style="fill:var(--primary-soft)"></ellipse>
+          </g>
+          <g class="px-head">
+            <g class="px-crest">${crest}</g>
+            <circle cx="67" cy="37" r="15.5" fill="url(#pxHead)"></circle>
+            ${path('M79 34 L96 39 L79 39.6 Z', '--gold')}
+            ${path('M79 39.6 L96 39 L79 43 Z', '--px-beak-dark')}
+            <g class="px-eye">
+              <circle cx="72" cy="35" r="3.1" style="fill:var(--ink)"></circle>
+              <circle cx="73.2" cy="33.7" r="1.1" style="fill:var(--surface)"></circle>
+            </g>
+          </g>
+          <g class="px-wingf"><g transform="translate(57 58)">${wingF}</g></g>
+        </g>`;
+    }
+    return `<svg class="px" viewBox="0 0 120 120" width="${size}" height="${size}" aria-hidden="true">${phoenixMarkup}</svg>`;
+  }
 
   // ── Бонусы: чек-ин за вход и счётчик в шапке ───────────────────────────────
-  // Кошелёк зеркалит @gamewingo/game-progress (ключ и форма данных совпадают):
-  // хаб — статический HTML и не может импортировать TS-пакет. Демо-режим:
-  // в проде баланс придёт от сервера, начисление здесь исчезнет, анимация останется.
-  const BONUS_KEY = 'wingo:bonus';
-  const CHECKIN_BASE = 5, CHECKIN_CAP = 25;
-  const dayIdNow = () => Math.floor((Date.now() + 5 * 3600e3) / 86400e3);
-
-  function readWallet() {
-    try {
-      const raw = JSON.parse(localStorage.getItem(BONUS_KEY) || '{}');
-      return {
-        balance: Number(raw.balance) || 0,
-        keys: Array.isArray(raw.keys) ? raw.keys : [],
-        checkin: { last: Number(raw.checkin && raw.checkin.last) || 0, run: Number(raw.checkin && raw.checkin.run) || 0 },
-      };
-    } catch (err) { return { balance: 0, keys: [], checkin: { last: 0, run: 0 } }; }
-  }
-  function saveWallet(w) {
-    try { localStorage.setItem(BONUS_KEY, JSON.stringify(w)); } catch (err) { /* приватный режим */ }
-  }
-
-  /** Чек-ин с серией: вчера заходил — серия растёт, пропустил день — заново. */
-  function claimCheckin() {
-    const w = readWallet();
-    const day = dayIdNow();
-    if (w.checkin.last === day) return null;
-    const run = w.checkin.last === day - 1 ? w.checkin.run + 1 : 1;
-    const amount = Math.min(CHECKIN_BASE * run, CHECKIN_CAP);
-    w.checkin = { last: day, run };
-    w.balance += amount;
-    saveWallet(w);
-    return { amount: amount, run: run };
-  }
+  // Начисление — P.claimCheckin() из game-progress (демо-кошелёк, те же тарифы и
+  // ключи, что у сервера). В проде баланс придёт от сервера, анимация останется.
 
   const bonusVal = document.getElementById('bonusVal');
   const bonusChip = document.getElementById('bonusChip');
@@ -572,7 +842,7 @@
     const t0 = performance.now();
     const step = (t) => {
       const k = Math.min(1, (t - t0) / 450);
-      bonusVal.textContent = String(Math.round(from + (to - from) * k));
+      bonusVal.textContent = num(from + (to - from) * k);
       if (k < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
@@ -605,16 +875,30 @@
     });
   }
 
-  const balanceBefore = readWallet().balance;
-  bonusVal.textContent = String(balanceBefore);
-  const checkin = claimCheckin();
+  const balanceBefore = P ? P.bonusBalance() : 0;
+  bonusVal.textContent = num(balanceBefore);
+  const checkin = P ? P.claimCheckin() : null;
+
+  render();
+
+  // Перезагрузка на открытом экране «Бонусы» (или возврат из игры на эту запись
+  // истории) — открываем его снова, а не оставляем «пустой» шаг назад.
+  if (history.state && history.state.hubBonus) showBonus();
+
   if (checkin) {
     setTimeout(() => flyBonus(checkin.amount, balanceBefore, balanceBefore + checkin.amount), 700);
-    // Феникс машет крылом ровно в тот момент, когда прилетает бонус за вход.
-    const greet = document.getElementById('greet');
-    setTimeout(() => greet.classList.add('flap'), 700);
-    setTimeout(() => greet.classList.remove('flap'), 2400);
+    // Феникс радуется ровно в тот момент, когда прилетает бонус за вход.
+    setTimeout(() => { const g = document.getElementById('greet'); if (g) g.classList.add('cheer'); }, 700);
+    setTimeout(() => { const g = document.getElementById('greet'); if (g) g.classList.remove('cheer'); }, 1700);
   }
+
+  // Возврат из игры кнопкой «назад» может поднять страницу из bfcache —
+  // тогда статусы, задания и баланс надо перечитать.
+  window.addEventListener('pageshow', (e) => {
+    if (!e.persisted || !P) return;
+    bonusVal.textContent = num(P.bonusBalance());
+    render();
+  });
 </script>
 </body>
 </html>

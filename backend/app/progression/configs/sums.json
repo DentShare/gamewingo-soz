@@ -130,9 +130,9 @@
     {
       "n": 5,
       "params": {
-        "size": 4,
-        "keep": 7,
-        "maxValue": 12,
+        "size": 5,
+        "keep": 14,
+        "maxValue": 9,
         "negative": false
       },
       "goals": {
@@ -145,7 +145,7 @@
       "params": {
         "size": 5,
         "keep": 14,
-        "maxValue": 9,
+        "maxValue": 12,
         "negative": false
       },
       "goals": {
@@ -157,20 +157,20 @@
       "n": 7,
       "params": {
         "size": 5,
-        "keep": 12,
-        "maxValue": 12,
+        "keep": 14,
+        "maxValue": 15,
         "negative": false
       },
       "goals": {
         "gold": 0,
-        "silver": 5
+        "silver": 4
       }
     },
     {
       "n": 8,
       "params": {
         "size": 5,
-        "keep": 11,
+        "keep": 12,
         "maxValue": 15,
         "negative": false
       },
@@ -184,7 +184,7 @@
       "params": {
         "size": 6,
         "keep": 20,
-        "maxValue": 12,
+        "maxValue": 15,
         "negative": false
       },
       "goals": {
@@ -209,8 +209,8 @@
       "n": 11,
       "params": {
         "size": 6,
-        "keep": 16,
-        "maxValue": 12,
+        "keep": 18,
+        "maxValue": 15,
         "negative": true
       },
       "goals": {
@@ -223,7 +223,7 @@
       "params": {
         "size": 7,
         "keep": 26,
-        "maxValue": 12,
+        "maxValue": 15,
         "negative": true
       },
       "goals": {

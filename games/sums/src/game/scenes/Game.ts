@@ -1,18 +1,19 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
-import { generate, createSumsGame, type Puzzle, type PuzzleOptions, type SumsGame } from '../../core/sums';
+import { generate, createSumsGame, surelyExtraCells, type Puzzle, type PuzzleOptions, type SumsGame } from '../../core/sums';
 import { mulberry32 } from '../../core/rng';
 import { levelAt } from '../../core/levels';
 import { COLORS, FONT } from '../palette';
 import {
-  applyTheme, setupCamera, makeButton, makeBackButton, playSound, squash, sparkle, VIEW_BOTTOM,
+  applyTheme, setupCamera, makeButton, playSound, squash, sparkle, VIEW_BOTTOM,
+  makeGameHeader, openPauseSheet, setBackHandler, TOP_BAR_H, type GameHeader, type PauseSheet,
+  runFirstMoveTutorial, showRuleOnce, type FirstMoveTutorial, type Rect,
 } from '../ui';
 import { DPR } from '../dpr';
 import { t } from '../../i18n';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
-import { startOnboarding, type OnboardingTargets, type Rect } from '../onboarding';
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
 
 const W = 400;
@@ -21,8 +22,10 @@ const W = 400;
  * телефоне кнопка иначе висит посреди пустоты.
  */
 const RESET_Y = Math.round(VIEW_BOTTOM - 64);
+/** Подпись цели — сразу под шапкой партии. */
+const GOAL_Y = TOP_BAR_H + 22;
 /** Полоса, в которой живёт доска: под подписью цели и над кнопкой сброса. */
-const BOARD_TOP = 100;
+const BOARD_TOP = GOAL_Y + 22;
 const BOARD_BOTTOM = RESET_Y - 52;
 /** Потолок размера клетки: на 3×3 плитки во весь экран выглядят как ошибка вёрстки. */
 const MAX_CELL = 76;
@@ -35,6 +38,8 @@ type LineState = 'done' | 'over' | 'open';
 export class Game extends Scene {
   private locale: Locale = 'ru';
   private level = 1;
+  /** Уровень дня: параметры уровня лестницы, расклад по зерну от даты. */
+  private daily = false;
   private params!: PuzzleOptions;
   private session!: Session;
 
@@ -42,8 +47,10 @@ export class Game extends Scene {
   private puzzle!: Puzzle;
   private round!: SumsGame;
   private finished = false;
-  /** Идёт обучение: игровой ввод и выход заблокированы. */
-  private tutorialActive = false;
+  /** Обучение в один шаг: первое вычёркивание точно лишнего числа — настоящий ход (T6). */
+  private tutorial: FirstMoveTutorial | null = null;
+  /** Клетки, лишние в любом решении: вычеркнуть любую из них — удачный первый ход. */
+  private tutorialCells: number[] = [];
   /** Какие линии уже сошлись — чтобы звук «ок» играл на новую, а не на каждый тап. */
   private doneRows: boolean[] = [];
   private doneCols: boolean[] = [];
@@ -56,14 +63,16 @@ export class Game extends Scene {
   private rowLabels: Phaser.GameObjects.Text[] = [];
   private colPlates: Phaser.GameObjects.Rectangle[] = [];
   private colLabels: Phaser.GameObjects.Text[] = [];
-  private movesText!: Phaser.GameObjects.Text;
+  private header?: GameHeader;
+  /** «Заново» — прячем на время обучения: сбрасывать ещё нечего, а полоса подсказки легла бы поверх. */
+  private resetBtn?: Phaser.GameObjects.Container;
+  private pause: PauseSheet | null = null;
   private timer!: RoundTimer;
 
   // Геометрия доски.
   private cellSize = 0;
   private boardLeft = 0;
   private boardTop = 0;
-  private resetRect: Rect = { x: 0, y: 0, w: 0, h: 0 };
 
   constructor() {
     super('Game');
@@ -79,20 +88,22 @@ export class Game extends Scene {
     this.colPlates = [];
     this.colLabels = [];
     this.finished = false;
-    this.tutorialActive = false;
+    this.tutorial = null;
+    this.tutorialCells = [];
+    this.header = undefined;
+    this.resetBtn = undefined;
+    this.pause = null;
+    // Системный «назад» ведёт туда же, куда стрелка: партия → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
     this.level = (this.registry.get('level') as number) ?? 1;
+    // Уровень дня: параметры уровня лестницы, но расклад по зерну от даты — один на всех.
+    this.daily = this.registry.get('mode') === 'dailyLevel';
     this.session = this.registry.get('session') as Session;
-
-    // «Как играть» из меню: обучение на настоящей доске, без сессии и без партии.
-    if (this.registry.get('howto')) {
-      this.runHowto();
-      return;
-    }
 
     this.buildPuzzle();
     this.buildScreen();
@@ -102,18 +113,26 @@ export class Game extends Scene {
     this.timer.start();
     const off = this.session.onApp((e: AppToGameEvent) => {
       if (e.type === 'PAUSE') this.timer.pause();
-      else if (e.type === 'RESUME') this.timer.resume();
+      // Приложение вернулось на передний план, а наша пауза открыта — время стоит до «Продолжить».
+      else if (e.type === 'RESUME' && !this.pause?.open && !this.tutorial?.active) this.timer.resume();
     });
     this.events.once('shutdown', off);
 
-    this.maybeShowOnboarding();
+    // «Как играть» из паузы — то же обучение на новой партии.
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
+    if (howto || !hasOnboarded()) this.startTutorial();
+    else this.announceRules();
   }
 
   // ── Сборка партии ────────────────────────────────────────────────────────────
 
   private buildPuzzle() {
     this.params = levelAt(this.level).params;
-    this.puzzle = generate(this.params, mulberry32(Math.floor(Math.random() * 2 ** 31)));
+    const seed = this.daily
+      ? (this.registry.get('dailySeed') as number)
+      : Math.floor(Math.random() * 2 ** 31);
+    this.puzzle = generate(this.params, mulberry32(seed));
     this.startRound();
   }
 
@@ -131,33 +150,64 @@ export class Game extends Scene {
     this.refresh();
   }
 
-  // ── HUD ──────────────────────────────────────────────────────────────────────
+  // ── Шапка партии и пауза ─────────────────────────────────────────────────────
 
+  /**
+   * Шапка каталога: стрелка (пауза), «Уровень N» и чип ходов. Таймера на экране
+   * у «Сумм» нет (время идёт только в результат) — поэтому и чип один.
+   */
   private buildHud() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+    this.header = makeGameHeader(this, {
+      title: this.daily ? t(this.locale, 'game.dailyLevel') : t(this.locale, 'game.level', { n: this.level }),
+      chips: [{ id: 'moves', text: this.movesLabel(), widest: '888' }],
+      onBack: () => this.openPause(),
+    });
 
     this.add
-      .text(W - 20, 22, t(this.locale, 'game.level', { n: this.level }), {
-        fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
-      })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
-
-    this.movesText = this.add
-      .text(W - 20, 44, this.movesLabel(), { fontFamily: FONT, fontSize: 16, color: COLORS.headText })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
-
-    this.add
-      .text(W / 2, 78, t(this.locale, 'game.goal'), {
+      .text(W / 2, GOAL_Y, t(this.locale, 'game.goal'), {
         fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
       })
       .setOrigin(0.5)
       .setResolution(DPR);
   }
 
+  /** Ходы в чипе — просто счётчик: лимита ходов в «Суммах» нет. */
   private movesLabel(): string {
-    return t(this.locale, 'game.moves', { n: this.round.moves });
+    return String(this.round.moves);
+  }
+
+  /**
+   * Стрелка в шапке: пауза вместо мгновенного выхода. Проигрыша в «Суммах» нет,
+   * поэтому сводка короткая — только ходы.
+   */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    this.timer.pause();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      summary: t(this.locale, 'pause.moves', { moves: this.movesLabel() }),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      // В обучении время стоит до первого удачного хода — «Продолжить» его не запускает.
+      onResume: () => { this.pause = null; if (!this.tutorial?.active) this.timer.resume(); },
+      // «Начать уровень заново» — новая партия (сессия, время, для лестницы — новый расклад);
+      // кнопка «Заново» под доской — другое: снять вычёркивания на этой же доске.
+      onRestart: () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
   }
 
   // ── Доска ────────────────────────────────────────────────────────────────────
@@ -240,21 +290,21 @@ export class Game extends Scene {
   }
 
   private buildResetButton() {
-    const w = 200, h = 46, lip = 6;
-    makeButton(this, W / 2, RESET_Y, t(this.locale, 'game.reset'), () => this.resetBoard(), { width: w, height: h });
-    this.resetRect = { x: (W - w) / 2, y: RESET_Y - h / 2 - lip, w, h: h + lip };
+    this.resetBtn = makeButton(this, W / 2, RESET_Y, t(this.locale, 'game.reset'), () => this.resetBoard(), { width: 200, height: 46 }).root;
   }
 
   // ── Взаимодействие ───────────────────────────────────────────────────────────
 
   private onCellTap(i: number) {
-    if (this.finished || this.tutorialActive) return;
+    if (this.finished) return;
     const result = this.round.toggle(i);
     // Вычеркнули — короткий щелчок, вернули — шорох: на слух видно, что действие обратимо.
     playSound(result === 'crossed' ? 'tap' : 'swipe');
     squash(this, this.cellRects[i]);
-    this.movesText.setText(this.movesLabel());
+    this.header?.setChip('moves', this.movesLabel());
     this.refresh();
+    // Вычеркнуто точно лишнее — обучение закончено, дальше обычная партия.
+    if (result === 'crossed' && this.tutorialCells.includes(i)) this.tutorial?.done();
     if (this.round.solved) this.win();
   }
 
@@ -264,14 +314,14 @@ export class Game extends Scene {
    * ходы накопленными было бы наказанием за честное «я запутался».
    */
   private resetBoard() {
-    if (this.finished || this.tutorialActive) return;
+    if (this.finished) return;
     this.startRound();
-    this.movesText.setText(this.movesLabel());
+    this.header?.setChip('moves', this.movesLabel());
     this.refresh();
   }
 
-  private goBack() {
-    if (this.finished || this.tutorialActive) return;
+  private exitToMenu() {
+    if (this.finished) return;
     this.finished = true;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
@@ -290,9 +340,11 @@ export class Game extends Scene {
     }
 
     let newlyDone = false;
+    let anyOver = false;
     for (let r = 0; r < n; r++) {
       const state = this.lineState(this.round.rowSum(r), this.puzzle.rowTargets[r]);
       this.paintLine(this.rowPlates[r], this.rowLabels[r], state);
+      if (state === 'over') anyOver = true;
       const done = state === 'done';
       if (done && !this.doneRows[r]) newlyDone = true;
       this.doneRows[r] = done;
@@ -300,6 +352,7 @@ export class Game extends Scene {
     for (let c = 0; c < n; c++) {
       const state = this.lineState(this.round.colSum(c), this.puzzle.colTargets[c]);
       this.paintLine(this.colPlates[c], this.colLabels[c], state);
+      if (state === 'over') anyOver = true;
       const done = state === 'done';
       if (done && !this.doneCols[c]) newlyDone = true;
       this.doneCols[c] = done;
@@ -307,6 +360,8 @@ export class Game extends Scene {
 
     // Партию заканчивает win() со своим звуком — здесь бы вышел двойной сигнал.
     if (newlyDone && !this.round.solved) playSound('ok');
+    // Что значит красная сумма и как отыграть — в момент первой ошибки, а не карточкой заранее.
+    if (anyOver) showRuleOnce(this, 'sums:over', t(this.locale, 'rule.over'));
   }
 
   /**
@@ -357,83 +412,57 @@ export class Game extends Scene {
     const { moves, undos } = this.round;
 
     void this.session
-      .finish({ level: this.level, moves, undos, durationMs })
+      .finish({ level: this.level, mode: this.daily ? 'dailyLevel' : 'level', moves, undos, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
-    this.registry.set('lastGame', { level: this.level, locale: this.locale, moves, undos, durationMs });
+    this.registry.set('lastGame', { level: this.level, daily: this.daily, locale: this.locale, moves, undos, durationMs });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
 
-  /** «Как играть» из меню: настоящая доска 3×3, но без партии; по концу — в меню. */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-    // На тройке правило видно целиком, поэтому обучение всегда идёт на первом уровне.
-    this.level = 1;
-    this.buildPuzzle();
-    this.buildScreen();
-    this.timer = createRoundTimer(() => performance.now()); // не стартует: партии нет
-    this.time.delayedCall(360, () =>
-      this.launchOnboarding(() => {
-        setOnboarded();
-        this.scene.start('MainMenu');
-      }),
-    );
-  }
-
-  /** Первая партия — показываем обучение один раз: время на паузе, ввод заблокирован. */
-  private maybeShowOnboarding() {
-    if (hasOnboarded()) return;
-    this.tutorialActive = true;
+  /**
+   * Обучение в один шаг: доска видна, одно точно лишнее число обведено и
+   * пульсирует, внизу одна фраза, над ней — что значат суммы по краю. Тап по
+   * числу — настоящее вычёркивание; ходы появляются после него. Красная сумма
+   * объясняется в момент первой ошибки (`rule.over`).
+   */
+  private startTutorial() {
     this.timer.pause();
-    // Даём кадру отрисоваться (и завершиться fade-in камеры), затем открываем оверлей.
-    this.time.delayedCall(360, () =>
-      this.launchOnboarding(() => {
+    this.header?.setChipsVisible(false);
+    this.resetBtn?.setVisible(false);
+    // Показываем на клетке, которая лишняя в ЛЮБОМ решении: обучение не врёт про доску.
+    this.tutorialCells = surelyExtraCells(this.puzzle);
+    if (this.tutorialCells.length === 0) this.tutorialCells = [Math.max(0, this.puzzle.solution.indexOf(false))];
+    const cell = this.tutorialCells[0];
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove'),
+      note: t(this.locale, 'tutorial.note'),
+      targets: () => [this.cellRect(cell)],
+      pad: 4,
+      radius: 12,
+      onDone: () => {
         setOnboarded();
-        this.tutorialActive = false;
-        this.timer.resume();
-      }),
-    );
+        this.header?.setChipsVisible(true);
+        this.header?.setChip('moves', this.movesLabel());
+        this.resetBtn?.setVisible(true);
+        if (!this.pause?.open && !this.finished) this.timer.resume();
+        this.announceRules();
+      },
+    });
   }
 
-  private launchOnboarding(onDone: () => void) {
-    // Показываем на клетке, которая и правда лишняя: обучение не врёт про доску.
-    const demoCell = Math.max(0, this.puzzle.solution.indexOf(false));
-    startOnboarding(this, this.locale, this.onboardingTargets(demoCell), {
-      cross: () => {
-        this.round.toggle(demoCell);
-        squash(this, this.cellRects[demoCell]);
-        this.refresh();
-      },
-      reset: () => {
-        // Доску возвращаем как была, вместе со счётчиком ходов: обучение не даёт форы.
-        this.startRound();
-        this.refresh();
-        this.movesText.setText(this.movesLabel());
-      },
-    }, onDone);
+  /** Новое на уровне — одной строкой в начале первого уровня, где оно появилось. */
+  private announceRules() {
+    if (this.finished) return;
+    if (this.params.negative) showRuleOnce(this, 'sums:negative', t(this.locale, 'rule.negative'));
   }
 
-  /** Настоящие зоны экрана для подсветки: доска, строка с её суммой, клетка, «Заново». */
-  private onboardingTargets(demoCell: number): OnboardingTargets {
+  private cellRect(i: number): Rect {
     const n = this.puzzle.size;
     const cell = this.cellSize;
-    const board = (n + 1) * cell + STRIP_GAP;
-    const row = Math.floor(demoCell / n);
-    return {
-      board: { x: this.boardLeft, y: this.boardTop, w: board, h: board },
-      // Строка вместе с плашкой суммы: правило читается только парой «числа → сумма».
-      row: { x: this.boardLeft, y: this.boardTop + row * cell, w: board, h: cell },
-      cell: {
-        x: this.boardLeft + (demoCell % n) * cell,
-        y: this.boardTop + row * cell,
-        w: cell,
-        h: cell,
-      },
-      reset: this.resetRect,
-    };
+    return { x: this.boardLeft + (i % n) * cell, y: this.boardTop + Math.floor(i / n) * cell, w: cell, h: cell };
   }
 }

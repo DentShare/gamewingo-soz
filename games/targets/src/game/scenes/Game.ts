@@ -1,19 +1,22 @@
 import { Scene, Math as PhaserMath } from 'phaser';
 import type { Locale } from '../../core/locale';
 import {
-  createTargetsGame, FIELD, ROUND_MS, type Target, type TargetsGame,
+  createTargetsGame, FIELD, ROUND_MS, MAX_MULTIPLIER, R_BIG, type Target, type TargetsGame,
 } from '../../core/targets';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT } from '../palette';
-import { applyTheme, setupCamera, makeBackButton, playSound } from '../ui';
+import {
+  applyTheme, setupCamera, playSound, makeGameHeader, openPauseSheet, setBackHandler, uiText, makeRecordGhost,
+  runFirstMoveTutorial, showRuleOnce, TOP_BAR_H,
+  type GameHeader, type PauseSheet, type RecordGhost, type FirstMoveTutorial,
+} from '../ui';
 import { t } from '../../i18n';
 import { CHALLENGES } from '../../core/challenges';
-import { challengeStates, type ChallengeDef } from '@gamewingo/game-progress';
+import { challengeStates, loadBests, type ChallengeDef } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 import type { AppToGameEvent } from '@gamewingo/game-bridge';
 import { createRoundTimer, type RoundTimer } from '../roundTimer';
 import { hasOnboarded, setOnboarded } from '../../core/persistence';
-import { startOnboarding, type OnboardingStep, type Rect } from '../onboarding';
 import { DPR } from '../dpr';
 
 const W = 400;
@@ -25,8 +28,8 @@ const POP_POOL = 10;
 const RIPPLE_POOL = 6;
 /** Ограничение шага ядра: после сворачивания WebView delta может быть огромной. */
 const MAX_DELTA = 50;
-const HUD_TOP_Y = 34;
-const HUD_ROW_Y = 80;
+/** Строка активного испытания — в полосе между шапкой партии и полем. */
+const CHALLENGE_Y = (TOP_BAR_H + FIELD.y) / 2;
 
 interface TargetView {
   root: Phaser.GameObjects.Container;
@@ -47,24 +50,33 @@ export class Game extends Scene {
   private challengeText?: Phaser.GameObjects.Text;
   private timer?: RoundTimer;
 
-  private scoreText!: Phaser.GameObjects.Text;
-  private timeText!: Phaser.GameObjects.Text;
-  private comboText!: Phaser.GameObjects.Text;
+  private header?: GameHeader;
+  /** «Призрак» рекорда очков под шапкой: каждый раунд — гонка с собой. */
+  private ghost?: RecordGhost;
+  private pause: PauseSheet | null = null;
+  /** Твины, замороженные паузой-шитом (всплытие/угасание целей, «+N», отсчёт) — их и продолжаем. */
+  private frozenTweens: Phaser.Tweens.Tween[] = [];
 
   private targetPool: TargetView[] = [];
   private popPool: Phaser.GameObjects.Text[] = [];
   private ripplePool: Phaser.GameObjects.Arc[] = [];
   /** Живые цели ядра → их представления. */
   private views = new Map<number, TargetView>();
-  /** Цель, показанная в обучении (вне ядра — не влияет на счёт). */
-  private demoView?: TargetView;
+  /** Первая цель обучения — настоящая цель ядра: попадание по ней и есть первый ход. */
+  private tutorialTarget: Target | null = null;
 
   /** Переиспользуемый буфер перевода экранных координат тапа в логические. */
   private tapPoint = new PhaserMath.Vector2();
 
   private running = false;
   private finished = false;
-  private tutorialActive = false;
+  /** PAUSE от приложения и пауза-шит — раунд идёт, только когда нет ни того, ни другого. */
+  private appPaused = false;
+  private sheetPaused = false;
+  /** Обучение в один шаг (T6): раунд стоит, пока не будет первого попадания. */
+  private tutorial: FirstMoveTutorial | null = null;
+  /** Сколько целей уже погасло само — чтобы поймать первое такое событие. */
+  private lastExpired = 0;
   private lastScore = -1;
   private lastCombo = -1;
   private lastSec = -1;
@@ -79,14 +91,25 @@ export class Game extends Scene {
     this.popPool = [];
     this.ripplePool = [];
     this.views = new Map();
-    this.demoView = undefined;
+    this.tutorialTarget = null;
     this.running = false;
     this.finished = false;
-    this.tutorialActive = false;
+    this.tutorial = null;
+    this.lastExpired = 0;
     this.lastScore = -1;
     this.lastCombo = -1;
     this.lastSec = -1;
     this.timer = undefined;
+    this.appPaused = false;
+    this.sheetPaused = false;
+    this.header = undefined;
+    this.ghost = undefined;
+    this.pause = null;
+    this.frozenTweens = [];
+    // Часы сцены переживают restart: «Начать заново» из паузы пришёл бы с замороженными таймерами.
+    this.time.paused = false;
+    // Системный «назад» ведёт туда же, куда стрелка: раунд → пауза → меню.
+    setBackHandler(() => this.onSystemBack());
 
     applyTheme(this);
     setupCamera(this);
@@ -107,19 +130,16 @@ export class Game extends Scene {
       this.onTap(w.x, w.y);
     });
 
-    // «Как играть» из меню: обучение поверх настоящего поля, без сессии и партии.
-    if (this.registry.get('howto')) {
-      this.runHowto();
-      return;
-    }
-
     const off = this.session?.onApp((e: AppToGameEvent) => {
-      if (e.type === 'PAUSE') this.pauseRound();
-      else if (e.type === 'RESUME') this.resumeRound();
+      if (e.type === 'PAUSE') { this.appPaused = true; this.pauseRound(); }
+      else if (e.type === 'RESUME') { this.appPaused = false; this.resumeRound(); }
     });
     if (off) this.events.once('shutdown', off);
 
-    if (!hasOnboarded()) this.runFirstTimeOnboarding();
+    // «Как играть» из паузы — то же обучение на новом раунде.
+    const howto = this.registry.get('howto') === true;
+    this.registry.set('howto', false);
+    if (howto || !hasOnboarded()) this.startTutorial();
     else this.time.delayedCall(220, () => this.runCountdown(() => this.beginRound()));
   }
 
@@ -128,6 +148,7 @@ export class Game extends Scene {
       this.core.step(Math.min(delta, MAX_DELTA));
       this.syncTargets();
       this.syncHud();
+      this.checkRules();
       if (this.core.isOver) this.endRound();
       return;
     }
@@ -143,52 +164,110 @@ export class Game extends Scene {
     g.lineStyle(1.5, COLORS.fieldBorder, 1).strokeRoundedRect(FIELD.x, FIELD.y, FIELD.w, FIELD.h, 22);
   }
 
+  /**
+   * Шапка каталога: стрелка (пауза), название игры и чипы очков, серии и времени.
+   * Раньше были белая пилюля «Назад» (сразу терявшая раунд), крупный таймер
+   * справа и строка «Очки · Серия» над полем; теперь всё это — чипы шапки,
+   * последние 10 секунд — белый чип с красным текстом, как таймер в «Найди пару».
+   */
   private buildHud() {
-    this.buildBackButton();
-
-    // Крупный обратный отсчёт — главный элемент аркады.
-    this.timeText = this.add
-      .text(W - 18, HUD_TOP_Y, t(this.locale, 'game.time', { n: Math.round(ROUND_MS / 1000) }), {
-        fontFamily: FONT, fontSize: 30, color: COLORS.headText, fontStyle: 'bold',
-      })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
-
-    this.scoreText = this.add
-      .text(18, HUD_ROW_Y, t(this.locale, 'game.score', { n: 0 }), {
-        fontFamily: FONT, fontSize: 22, color: COLORS.headText, fontStyle: 'bold',
-      })
-      .setOrigin(0, 0.5)
-      .setResolution(DPR);
-    // Активное испытание с живым прогрессом — под счётом; когда всё пройдено, строки нет.
+    this.header = makeGameHeader(this, {
+      title: t(this.locale, 'app.title'),
+      chips: [
+        { id: 'score', text: '0', widest: '88888' },
+        { id: 'combo', text: comboChip(1), widest: comboChip(MAX_MULTIPLIER) },
+        { id: 'time', text: this.timeLabel(Math.round(ROUND_MS / 1000)), widest: this.timeLabel(88) },
+      ],
+      onBack: () => this.openPause(),
+    });
+    // Шкала — по очкам: они растут весь раунд плавно, а рекорд очков — главная цифра итога.
+    // Полоса y 56…65 — выше строки испытания (CHALLENGE_Y = 80, кегль 13): не пересекаются.
+    this.ghost = makeRecordGhost(this, TOP_BAR_H + 3, loadBests('targets').score ?? 0);
+    // Активное испытание с живым прогрессом — под шапкой; когда всё пройдено, строки нет.
     if (this.challenge) {
       this.challengeText = this.add
-        .text(18, HUD_ROW_Y + 22, this.challengeLabel(), {
+        .text(W / 2, CHALLENGE_Y, this.challengeLabel(), {
           fontFamily: FONT, fontSize: 13, color: COLORS.headMuted,
         })
-        .setOrigin(0, 0.5)
+        .setOrigin(0.5)
         .setResolution(DPR)
         .setDepth(20);
     }
-
-
-    this.comboText = this.add
-      .text(W - 18, HUD_ROW_Y, '', {
-        fontFamily: FONT, fontSize: 22, color: COLORS.comboText, fontStyle: 'bold',
-      })
-      .setOrigin(1, 0.5)
-      .setResolution(DPR);
   }
 
-  /** Кнопка «Назад» в левом верхнем углу — возврат в главное меню (стиль каталога). */
-  private buildBackButton() {
-    makeBackButton(this, 14 + 48, 34, t(this.locale, 'menu.back'), () => this.goBack());
+  private timeLabel(sec: number): string {
+    return t(this.locale, 'game.time', { n: sec });
   }
 
-  private goBack() {
+  // ── Пауза ────────────────────────────────────────────────────────────────────
+
+  /** Стрелка в шапке: пауза с честным выбором, а не мгновенная потеря раунда. */
+  private openPause() {
+    if (this.finished || this.pause?.open) return;
+    this.freezeWorld();
+    this.pause = openPauseSheet(this, {
+      locale: this.locale,
+      kind: 'run',
+      summary: this.pauseSummary(),
+      sound: { on: t(this.locale, 'sound.on'), off: t(this.locale, 'sound.off') },
+      onResume: () => { this.pause = null; this.thawWorld(); },
+      onRestart: () => this.scene.restart(),
+      onExit: () => this.exitToMenu(),
+      onHowto: () => {
+        this.registry.set('howto', true);
+        this.scene.restart();
+      },
+    });
+  }
+
+  /** «Таймер остановлен · очки 240 · осталось 32 с». */
+  private pauseSummary(): string {
+    const sec = Math.ceil(this.core.remainingMs / 1000);
+    return [
+      uiText(this.locale, 'pause.timerStopped'),
+      t(this.locale, 'pause.score', { n: this.core.score }),
+      uiText(this.locale, 'pause.left', { t: this.timeLabel(sec) }),
+    ].join(' · ');
+  }
+
+  /**
+   * Мир раунда стоит: ядро не шагает (running = false — цели не стареют, спавн
+   * и отсчёт минуты стоят, серия цела), часы сессии на паузе, таймеры сцены
+   * («3 · 2 · 1» до старта) стоят, идущие твины (всплытие/угасание, «+N») замерли.
+   * Твины самого шита создаются после заморозки и едут как обычно.
+   */
+  private freezeWorld() {
+    this.sheetPaused = true;
+    this.pauseRound();
+    this.time.paused = true;
+    this.frozenTweens = this.tweens.getTweens().filter((tw) => tw.isPlaying());
+    for (const tw of this.frozenTweens) tw.pause();
+  }
+
+  private thawWorld() {
+    this.sheetPaused = false;
+    this.time.paused = false;
+    for (const tw of this.frozenTweens) tw.resume();
+    this.frozenTweens = [];
+    this.resumeRound();
+  }
+
+  /** Системный «назад»: из паузы — в меню, иначе — открыть паузу. */
+  private onSystemBack() {
+    if (this.pause?.open) {
+      this.pause.close();
+      this.pause = null;
+      this.exitToMenu();
+      return;
+    }
+    this.openPause();
+  }
+
+  private exitToMenu() {
     if (this.finished) return;
     this.finished = true;
     this.running = false;
+    this.time.paused = false;
     this.cameras.main.fadeOut(200, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
   }
@@ -197,32 +276,26 @@ export class Game extends Scene {
   private syncHud() {
     if (this.core.score !== this.lastScore) {
       this.lastScore = this.core.score;
-      this.scoreText.setText(t(this.locale, 'game.score', { n: this.lastScore }));
+      this.header?.setChip('score', String(this.lastScore));
+      this.ghost?.update(this.lastScore);
       this.updateChallengeLine();
     }
 
-    // Показываем серию, только когда множитель реально выше единицы — «×1» ни о чём.
+    // Чип серии: «×1» без серии, дальше множитель — он и подсвечен в обучении.
     const mult = this.core.multiplier;
     const shown = mult >= 2 ? mult : 0;
     if (shown !== this.lastCombo) {
       this.lastCombo = shown;
-      this.comboText.setText(shown ? t(this.locale, 'game.combo', { n: shown }) : '');
-      if (shown) this.pop(this.comboText, 1.22);
+      this.header?.setChip('combo', comboChip(mult));
+      if (shown) this.header?.pulseChip('combo');
     }
 
     const sec = Math.ceil(this.core.remainingMs / 1000);
     if (sec !== this.lastSec) {
       this.lastSec = sec;
-      this.timeText.setText(t(this.locale, 'game.time', { n: sec }));
-      this.timeText.setColor(sec <= 10 ? COLORS.timeLow : COLORS.headText);
-      if (sec <= 5) this.pop(this.timeText, 1.18);
+      // Последние десять секунд — белый чип с красным текстом.
+      this.header?.setChip('time', this.timeLabel(sec), sec <= 10);
     }
-  }
-
-  private pop(obj: Phaser.GameObjects.Text, scale: number) {
-    this.tweens.killTweensOf(obj);
-    obj.setScale(1);
-    this.tweens.add({ targets: obj, scale, duration: 110, yoyo: true, ease: 'Quad.easeOut' });
   }
 
   // ── Пулы объектов (никаких аллокаций во время партии) ────────────────────────
@@ -302,7 +375,6 @@ export class Game extends Scene {
       this.fadeOutView(v);
     }
 
-    if (this.demoView) this.pulseDemo(this.demoView, now);
   }
 
   /** Появление — по «настенным» часам, угасание — по возрасту в шкале ядра. */
@@ -365,13 +437,26 @@ export class Game extends Scene {
   // ── Ввод ─────────────────────────────────────────────────────────────────────
 
   private onTap(x: number, y: number) {
-    if (!this.running || this.finished || this.tutorialActive) return;
-    if (y < FIELD.y) return; // зона HUD — там своя кнопка «Назад»
+    if (this.finished || this.sheetPaused) return;
+    if (y < FIELD.y) return; // зона шапки и строки испытания — не поле
+    if (this.tutorial?.active) {
+      // Промах в обучении не трогает ядро (ни промахов, ни серии) — только объясняет правило.
+      if (!this.hitsTutorialTarget(x, y)) {
+        playSound('wrong');
+        this.showRipple(x, y);
+        showRuleOnce(this, 'targets:miss', t(this.locale, 'rule.miss'));
+        return;
+      }
+      // Первое попадание — настоящий ход: раунд стартует, очки за цель засчитываются.
+      this.tutorial.done();
+    }
+    if (!this.running) return;
 
     const res = this.core.tap(x, y);
     if (!res.hit) {
       playSound('wrong');
       this.showRipple(x, y);
+      showRuleOnce(this, 'targets:miss', t(this.locale, 'rule.miss'));
       return;
     }
     playSound(res.golden ? 'star' : 'ok');
@@ -417,13 +502,17 @@ export class Game extends Scene {
     nextTick();
   }
 
-  private beginRound() {
+  /** `flash` — «Начали!» после отсчёта; после первого попадания в обучении он лишний. */
+  private beginRound(flash = true) {
     if (this.finished) return;
+    // Отсчёт «3 · 2 · 1» живёт на таймерах сцены — под шитом он стоит, сюда не дойдёт.
     this.timer = createRoundTimer(() => performance.now());
     this.session?.start();
     this.timer.start();
     this.running = true;
-    this.flashGo();
+    // Приложение свернули на «3 · 2 · 1»: раунд стартует уже на паузе.
+    if (this.appPaused) this.pauseRound();
+    if (flash) this.flashGo();
   }
 
   private flashGo() {
@@ -441,13 +530,14 @@ export class Game extends Scene {
   }
 
   private pauseRound() {
-    if (!this.running) return;
+    if (!this.running) { this.timer?.pause(); return; }
     this.running = false;
     this.timer?.pause();
   }
 
   private resumeRound() {
-    if (this.finished || this.tutorialActive || !this.timer) return;
+    // Раунд идёт, только когда его не держат ни приложение, ни шит паузы.
+    if (this.finished || !this.timer || this.appPaused || this.sheetPaused) return;
     this.running = true;
     this.timer.resume();
   }
@@ -472,105 +562,60 @@ export class Game extends Scene {
 
   // ── Обучение ─────────────────────────────────────────────────────────────────
 
-  /** «Как играть» из меню: настоящее поле + обучение, по концу — обратно в меню. */
-  private runHowto() {
-    this.registry.set('howto', false); // одноразовый вход
-    this.tutorialActive = true;
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
+  /**
+   * Обучение в один шаг: на поле одна крупная настоящая цель, обведена и пульсирует,
+   * внизу одна фраза. Мир стоит (ядро не шагает, цель не гаснет, минута не идёт),
+   * чипы шапки спрятаны. Попадание по цели — первый ход: очки засчитываются,
+   * раунд стартует сразу, без отсчёта. Промах не наказывается — только строка правила.
+   */
+  private startTutorial() {
+    this.header?.setChipsVisible(false);
+    this.tutorialTarget = this.core.spawnTarget({
+      x: FIELD.x + FIELD.w / 2,
+      y: FIELD.y + 180,
+      r: R_BIG,
+    });
+    this.tutorial = runFirstMoveTutorial(this, {
+      locale: this.locale,
+      text: t(this.locale, 'tutorial.firstMove'),
+      note: t(this.locale, 'tutorial.note'),
+      targets: () => {
+        const tg = this.tutorialTarget;
+        return tg ? [{ x: tg.x - tg.r, y: tg.y - tg.r, w: tg.r * 2, h: tg.r * 2 }] : [];
+      },
+      pad: 10,
+      radius: R_BIG + 10,
+      shape: 'circle',
+      onDone: (skipped) => {
         setOnboarded();
-        this.hideDemo();
-        this.cameras.main.fadeOut(200, ...COLORS.fade);
-        this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MainMenu'));
-      });
+        this.header?.setChipsVisible(true);
+        if (skipped) {
+          // «Пропустить» — обычный старт с отсчётом; цель обучения остаётся подарком.
+          this.runCountdown(() => this.beginRound());
+        } else {
+          this.beginRound(false);
+        }
+      },
     });
   }
 
-  /** Первая партия — показываем обучение один раз, затем отсчёт и старт. */
-  private runFirstTimeOnboarding() {
-    this.tutorialActive = true;
-    this.time.delayedCall(360, () => {
-      startOnboarding(this, this.locale, this.tutorialSteps(), () => {
-        setOnboarded();
-        this.hideDemo();
-        this.resetHudPreview();
-        this.tutorialActive = false;
-        this.runCountdown(() => this.beginRound());
-      });
-    });
+  /** Попал ли тап по цели обучения (с тем же допуском для пальца, что и в ядре). */
+  private hitsTutorialTarget(x: number, y: number): boolean {
+    const tg = this.tutorialTarget;
+    if (!tg) return false;
+    return Math.hypot(x - tg.x, y - tg.y) <= tg.r + 6;
   }
 
   /**
-   * Три шага на РЕАЛЬНОМ экране: настоящая цель на поле, строка счёта/серии
-   * в HUD и крупный таймер.
+   * Правила — в момент первого события, один раз на устройство: первая серия ×2
+   * и первая цель, погасшая сама. Про промах — в onTap.
    */
-  private tutorialSteps(): OnboardingStep[] {
-    const demoX = FIELD.x + FIELD.w / 2;
-    const demoY = FIELD.y + 180;
-    const demoR = 46;
-    return [
-      {
-        textKey: 'onboarding.aim',
-        target: (): Rect => ({ x: demoX - demoR, y: demoY - demoR, w: demoR * 2, h: demoR * 2 }),
-        pad: 12,
-        radius: 22,
-        prepare: () => this.showDemo(demoX, demoY, demoR),
-      },
-      {
-        textKey: 'onboarding.combo',
-        target: (): Rect => ({ x: 12, y: HUD_ROW_Y - 20, w: W - 24, h: 40 }),
-        pad: 6,
-        radius: 14,
-        prepare: () => this.previewHud(),
-      },
-      {
-        textKey: 'onboarding.time',
-        target: (): Rect => rectOf(this.timeText),
-        pad: 10,
-        radius: 12,
-      },
-    ];
-  }
-
-  /** Настоящая цель на поле для первого шага обучения (вне ядра — счёт не трогает). */
-  private showDemo(x: number, y: number, r: number) {
-    if (this.demoView) return;
-    const v = this.acquireView();
-    if (!v) return;
-    this.paintView(v, false);
-    v.root.setPosition(x, y).setScale(0);
-    this.tweens.add({
-      targets: v.root, scale: r / BASE_R, duration: 260, ease: 'Back.easeOut',
-    });
-    this.demoView = v;
-  }
-
-  /** Лёгкое «дыхание» демо-цели, чтобы она читалась как живая. */
-  private pulseDemo(v: TargetView, now: number) {
-    const k = 1 + 0.05 * Math.sin(now / 260);
-    v.outer.setScale(k);
-  }
-
-  private hideDemo() {
-    if (!this.demoView) return;
-    const v = this.demoView;
-    this.demoView = undefined;
-    v.outer.setScale(1);
-    this.fadeOutView(v);
-  }
-
-  /** На шаге про серию HUD показывает пример значений — иначе подсвечивать нечего. */
-  private previewHud() {
-    this.scoreText.setText(t(this.locale, 'game.score', { n: 240 }));
-    this.comboText.setText(t(this.locale, 'game.combo', { n: 3 }));
-  }
-
-  private resetHudPreview() {
-    this.lastScore = -1;
-    this.lastCombo = -1;
-    this.lastSec = -1;
-    this.scoreText.setText(t(this.locale, 'game.score', { n: 0 }));
-    this.comboText.setText('');
+  private checkRules() {
+    if (this.core.multiplier >= 2) showRuleOnce(this, 'targets:combo', t(this.locale, 'rule.combo'));
+    if (this.core.expired > this.lastExpired) {
+      this.lastExpired = this.core.expired;
+      showRuleOnce(this, 'targets:expired', t(this.locale, 'rule.expired'));
+    }
   }
 
   /** «Серия из 10 подряд · 6/10» — активное испытание с прогрессом. */
@@ -609,8 +654,7 @@ function easeOutBack(x: number): number {
   return 1 + c3 * p * p * p + c1 * p * p;
 }
 
-/** Габарит объекта сцены в координатах сцены (для подсветки в обучении). */
-function rectOf(obj: Phaser.GameObjects.Text): Rect {
-  const b = obj.getBounds();
-  return { x: b.x, y: b.y, w: b.width, h: b.height };
+/** Чип серии: «×3» — множитель без слова, чтобы три чипа влезли рядом с названием. */
+function comboChip(mult: number): string {
+  return `×${mult}`;
 }

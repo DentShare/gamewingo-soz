@@ -10,7 +10,7 @@ describe('catalog entry', () => {
     expect(entry?.locales).toEqual(['ru', 'uz']);
     expect(entry?.leaderboard).toBe(false);
     expect(hub).toContain("id: 'color-sort'");
-    expect(hub).toContain("url: 'color-sort/'");
+    expect(hub).toContain("kind: 'ladder'");
     expect(icon).toContain('<svg');
     expect(build).toContain("'color-sort'");
     expect(workspace.scripts['build:games']).toContain('@gamewingo/color-sort');

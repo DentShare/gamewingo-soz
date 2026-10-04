@@ -27,7 +27,7 @@ export function readBonusBalance(): number {
 const H = 26;
 
 /** Золотая монетка с бликом; `r` — радиус. */
-function drawCoin(g: Phaser.GameObjects.Graphics, cx: number, cy: number, r: number): void {
+export function drawCoin(g: Phaser.GameObjects.Graphics, cx: number, cy: number, r: number): void {
   g.fillStyle(C.gold, 1).fillCircle(cx, cy, r);
   g.fillStyle(C.goldSoft, 1).fillCircle(cx, cy, r * 0.62);
   g.fillStyle(C.gold, 1).fillCircle(cx, cy, r * 0.34);

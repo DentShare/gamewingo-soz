@@ -41,8 +41,8 @@ export function createGameHeader(scene: Scene, options: { title: string; onBack:
 
 export interface PauseLabels { title: string; resume: string; restart: string; exit: string; soundOn: string; soundOff: string; howto: string; }
 /** Шит остаётся интерактивным даже когда время и твины партии остановлены. */
-export function openPauseSheet(scene: Scene, options: { labels: PauseLabels; summary: string; onResume: () => void; onRestart: () => void; onExit: () => void; onHowto: () => void }) {
-  const root = scene.add.container(0, 0).setDepth(10000);
+export function openPourPauseSheet(scene: Scene, options: { labels: PauseLabels; summary: string; onResume: () => void; onRestart: () => void; onExit: () => void; onHowto: () => void }) {
+  const root = scene.add.container(0, 0).setDepth(1000);
   const blocker = scene.add.rectangle(200, VIEW_TOP + VIEW_H / 2, 400, VIEW_H, C.ink, 0.5).setInteractive();
   const top = VIEW_BOTTOM - 360;
   const panel = scene.add.graphics().fillStyle(C.bg).fillRoundedRect(0, top, 400, 380, { tl: 20, tr: 20, bl: 0, br: 0 });
@@ -67,7 +67,7 @@ export function openPauseSheet(scene: Scene, options: { labels: PauseLabels; sum
 }
 
 type TutorialTarget = { root: Phaser.GameObjects.Container; outline: Phaser.GameObjects.Graphics };
-export function runFirstMoveTutorial(scene: Scene, options: { allTargets: readonly TutorialTarget[]; targets: readonly TutorialTarget[]; hint: string; skip: string; onDone: () => void }) {
+export function runPourTutorial(scene: Scene, options: { allTargets: readonly TutorialTarget[]; targets: readonly TutorialTarget[]; hint: string; skip: string; onDone: () => void }) {
   const root = scene.add.container(0, 0).setDepth(250);
   const panel = scene.add.graphics().fillStyle(C.ink, 0.94).fillRoundedRect(20, 652, 360, 66, 12);
   const label = scene.add.text(32, 665, options.hint, { fontFamily: FONT, fontSize: 13, color: S.white, wordWrap: { width: 225 }, lineSpacing: 2 }).setResolution(DPR);

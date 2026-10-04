@@ -165,55 +165,5 @@
       "metric": "score",
       "target": 9000
     }
-  ],
-  "milestones": [
-    {
-      "id": "score1000",
-      "metric": "score",
-      "target": 1000,
-      "reward": 10
-    },
-    {
-      "id": "score2000",
-      "metric": "score",
-      "target": 2000,
-      "reward": 12
-    },
-    {
-      "id": "score3000",
-      "metric": "score",
-      "target": 3000,
-      "reward": 15
-    },
-    {
-      "id": "score4200",
-      "metric": "score",
-      "target": 4200,
-      "reward": 18
-    },
-    {
-      "id": "score5500",
-      "metric": "score",
-      "target": 5500,
-      "reward": 21
-    },
-    {
-      "id": "score7000",
-      "metric": "score",
-      "target": 7000,
-      "reward": 24
-    },
-    {
-      "id": "score8000",
-      "metric": "score",
-      "target": 8000,
-      "reward": 27
-    },
-    {
-      "id": "score9000",
-      "metric": "score",
-      "target": 9000,
-      "reward": 30
-    }
   ]
 }

@@ -5,13 +5,11 @@ import { t } from './index';
 
 const REQUIRED = [
   'sound.on', 'sound.off',
-  'app.title', 'menu.ladder', 'menu.play', 'menu.howto', 'menu.catalog',
-  'game.question', 'game.progress',
-  'onboarding.count', 'onboarding.tap', 'onboarding.help',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
-  'result.title', 'result.score', 'result.level', 'result.nextLevel', 'result.unlocked',
-  'result.mistakes', 'result.newBest', 'result.playAgain', 'result.menu', 'error.network',
-];
+  'app.title',
+  'game.question', 'game.progress', 'game.praise', 'game.help',
+  'pause.progress', 'pause.mistakes',
+  'tutorial.firstMove', 'rule.mistake',
+]
 
 describe('i18n (counting)', () => {
   it('ru и uz имеют одинаковый набор ключей', () => {
@@ -34,9 +32,11 @@ describe('i18n (counting)', () => {
   });
 
   it('t() подставляет параметры в обеих локалях', () => {
-    expect(t('ru', 'result.score', { score: 1300 })).toContain('1300');
-    expect(t('uz', 'result.mistakes', { n: 2 })).toContain('2');
+    expect(t('ru', 'pause.mistakes', { n: 2 })).toBe('ошибок: 2');
+    expect(t('uz', 'pause.mistakes', { n: 2 })).toContain('2');
     expect(t('ru', 'game.progress', { n: 3, total: 10 })).toBe('3 из 10');
     expect(t('uz', 'game.progress', { n: 3, total: 10 })).toBe('10 dan 3');
+    expect(t('ru', 'tutorial.firstMove', { n: 4 })).toContain('4');
+    expect(t('uz', 'tutorial.firstMove', { n: 4 })).toContain('4');
   });
 });

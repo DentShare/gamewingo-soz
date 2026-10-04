@@ -38,3 +38,28 @@ jobs:
 
       - name: Дымовой тест сцен
         run: npm run check:smoke
+
+      - name: Системный «назад» во всех играх
+        run: npm run check:back
+
+  backend:
+    # Score Engine начисляет настоящие баллы: его правила проверяются отдельно
+    # от игр, и падение здесь не должно ждать семнадцать минут дымового теста.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - run: pip install -r requirements.txt pytest httpx
+
+      - name: Тесты Score Engine
+        run: python -m pytest -q

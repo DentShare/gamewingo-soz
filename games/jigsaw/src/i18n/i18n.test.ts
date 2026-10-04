@@ -5,12 +5,10 @@ import { t } from './index';
 
 const REQUIRED = [
   'sound.on', 'sound.off',
-  'app.title', 'menu.ladder', 'menu.play', 'menu.howto', 'menu.catalog', 'menu.hint',
+  'app.title',
   'game.progress', 'game.take', 'game.almost',
-  'onboarding.take', 'onboarding.place', 'onboarding.story',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
-  'result.title', 'result.score', 'result.detail', 'result.level', 'result.nextLevel',
-  'result.unlocked', 'result.newBest', 'result.playAgain', 'result.menu', 'error.network',
+  'pause.progress',
+  'tutorial.firstMove', 'rule.wrong',
 ];
 
 describe('i18n (jigsaw)', () => {
@@ -34,8 +32,8 @@ describe('i18n (jigsaw)', () => {
   });
 
   it('t() подставляет параметры в обеих локалях', () => {
-    expect(t('ru', 'result.score', { score: 1300 })).toContain('1300');
-    expect(t('uz', 'result.detail', { pieces: 12, misses: 2 })).toContain('12');
+    expect(t('ru', 'pause.progress', { progress: '3 из 10' })).toBe('собрано 3 из 10');
+    expect(t('uz', 'pause.progress', { progress: '10 dan 3' })).toContain('10 dan 3');
     expect(t('ru', 'game.progress', { n: 3, total: 10 })).toBe('3 из 10');
     expect(t('uz', 'game.progress', { n: 3, total: 10 })).toBe('10 dan 3');
   });

@@ -4,7 +4,7 @@ import { createColorSortState, canMove, move, type ColorSortState, type LiquidCo
 import { levelAt, type ColorSortLevel } from '../../core/levels';
 import { COLORS, FONT, LIQUID_COLORS } from '../palette';
 import {
-  applyTheme, setupCamera, makeButton, makeCard, createGameHeader, openPauseSheet, runFirstMoveTutorial, guardBrowserBack,
+  applyTheme, setupCamera, makeButton, makeCard, createGameHeader, openPourPauseSheet, runPourTutorial, guardBrowserBack,
   playSound, toast, EASE, DUR, squash, sparkle, C,
 } from '../ui';
 import { DPR } from '../dpr';
@@ -40,8 +40,8 @@ export class Game extends Scene {
   private selected: number | null = null;
   private header!: ReturnType<typeof createGameHeader>;
   private activity!: RoundActivity;
-  private sheet?: ReturnType<typeof openPauseSheet>;
-  private tutorial?: ReturnType<typeof runFirstMoveTutorial>;
+  private sheet?: ReturnType<typeof openPourPauseSheet>;
+  private tutorial?: ReturnType<typeof runPourTutorial>;
   private tutorialPair?: { from: number; to: number };
   private controls: Phaser.GameObjects.Container[] = [];
   private hint!: Phaser.GameObjects.Text;
@@ -188,7 +188,7 @@ export class Game extends Scene {
     this.controls.forEach((root) => root.setVisible(false));
     // Повторное обучение также исключается из активного времени партии.
     this.activity.pause('sheet');
-    this.tutorial = runFirstMoveTutorial(this, {
+    this.tutorial = runPourTutorial(this, {
       allTargets: targets, targets: [targets[pair.from]], hint: t(this.locale, 'tutorial.firstMove'), skip: t(this.locale, 'onboarding.skip'),
       onDone: () => {
         this.tutorial = undefined; this.tutorialPair = undefined; this.activity.resume('sheet');
@@ -346,7 +346,7 @@ export class Game extends Scene {
 
   private openPause() {
     if (this.finished || this.sheet) return;
-    this.sheet = openPauseSheet(this, {
+    this.sheet = openPourPauseSheet(this, {
       labels: { title: t(this.locale, 'pause.title'), resume: t(this.locale, 'pause.resume'), restart: t(this.locale, 'pause.restart'), exit: t(this.locale, 'pause.exit'), soundOn: t(this.locale, 'sound.on'), soundOff: t(this.locale, 'sound.off'), howto: t(this.locale, 'menu.howto') },
       summary: t(this.locale, 'pause.summary', { moves: this.state.moves, time: activeTime(this.activity.elapsedMs()) }),
       onResume: () => {

@@ -63,11 +63,8 @@ try {
     if (challengesModule?.CHALLENGES?.length) {
       shape = {
         challenges: challengesModule.CHALLENGES.map(({ n, id, metric, target }) => ({ n, id, metric, target })),
-        milestones: (challengesModule.MILESTONES ?? []).map(
-          ({ id, metric, target, reward }) => ({ id, metric, target, reward }),
-        ),
       };
-      summary = `${shape.challenges.length} испытаний, ${shape.milestones.length} вех`;
+      summary = `${shape.challenges.length} испытаний`;
     } else if (levelsModule?.LADDER?.length) {
       shape = { levels: levelsModule.LADDER.map(({ n, params, goals }) => ({ n, params, goals })) };
       summary = `${shape.levels.length} уровней`;

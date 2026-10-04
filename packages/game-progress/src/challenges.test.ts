@@ -91,17 +91,17 @@ describe('вехи', () => {
     expect(nextMilestone(states)?.id).toBe('len30');
   });
 
-  it('grantArcadeBonuses платит за испытания, вехи и не платит дважды', () => {
+  it('grantArcadeBonuses платит за испытания, вехи — нет, и не платит дважды', () => {
     const missionsBefore = dailyMissions();
     const res = recordArcadeRound({ slug: SLUG, defs: DEFS, metrics: { eaten: 6, lengthMax: 11 }, score: 60 });
     const bonus = grantArcadeBonuses({
       slug: SLUG, closed: res.closed,
       milestones: milestoneStates(SLUG, MILES), missionsBefore,
     });
-    // Испытания 1 и 2 по тарифу уровня + веха len10.
-    const expected = TARIFF.level(1) + TARIFF.level(2) + 10;
+    // Испытания 1 и 2 по тарифу уровня; веха len10 взята, но с T4 не оплачивается.
+    const expected = TARIFF.level(1) + TARIFF.level(2);
     expect(bonus.total).toBeGreaterThanOrEqual(expected);
-    expect(bonus.granted.map((g) => g.key)).toContain('milestone-snake-len10');
+    expect(bonus.granted.map((g) => g.key)).not.toContain('milestone-snake-len10');
 
     const repeat = grantArcadeBonuses({
       slug: SLUG, closed: res.closed,

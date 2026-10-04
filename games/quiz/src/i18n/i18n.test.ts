@@ -5,14 +5,17 @@ import { t } from './index';
 
 const REQUIRED = [
   'sound.on', 'sound.off',
-  'app.title', 'menu.ladder', 'menu.play', 'menu.howto', 'menu.catalog', 'menu.topics',
+  'app.title', 'menu.howto', 'menu.catalog', 'menu.topics',
+  'chapter.1', 'chapter.2', 'chapter.3',
+  'level.field.one', 'level.field.few', 'level.field.many', 'level.goldHint', 'level.goldHintPerfect',
+  'intro.questions', 'intro.options', 'intro.mistakes', 'intro.timer', 'intro.timerTighter',
+  'game.dailyLevel',
   'game.progress', 'game.mistakes', 'game.fact', 'game.next', 'game.finish',
   'topic.space', 'topic.animals', 'topic.uzbekistan', 'topic.science', 'topic.body', 'topic.money',
-  'onboarding.question', 'onboarding.fact', 'onboarding.mistakes',
-  'onboarding.next', 'onboarding.done', 'onboarding.skip',
-  'result.title', 'result.failed', 'result.score', 'result.detail', 'result.level',
-  'result.nextLevel', 'result.unlocked', 'result.tryAgain',
-  'result.newBest', 'result.playAgain', 'result.menu', 'error.network',
+  'tutorial.firstMove', 'tutorial.note', 'rule.mistakes', 'rule.timer',
+  'result.title', 'result.failed', 'result.reached',
+  'result.gapMistakes.one', 'result.gapMistakes.few', 'result.gapMistakes.many',
+  'result.almostDetail', 'result.almostDetailPerfect',
 ];
 
 describe('i18n (quiz)', () => {
@@ -36,7 +39,8 @@ describe('i18n (quiz)', () => {
   });
 
   it('t() подставляет параметры в обеих локалях', () => {
-    expect(t('ru', 'result.score', { score: 1300 })).toContain('1300');
+    expect(t('ru', 'result.almostDetail', { mistakes: 2, need: 1 })).toContain('2');
+    expect(t('uz', 'result.reached', { k: 4, n: 8 })).toContain('4');
     expect(t('uz', 'game.mistakes', { n: 2, max: 3 })).toContain('2');
     expect(t('ru', 'game.progress', { n: 3, total: 10 })).toBe('3 из 10');
     expect(t('uz', 'game.progress', { n: 3, total: 10 })).toBe('10 dan 3');

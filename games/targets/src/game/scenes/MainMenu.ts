@@ -8,15 +8,14 @@ import {
   makeTopBar,
   makeGameIcon,
   makeRecordBadge,
-  makeMilestoneBar,
   makeChallengeList,
   type ChallengeRowState,
-  makeSoundToggle,
+  setBackHandler,
 } from '../ui';
 import { COLORS } from '../palette';
-import { CHALLENGES, CHALLENGES_TOTAL, MILESTONES } from '../../core/challenges';
+import { CHALLENGES, CHALLENGES_TOTAL } from '../../core/challenges';
 import {
-  challengeStates, milestoneStates, nextMilestone, loadBests,
+  challengeStates, loadBests,
 } from '@gamewingo/game-progress';
 import type { Session } from '../../bridge/session';
 
@@ -43,6 +42,8 @@ export class MainMenu extends Scene {
     this.cameras.main.fadeIn(200, ...COLORS.fade);
 
     makeTopBar(this, t(this.locale, 'app.title'), () => this.exitToCatalog());
+    // Системный «назад» из меню — тот же выход в каталог, что и стрелка.
+    setBackHandler(() => this.exitToCatalog());
 
     makeGameIcon(this, CX, 84, 56);
 
@@ -53,16 +54,6 @@ export class MainMenu extends Scene {
       label: t(this.locale, 'menu.record'),
     });
 
-    // Полоса до следующей вехи длины.
-    const miles = milestoneStates(SLUG, MILESTONES);
-    const next = nextMilestone(miles);
-    makeMilestoneBar(this, CX, 196, {
-      label: next
-        ? t(this.locale, 'menu.nextMilestone', { n: next.target, r: next.reward })
-        : t(this.locale, 'menu.milestonesDone'),
-      value: next ? Math.round(bests.score ?? 0) : 1,
-      target: next ? next.target : 1,
-    });
 
     // Испытания: выполненные, активное и пара следующих.
     const states = challengeStates(SLUG, CHALLENGES);
@@ -73,22 +64,16 @@ export class MainMenu extends Scene {
       done: s.done,
       active: s.active,
     }));
-    const list = makeChallengeList(this, CX, 226, {
+    const list = makeChallengeList(this, CX, 196, {
       header: t(this.locale, 'menu.challenges', { k: doneCount, n: CHALLENGES_TOTAL }),
       rows,
     });
 
-    const belowList = 226 + list.height + 34;
+    const belowList = 196 + list.height + 34;
     makeButton(this, CX, belowList, t(this.locale, 'menu.play'), () => this.startRun(), {
       primary: true,
     });
-    makeButton(this, CX, belowList + 52, t(this.locale, 'menu.howto'), () => this.showHowto());
-
-    // Звук: беззвучный режим общий для каталога, поэтому виджет из дизайн-системы.
-    makeSoundToggle(this, CX, belowList + 108, {
-      on: t(this.locale, 'sound.on'),
-      off: t(this.locale, 'sound.off'),
-    });
+    // «Как играть» и звук живут в паузе забега — меню короче на два ряда.
   }
 
   private startRun() {
@@ -104,12 +89,5 @@ export class MainMenu extends Scene {
       const hub = (this.registry.get('catalogUrl') as string) || HUB_URL;
       window.location.href = hub;
     }
-  }
-
-  /** «Как играть» — интерактивное обучение поверх настоящего поля; по концу → в меню. */
-  private showHowto() {
-    this.registry.set('howto', true);
-    this.registry.set('locale', this.locale);
-    this.scene.start('Game');
   }
 }

@@ -8,6 +8,7 @@ from app import state
 from app.analytics import metrics
 from app.analytics.store import AnalyticsStore
 from app.main import app
+from app.progression import config_loader
 from app.progression.store import AuditEntry, day_id
 
 client = TestClient(app)
@@ -151,7 +152,7 @@ def test_summary_covers_every_game_and_focuses_on_the_busiest():
     play(game="pairs", sid="s3")
 
     body = client.get("/analytics/summary?days=7").json()
-    assert len(body["games"]) == 13
+    assert len(body["games"]) == config_loader.get_catalog()["catalogSize"]
     assert body["focus"] == "snake"
     assert body["funnel"]["gameId"] == "snake"
 

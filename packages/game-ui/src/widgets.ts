@@ -54,7 +54,7 @@ export function makeButton(
   y: number,
   label: string,
   onClick: () => void,
-  opts: { width?: number; height?: number; primary?: boolean; textColor?: string; fontSize?: number } = {},
+  opts: { width?: number; height?: number; primary?: boolean; danger?: boolean; textColor?: string; fontSize?: number } = {},
 ): Button {
   // Размеры по умолчанию совпадают с кнопкой хаба (338×40 на ширине 402).
   const w = opts.width ?? 336;
@@ -80,10 +80,18 @@ export function makeButton(
       fontFamily: FONT,
       fontSize: opts.fontSize ?? TYPE.body,
       fontStyle: WEIGHT.semibold,
-      color: opts.textColor ?? (isPrimary ? S.white : S.ink),
+      color: opts.textColor ?? (isPrimary ? S.white : opts.danger ? S.danger : S.ink),
     })
     .setOrigin(0.5)
     .setResolution(DPR);
+  // Длинная подпись (узбекский, «выйти — прогресс не сохранится») не вылезает
+  // за кнопку на узком экране: шрифт ужимается до 12, но не ниже.
+  const fit = () => {
+    let size = opts.fontSize ?? TYPE.body;
+    txt.setFontSize(size);
+    while (txt.width > w - 20 && size > 12) txt.setFontSize(--size);
+  };
+  fit();
 
   const hit = scene.add.rectangle(0, 0, w, h, 0x000000, 0).setInteractive({ useHandCursor: true });
   root.add([g, txt, hit]);
@@ -96,9 +104,23 @@ export function makeButton(
 
   return {
     root,
-    setLabel: (s: string) => txt.setText(s),
+    setLabel: (s: string) => { txt.setText(s); fit(); },
     destroy: () => root.destroy(),
   };
+}
+
+/**
+ * Убрать HTML-сплэш игры (`#splash` в `index.html`). Он закрывает белый экран,
+ * пока грузится бандл: Phaser в это время ещё не запущен, поэтому сплэш — на
+ * чистом HTML. Зовётся из шапок меню и партии — первого, что рисует игра, —
+ * так что сценам делать ничего не нужно. Повторный вызов безопасен.
+ */
+export function hideSplash(): void {
+  if (typeof document === 'undefined') return;
+  const el = document.getElementById('splash');
+  if (!el) return;
+  el.style.opacity = '0';
+  window.setTimeout(() => el.remove(), 200);
 }
 
 /**
@@ -110,6 +132,7 @@ export function makeTopBar(
   title: string,
   onBack: () => void,
 ): Phaser.GameObjects.Container {
+  hideSplash();
   const root = scene.add.container(0, 0);
 
   const bar = scene.add.graphics();
@@ -166,6 +189,8 @@ export function makeCard(
 
 export interface Chip {
   root: Phaser.GameObjects.Container;
+  /** Ширина плашки — чтобы ставить чипы в ряд. */
+  readonly width: number;
   setText(s: string): void;
   destroy(): void;
 }
@@ -174,7 +199,14 @@ export interface Chip {
  * Чип: персиковая плашка с оранжевым текстом. В играх — метрики HUD
  * (счёт, время, ходы), в хабе — метки языка и возраста.
  */
-export function makeChip(scene: Scene, x: number, y: number, text: string, minWidth = 0): Chip {
+export function makeChip(
+  scene: Scene,
+  x: number,
+  y: number,
+  text: string,
+  minWidth = 0,
+  tone: 'default' | 'success' = 'default',
+): Chip {
   const root = scene.add.container(x, y);
   const g = scene.add.graphics();
   const txt = scene.add
@@ -182,22 +214,26 @@ export function makeChip(scene: Scene, x: number, y: number, text: string, minWi
       fontFamily: FONT,
       fontSize: TYPE.caption,
       fontStyle: WEIGHT.bold,
-      color: S.chipInk,
+      color: tone === 'success' ? S.success : S.chipInk,
     })
     .setOrigin(0.5)
     .setResolution(DPR);
 
+  // `success` — «новое/сошлось»: зелёный на мягкой подложке, пара к обычному персиковому.
+  const bg = tone === 'success' ? C.successBg : C.chipBg;
+  const widthNow = () => Math.max(minWidth, txt.width + 16);
   const paint = () => {
-    const w = Math.max(minWidth, txt.width + 16);
+    const w = widthNow();
     const h = 26;
     g.clear();
-    g.fillStyle(C.chipBg, 1).fillRoundedRect(-w / 2, -h / 2, w, h, RADIUS.chip);
+    g.fillStyle(bg, 1).fillRoundedRect(-w / 2, -h / 2, w, h, RADIUS.chip);
   };
   paint();
 
   root.add([g, txt]);
   return {
     root,
+    get width() { return widthNow(); },
     setText: (s: string) => { txt.setText(s); paint(); },
     destroy: () => root.destroy(),
   };
@@ -365,8 +401,15 @@ export function makeGameIcon(
 }
 
 /** Всплывающая подсказка: тёмная плашка, сама исчезает. */
-export function toast(scene: Scene, x: number, y: number, message: string): void {
-  const root = scene.add.container(x, y).setDepth(100);
+export function toast(
+  scene: Scene,
+  x: number,
+  y: number,
+  message: string,
+  /** Глубина плашки: поверх обучения (вуаль 900) нужна выше. */
+  opts: { depth?: number } = {},
+): Phaser.GameObjects.Container {
+  const root = scene.add.container(x, y).setDepth(opts.depth ?? 100);
   const txt = scene.add
     .text(0, 0, message, { fontFamily: FONT, fontSize: TYPE.body, color: S.white })
     .setOrigin(0.5)
@@ -381,4 +424,5 @@ export function toast(scene: Scene, x: number, y: number, message: string): void
     targets: root, alpha: 0, delay: 1100, duration: 400,
     onComplete: () => root.destroy(),
   });
+  return root;
 }

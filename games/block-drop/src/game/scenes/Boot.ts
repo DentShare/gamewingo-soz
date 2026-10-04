@@ -21,7 +21,17 @@ export class Boot extends Scene {
 
   create() {
     setupCamera(this);
+    this.registry.set('demo', false);
     const bridge = createBridge();
+    const onError = (event: ErrorEvent) => bridge.error(event.message);
+    const onRejection = (event: PromiseRejectionEvent) => bridge.error(String(event.reason));
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onRejection);
+    this.game.events.once('destroy', () => {
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onRejection);
+      bridge.destroy();
+    });
     const session = createSession(bridge, (base, token) =>
       base.startsWith('demo') ? createDemoApi() : createApiClient({ baseUrl: base, authToken: token }),
     );
