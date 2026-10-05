@@ -8,9 +8,10 @@
 
 ## Подключение
 
-1. Поднять отдельный сервис из этого репозитория с Root Directory `backend`.
+1. Поднять отдельный сервис из этого репозитория с Root Directory
+   `backend/app/monitor` (изолированные зависимости `requirements.txt`).
    **Переопределить Start Command** на
-   `uvicorn app.monitor.main:app --host 0.0.0.0 --port $PORT`.
+   `uvicorn main:app --host 0.0.0.0 --port $PORT`, Builder = `RAILPACK`.
    Это отдельное приложение: игровые, административные и демо-маршруты
    существующего Score Engine оно не открывает.
 2. Подключить постоянный диск к сервису по пути `/data`, один экземпляр сервиса.
