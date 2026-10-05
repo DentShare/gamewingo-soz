@@ -15,6 +15,23 @@ beforeEach(() => {
 });
 
 describe('кошелёк', () => {
+  it('монитор получает только новые выдачи и чек-ин, без повторов', () => {
+    const grants: Array<{ key: string; amount: number }> = [];
+    const listener = (event: Event) => grants.push((event as CustomEvent).detail);
+    window.addEventListener('wingo:coin-awarded', listener);
+    try {
+      awardOnce('level-pairs-1', 20);
+      awardOnce('level-pairs-1', 20);
+      claimCheckin(DAY);
+      claimCheckin(DAY);
+      expect(grants).toEqual([
+        { key: 'level-pairs-1', amount: 20 }, { key: `checkin-${DAY}`, amount: 5 },
+      ]);
+      expect(bonusBalance()).toBe(25);
+    } finally {
+      window.removeEventListener('wingo:coin-awarded', listener);
+    }
+  });
   it('начисляет по ключу ровно один раз', () => {
     expect(awardOnce('level-pairs-1', 20)).toBe(true);
     expect(awardOnce('level-pairs-1', 20)).toBe(false);

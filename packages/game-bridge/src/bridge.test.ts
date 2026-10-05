@@ -25,6 +25,21 @@ describe('createBridge: событийный слой', () => {
 
   const ev = (name: string) => ({ game: 'pairs' as const, name, sessionId: 's1' });
 
+  it('сообщает мониторингу итог локально, сохраняя отправку хосту', () => {
+    const listener = vi.fn();
+    window.addEventListener('wingo:bridge-event', listener);
+    const bridge = createBridge();
+    try {
+      bridge.gameOver(100, 's1', 5000);
+      expect(listener).toHaveBeenCalledOnce();
+      expect((listener.mock.calls[0][0] as CustomEvent).detail).toEqual(sent[0]);
+      expect(sent[0].type).toBe('GAME_OVER');
+    } finally {
+      window.removeEventListener('wingo:bridge-event', listener);
+      bridge.destroy();
+    }
+  });
+
   it('батчит события: один пакет вместо трёх сообщений', () => {
     const bridge = createBridge();
     bridge.sendEvent(ev('pair_found'));
