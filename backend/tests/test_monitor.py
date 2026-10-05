@@ -48,7 +48,7 @@ def test_same_browser_multiple_pages_one_player_and_reward():
     assert sum(g["activeMs"] for g in games) == 30000
 
 
-@pytest.mark.parametrize("path", ["/monitor/ui", "/monitor/summary", "/monitor/export.csv"])
+@pytest.mark.parametrize("path", ["/monitor/ui", "/monitor/summary", "/monitor/export.csv", "/monitor/archive.zip"])
 def test_reports_require_password_even_without_config(path, monkeypatch):
     assert client.get(path).status_code == 401
     assert client.get(path, auth=("report", "wrong")).status_code == 401
@@ -103,3 +103,50 @@ def test_individual_round_history_is_persistent_and_deduplicated():
     assert data["rounds"][0]["score"] == 250
     assert data["rounds"][0]["durationMs"] == 30000
     assert client.get(f'/monitor/history?user={uuid4()}', auth=AUTH).json()["rounds"] == []
+
+
+def test_archive_contains_all_history_and_can_restore(monkeypatch, tmp_path):
+    import csv
+    import io
+    import json
+    import os
+    import sqlite3
+    import zipfile
+    import app.monitor.main as monitor
+
+    played = {"roundId": str(uuid4()), "day": str(datetime.now(TZ).date()),
+              "endedAt": datetime.now(timezone.utc).isoformat(), "score": 123, "durationMs": 8000}
+    s = session(history=[played], coins=[{"key": "reward-1", "amount": 5, "day": played["day"]}])
+    assert collect(s).status_code == 200
+    # Stored history older than the UI and intake windows must still be exported.
+    old = str(datetime.now(TZ).date() - timedelta(days=400))
+    with sqlite3.connect(os.environ["MONITOR_DB_PATH"]) as db:
+        db.execute("INSERT INTO sessions VALUES (?,?,?,?,?,?,?,?)",
+                   (s["userId"], str(uuid4()), "hub", old, 9000, 0, 1, 0))
+    staging = tmp_path / "archive-temp"
+    staging.mkdir()
+    monkeypatch.setattr(monitor.tempfile, "mkdtemp", lambda **kw: str(staging))
+    response = client.get("/monitor/archive.zip", auth=AUTH)
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["content-type"] == "application/zip"
+    assert not staging.exists(), "Temporary export must be removed after delivery"
+    with zipfile.ZipFile(io.BytesIO(response.content)) as package:
+        assert set(package.namelist()) == {"monitor.sqlite3", "manifest.json", "README.txt",
+                                           "sessions.csv", "coins.csv", "played_rounds.csv", "users.csv"}
+        manifest = json.loads(package.read("manifest.json"))
+        assert manifest["rows"] == {"sessions": 2, "coins": 1, "played_rounds": 1, "users": 1}
+        assert manifest["scope"] == "all-stored-history"
+        users = list(csv.DictReader(io.StringIO(package.read("users.csv").decode("utf-8-sig"))))
+        assert users[0]["user_id"] == s["userId"]
+        assert users[0]["active_ms"] == "24000"
+        assert users[0]["coins"] == "5"
+        rows = list(csv.DictReader(io.StringIO(package.read("sessions.csv").decode("utf-8-sig"))))
+        assert old in {r["day"] for r in rows}
+        restored = tmp_path / "restored.sqlite3"
+        restored.write_bytes(package.read("monitor.sqlite3"))
+    with sqlite3.connect(restored) as db:
+        assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+        assert db.execute("SELECT score FROM played_rounds").fetchone()[0] == 123
+    monkeypatch.setenv("MONITOR_DB_PATH", str(restored))
+    assert TestClient(app).get(f'/monitor/history?user={s["userId"]}', auth=AUTH).json()["rounds"][0]["roundId"] == played["roundId"]

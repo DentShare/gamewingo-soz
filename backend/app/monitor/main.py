@@ -4,9 +4,12 @@ import io
 import json
 import os
 import secrets
+import shutil
 import sqlite3
+import tempfile
 import time
-from contextlib import contextmanager
+import zipfile
+from contextlib import closing, contextmanager
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated
@@ -16,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field, ValidationError
+from starlette.background import BackgroundTask
 
 app = FastAPI(title="GameWingo Pilot Monitor", docs_url=None, redoc_url=None, openapi_url=None)
 TZ = timezone(timedelta(hours=5))
@@ -216,3 +220,72 @@ def history(user: str = Query(pattern=r"^[a-f0-9-]{36}$"),
             (user, first, str(today), limit)).fetchall()
     return Response(json.dumps({"userId": user, "rounds": [dict(row) for row in rows]}),
                     media_type="application/json", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/monitor/archive.zip", dependencies=[Depends(auth)])
+def archive():
+    """Consistent, complete snapshot; report date windows never trim the archive."""
+    folder = Path(tempfile.mkdtemp(prefix="wingo-export-"))
+    try:
+        snapshot = folder / "monitor.sqlite3"
+        # SQLite's online backup API includes committed data, even with active writers.
+        with database() as source:
+            with closing(sqlite3.connect(snapshot)) as target:
+                source.backup(target)
+        created = datetime.now(timezone.utc)
+        counts = {}
+        queries = {
+            "sessions": "SELECT * FROM sessions ORDER BY user_id,session_id,day",
+            "coins": "SELECT * FROM coins ORDER BY user_id,reward_key",
+            "played_rounds": "SELECT * FROM played_rounds ORDER BY user_id,round_id",
+            "users": """WITH ids AS (SELECT user_id FROM sessions UNION SELECT user_id FROM coins
+                UNION SELECT user_id FROM played_rounds),
+                s AS (SELECT user_id,SUM(active_ms) active_ms,SUM(rounds) rounds,
+                      MIN(day) first_day,MAX(last_seen) last_seen FROM sessions GROUP BY user_id),
+                c AS (SELECT user_id,SUM(amount) coins FROM coins GROUP BY user_id)
+                SELECT ids.user_id,COALESCE(s.active_ms,0) active_ms,COALESCE(s.rounds,0) rounds,
+                       COALESCE(c.coins,0) coins,s.first_day,s.last_seen
+                FROM ids LEFT JOIN s USING(user_id) LEFT JOIN c USING(user_id) ORDER BY ids.user_id""",
+        }
+        path = folder / "history.zip"
+        with closing(sqlite3.connect(snapshot)) as db, zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as package:
+            package.write(snapshot, "monitor.sqlite3")
+            for name, query in queries.items():
+                cursor = db.execute(query)
+                counts[name] = 0
+                with package.open(f"{name}.csv", "w") as raw:
+                    with io.TextIOWrapper(raw, encoding="utf-8-sig", newline="") as text:
+                        writer = csv.writer(text)
+                        writer.writerow([column[0] for column in cursor.description])
+                        for record in cursor:
+                            writer.writerow(record)
+                            counts[name] += 1
+            package.writestr("manifest.json", json.dumps({
+                "format": "gamewingo-pilot-history", "version": 1,
+                "exportedAt": created.isoformat(), "scope": "all-stored-history",
+                "timezone": "Asia/Tashkent", "coinSource": "client-demo", "rows": counts,
+            }, ensure_ascii=False, indent=2))
+            package.writestr("README.txt", """GameWingo: полная история пилота, без фильтра по периоду.
+monitor.sqlite3 — согласованная копия базы, пригодная для восстановления.
+users.csv — анонимные ID и итоговые показатели за всё время.
+sessions.csv — активное время и число партий по сессиям и дням.
+played_rounds.csv — отдельные партии, игра, счёт, время и длительность.
+coins.csv — начисления и уникальные ключи наград.
+manifest.json — версия формата, время выгрузки и количество записей.
+CSV: UTF-8 с BOM. Время last_seen: Unix seconds; ended_at: UTC ISO 8601.
+Дни: Asia/Tashkent. Длительность: миллисекунды.
+При переносе сохраняйте user_id, session_id, round_id и reward_key без изменений.
+Ключи: sessions(user_id,session_id,day), coins(user_id,reward_key),
+played_rounds(user_id,round_id). Повторный импорт не должен дублировать записи.
+user_id обозначает браузер, а не установленную личность или аккаунт партнёра.
+Связь с будущим аккаунтом требует отдельного сопоставления ID при авторизации.
+Коины — данные демо-клиента, не подтверждение реальных финансовых выплат.
+Пароли и серверные переменные в архив не включены.
+""")
+        return FileResponse(path, media_type="application/zip",
+                            filename=f"gamewingo-history-{created.strftime('%Y%m%dT%H%M%SZ')}.zip",
+                            headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"},
+                            background=BackgroundTask(shutil.rmtree, folder))
+    except Exception:
+        shutil.rmtree(folder)
+        raise
