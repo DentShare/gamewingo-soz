@@ -12,6 +12,7 @@ const FLUSH_DELAY_MS = 250;
  * Пытается по очереди: iOS WKWebView → Android WebView → web-фолбэк (postMessage родителю).
  */
 function post(event: GameToAppEvent): void {
+  window.dispatchEvent(new CustomEvent('wingo:bridge-event', { detail: event }));
   const w = window as unknown as {
     webkit?: { messageHandlers?: { gameBridge?: { postMessage(e: unknown): void } } };
     AndroidBridge?: { onGameEvent(json: string): void };

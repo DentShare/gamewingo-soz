@@ -73,4 +73,22 @@ for (const slug of GAMES) {
   copyTree(dist, join(out, slug));
 }
 
+// Публичный адрес приёмника; пароль отчёта никогда не попадает в статический билд.
+const monitorApi = (process.env.GAMEWINGO_MONITOR_API ?? 'https://gamewingo-monitor-production.up.railway.app').replace(/\/$/, '');
+if (monitorApi) {
+  const url = new URL(monitorApi);
+  const localHttp = url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname);
+  if ((url.protocol !== 'https:' && !localHttp) || url.username || url.password || url.search || url.hash) {
+    throw new Error('GAMEWINGO_MONITOR_API must use HTTPS');
+  }
+  writeFileSync(join(out, 'monitor-config.js'),
+    `window.WINGO_MONITOR_API=${JSON.stringify(monitorApi).replace(/</g, '\\u003c')};\n`);
+  for (const slug of ['', ...GAMES]) {
+    const page = join(out, slug, 'index.html');
+    const prefix = slug ? '../' : './';
+    const tags = `<script src="${prefix}monitor-config.js"></script><script src="${prefix}monitor.js"></script>`;
+    writeFileSync(page, readFileSync(page, 'utf8').replace('</head>', `${tags}</head>`));
+  }
+}
+
 console.log(`✓ dist-all собран: хаб + progress.js + ${GAMES.length} игр (${GAMES.join(', ')})`);

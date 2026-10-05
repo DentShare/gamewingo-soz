@@ -41,6 +41,14 @@ function save(w: Wallet): void {
   writeJson(KEY, w);
 }
 
+/** Наблюдение за демо-начислениями; мониторинг не влияет на кошелёк. */
+function notifyAward(key: string, amount: number): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('wingo:coin-awarded', {
+    detail: { key, amount },
+  }));
+}
+
 /** Текущий баланс бонусов. */
 export function bonusBalance(): number {
   return load().balance;
@@ -81,6 +89,7 @@ export function awardOnce(key: string, amount: number): boolean {
   if (w.keys.length > MAX_KEYS) w.keys.splice(0, w.keys.length - MAX_KEYS);
   w.balance += Math.max(0, Math.round(amount));
   save(w);
+  notifyAward(key, Math.max(0, Math.round(amount)));
   return true;
 }
 
@@ -102,6 +111,7 @@ export function claimCheckin(dayId: number = computeDayId()): CheckinResult | nu
   w.checkin = { last: dayId, run };
   w.balance += amount;
   save(w);
+  notifyAward(`checkin-${dayId}`, amount);
   return { amount, run };
 }
 
