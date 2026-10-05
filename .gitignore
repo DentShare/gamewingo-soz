@@ -25,6 +25,7 @@ __pycache__/
 .pytest_cache/
 *.pyc
 backend/data/
+/backups/
 
 # OS / editor
 .DS_Store

@@ -5,6 +5,7 @@ body{font:16px system-ui;background:#f5f7fa;color:#202638;margin:0;padding:24px}
 </style></head><body><main>
 <h1>GameWingo · отчёт пилота</h1><p class="muted">Анонимные браузеры, активность и начисления за выбранный период. Дни считаются по Ташкенту.</p>
 <div class="toolbar"><label>Период <select id="days"><option value="1">Сегодня</option><option value="7">7 дней</option><option value="14" selected>14 дней</option><option value="30">30 дней</option><option value="90">90 дней</option><option value="180">180 дней</option></select></label><button id="refresh">Обновить</button><a class="download" id="dailyCsv">CSV по дням</a><a class="download" id="usersCsv">CSV по игрокам</a></div>
+<p class="muted">История сохраняется на сервере. <a class="download" href="/monitor/archive.zip">Вся история для передачи · ZIP</a> — полная база и CSV за всё время, независимо от выбранного периода.</p>
 <p id="status" role="status"></p><div class="cards" id="cards"></div>
 <p class="muted">«Сейчас активны» — есть активность за последние 45 секунд. Время включает каталог и игры; скрытая вкладка, пауза и бездействие дольше минуты не учитываются. Одновременно открытые вкладки могут увеличивать суммарное время.</p>
 <p class="muted">Коины — локальные начисления тестовой версии, сообщённые браузером. Это не подтверждённые сервером финансовые операции. Другой браузер или очистка хранилища создаёт нового игрока.</p>
