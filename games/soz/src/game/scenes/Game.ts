@@ -686,7 +686,7 @@ export class Game extends Scene {
 
     void this.session
       .finish({
-        mode: this.mode, dayId: this.dayId, locale: this.locale,
+        mode: this.mode, dayId: this.dayId, locale: this.locale, level: this.level,
         guessesUsed, solved, durationMs: Math.round(this.timer.elapsedMs()), rows,
       })
       .then((res) => {

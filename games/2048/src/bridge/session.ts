@@ -1,3 +1,4 @@
+import { reportResult } from '@gamewingo/game-bridge';
 import type {
   GameBridge, ApiClient, AppToGameEvent, BrandTheme, LeaderboardEntry,
 } from '@gamewingo/game-bridge';
@@ -9,6 +10,12 @@ export interface FinishInput {
   maxTile: number;
   moves: number;
   durationMs: number;
+  /** Собрана плитка 2048 — для задания дня «выиграй N партий». */
+  won: boolean;
+  /** Скоростные испытания (1/0): номинал собран не позднее заданного хода. */
+  tile256in220: number;
+  tile512in400: number;
+  tile1024in800: number;
 }
 
 export interface Session {
@@ -50,16 +57,13 @@ export function createSession(
       const { score, maxTile, moves, durationMs } = input;
       bridge.gameOver(score, sessionId, durationMs);
       bridge.track('round_finished', { maxTile, moves });
-      if (!api) return null;
-      try {
-        return await api.submitScore({
-          sessionId, gameId: '2048', score, durationMs,
-          meta: { maxTile, moves },
-        });
-      } catch (err) {
-        bridge.error(String(err));
-        return null;
-      }
+      return reportResult(bridge, api, {
+        game: '2048', mode: 'endless', won: input.won, score, durationMs, sessionId,
+        metrics: {
+          maxTile, moves, tile256in220: input.tile256in220,
+          tile512in400: input.tile512in400, tile1024in800: input.tile1024in800,
+        },
+      });
     },
     async leaderboard(limit = 10) {
       if (!api) return [];

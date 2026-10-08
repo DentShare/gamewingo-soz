@@ -1,3 +1,4 @@
+import { reportResult } from '@gamewingo/game-bridge';
 import type {
   GameBridge, ApiClient, AppToGameEvent, BrandTheme, LeaderboardEntry,
 } from '@gamewingo/game-bridge';
@@ -51,16 +52,12 @@ export function createSession(
       const score = computeScore(input);
       bridge.gameOver(score, sessionId, input.durationMs);
       bridge.track('round_finished', { correct: input.correct, mistakes: input.mistakes });
-      if (!api) return null;
-      try {
-        return await api.submitScore({
-          sessionId, gameId: 'counting', score, durationMs: input.durationMs,
-          meta: { level: input.level, mode: input.mode ?? 'level', correct: input.correct, mistakes: input.mistakes },
-        });
-      } catch (err) {
-        bridge.error(String(err));
-        return null;
-      }
+      // Проиграть нельзя: партия кончается пройденным уровнем.
+      return reportResult(bridge, api, {
+        game: 'counting', mode: input.mode ?? 'level', level: input.level, won: true,
+        score, durationMs: input.durationMs, sessionId,
+        metrics: { mistakes: input.mistakes, correctAnswers: input.correct },
+      });
     },
     exit() { bridge.exit(sessionId); },
     async leaderboard(limit = 10) {

@@ -1,3 +1,4 @@
+import { reportResult } from '@gamewingo/game-bridge';
 import type {
   GameBridge, ApiClient, AppToGameEvent, BrandTheme, LeaderboardEntry,
 } from '@gamewingo/game-bridge';
@@ -50,16 +51,10 @@ export function createSession(
       const score = sanitizeScore(input.score);
       bridge.gameOver(score, sessionId, input.durationMs);
       bridge.track('round_finished', { hits: input.hits, maxCombo: input.maxCombo });
-      if (!api) return null;
-      try {
-        return await api.submitScore({
-          sessionId, gameId: 'targets', score, durationMs: input.durationMs,
-          meta: { hits: input.hits, maxCombo: input.maxCombo },
-        });
-      } catch (err) {
-        bridge.error(String(err));
-        return null;
-      }
+      return reportResult(bridge, api, {
+        game: 'targets', mode: 'endless', score, durationMs: input.durationMs, sessionId,
+        metrics: { hits: input.hits, maxCombo: input.maxCombo },
+      });
     },
     exit() { bridge.exit(sessionId); },
     async leaderboard(limit = 10) {

@@ -6,7 +6,7 @@ function fakeBridge() {
   let handler: ((e: AppToGameEvent) => void) | null = null;
   return {
     ready: vi.fn(), start: vi.fn(), gameOver: vi.fn(), claimReward: vi.fn(),
-    track: vi.fn(), error: vi.fn(),
+    track: vi.fn(), error: vi.fn(), sendResult: vi.fn(),
     onApp: vi.fn((h: (e: AppToGameEvent) => void) => { handler = h; return () => { handler = null; }; }),
     destroy: vi.fn(),
     emit(e: AppToGameEvent) { handler?.(e); },
@@ -18,26 +18,35 @@ const INIT = {
 };
 
 describe('session', () => {
-  it('daily: gameOver + submitScore вызываются', async () => {
+  const award = { xp: 50, stars: 3, unlockedAchievements: [], balance: 50 };
+
+  it('daily: gameOver хосту, итог слова дня — на сервер', async () => {
     const b = fakeBridge();
-    const api = { submitScore: vi.fn(async () => ({ accepted: true, pointsAwarded: 50 })), leaderboard: vi.fn() };
+    const api = { submitResult: vi.fn(async () => award), leaderboard: vi.fn() };
     const s = createSession(b as any, () => api as any);
     s.applyInit(INIT);
     s.start();
-    await s.finish({ mode: 'daily', dayId: 1, guessesUsed: 2, solved: true, durationMs: 5000, rows: [] });
+    const res = await s.finish({ mode: 'daily', dayId: 1, level: 1, guessesUsed: 2, solved: true, durationMs: 5000, rows: [] });
     expect(b.gameOver).toHaveBeenCalled();
-    expect(api.submitScore).toHaveBeenCalledWith(expect.objectContaining({ gameId: 'soz', sessionId: 'sess' }));
+    expect(api.submitResult).toHaveBeenCalledWith(expect.objectContaining({
+      game: 'soz', mode: 'daily', level: undefined, won: true, sessionId: expect.stringMatching(/^sess:\d+$/),
+      metrics: expect.objectContaining({ guessesUsed: 2, wordsGuessed: 1 }),
+    }));
+    expect(res).toEqual({ accepted: true, pointsAwarded: 50 });
   });
 
-  it('practice: gameOver есть, submitScore НЕ вызывается', async () => {
+  it('practice: ступень лестницы — на сервер с номером уровня и исходом', async () => {
     const b = fakeBridge();
-    const api = { submitScore: vi.fn(), leaderboard: vi.fn() };
+    const api = { submitResult: vi.fn(async () => award), leaderboard: vi.fn() };
     const s = createSession(b as any, () => api as any);
     s.applyInit(INIT);
     s.start();
-    await s.finish({ mode: 'practice', dayId: 1, guessesUsed: 3, solved: true, durationMs: 5000, rows: [] });
+    await s.finish({ mode: 'practice', dayId: 1, level: 4, guessesUsed: 6, solved: false, durationMs: 5000, rows: [] });
     expect(b.gameOver).toHaveBeenCalled();
-    expect(api.submitScore).not.toHaveBeenCalled();
+    expect(api.submitResult).toHaveBeenCalledWith(expect.objectContaining({
+      game: 'soz', mode: 'level', level: 4, won: false,
+      metrics: expect.objectContaining({ wordsGuessed: 0 }),
+    }));
   });
 
   it('leaderboard проксирует в api', async () => {

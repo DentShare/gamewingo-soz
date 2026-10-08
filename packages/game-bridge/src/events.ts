@@ -17,6 +17,16 @@ export const GAME_IDS = [
 export type GameId = (typeof GAME_IDS)[number];
 
 /**
+ * Игры каталога без конфига экономики: сервер записывает их партии (аналитика,
+ * антифрод), но баллов по правилам игры не начисляет, пока конфиг не появится.
+ * Получила конфиг — переезжает в GAME_IDS.
+ */
+export const UNSCORED_GAME_IDS = ['block-drop', 'color-sort'] as const;
+
+/** Любая игра каталога — с экономикой или без. */
+export type CatalogGameId = GameId | (typeof UNSCORED_GAME_IDS)[number];
+
+/**
  * Режим партии: уровень лестницы, слово дня (только soz) или бесконечный
  * забег аркады. Сервер по режиму выбирает правила начисления.
  */
@@ -46,7 +56,7 @@ export interface RoundEvent {
  * и достижений; сам счёт остаётся «сырым» — валидация и пересчёт на сервере.
  */
 export interface GameResult {
-  game: GameId;
+  game: CatalogGameId;
   mode: GameMode;
   /** Номер уровня лестницы (для mode='level'). */
   level?: number;

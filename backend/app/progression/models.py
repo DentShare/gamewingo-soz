@@ -50,3 +50,5 @@ class AwardResult(BaseModel):
     stars: int = 0
     unlockedAchievements: list[str] = Field(default_factory=list)
     balance: int = 0
+    # Партия отклонена антифродом: ничего не начислено, причина — в аудите.
+    rejected: bool = False
