@@ -1,3 +1,4 @@
+import { reportResult } from '@gamewingo/game-bridge';
 import type { GameBridge, ApiClient, AppToGameEvent, BrandTheme, LeaderboardEntry } from '@gamewingo/game-bridge';
 import { computeScore } from '../core/score';
 import type { Locale } from '../core/locale';
@@ -20,9 +21,8 @@ export function createSession(bridge:GameBridge, makeApi:(base:string,token:stri
     async finish(input){
       const score=computeScore(input); bridge.gameOver(score,sessionId,input.durationMs);
       bridge.track('round_finished',{level:input.level,moves:input.moves});
-      if(!api)return null;
-      try{return await api.submitScore({sessionId,gameId:'color-sort',score,durationMs:input.durationMs,meta:{level:input.level,moves:input.moves}});}
-      catch(err){bridge.error(String(err));return null;}
+      // Финиш — только собранный уровень.
+      return reportResult(bridge,api,{game:'color-sort',mode:'level',level:input.level,won:true,score,durationMs:input.durationMs,sessionId,metrics:{moves:input.moves}});
     },
     exit(){bridge.exit(sessionId);},
     async leaderboard(limit=10){if(!api)return[];try{return await api.leaderboard('color-sort',limit);}catch(err){bridge.error(String(err));return[];}},

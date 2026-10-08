@@ -1,3 +1,4 @@
+import { reportResult } from '@gamewingo/game-bridge';
 import type {
   GameBridge, ApiClient, AppToGameEvent, BrandTheme, LeaderboardEntry,
 } from '@gamewingo/game-bridge';
@@ -10,6 +11,8 @@ export interface FinishInput {
   blocks: number;
   /** Идеальных попаданий. */
   perfects: number;
+  /** Самая длинная серия идеальных попаданий подряд. */
+  perfectStreak: number;
   durationMs: number;
 }
 
@@ -50,16 +53,14 @@ export function createSession(
     async finish(input) {
       bridge.gameOver(input.score, sessionId, input.durationMs);
       bridge.track('round_finished', { blocks: input.blocks, perfects: input.perfects });
-      if (!api) return null;
-      try {
-        return await api.submitScore({
-          sessionId, gameId: 'stack', score: input.score, durationMs: input.durationMs,
-          meta: { blocks: input.blocks, perfects: input.perfects },
-        });
-      } catch (err) {
-        bridge.error(String(err));
-        return null;
-      }
+      // Высота башни — число поставленных блоков, как на экране итога.
+      return reportResult(bridge, api, {
+        game: 'stack', mode: 'endless', score: input.score, durationMs: input.durationMs, sessionId,
+        metrics: {
+          blocks: input.blocks, perfects: input.perfects, perfectStreak: input.perfectStreak,
+          height: input.blocks, bestHeight: input.blocks,
+        },
+      });
     },
     exit() { bridge.exit(sessionId); },
     async leaderboard(limit = 10) {

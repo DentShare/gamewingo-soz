@@ -1,3 +1,4 @@
+import { reportResult } from '@gamewingo/game-bridge';
 import type {
   GameBridge, ApiClient, AppToGameEvent, BrandTheme, LeaderboardEntry,
 } from '@gamewingo/game-bridge';
@@ -50,15 +51,10 @@ export function createSession(
     async finish({ score, passed, durationMs }) {
       bridge.gameOver(score, sessionId, durationMs);
       bridge.track('round_finished', { passed });
-      if (!api) return null;
-      try {
-        return await api.submitScore({
-          sessionId, gameId: GAME_ID, score, durationMs, meta: { passed },
-        });
-      } catch (err) {
-        bridge.error(String(err));
-        return null;
-      }
+      return reportResult(bridge, api, {
+        game: GAME_ID, mode: 'endless', score, durationMs, sessionId,
+        metrics: { passed, survivedSec: Math.floor(durationMs / 1000) },
+      });
     },
     exit() { bridge.exit(sessionId); },
     async leaderboard(limit = 10) {

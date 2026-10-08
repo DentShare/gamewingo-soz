@@ -513,19 +513,18 @@ export class Game extends Scene {
     const maxTile = this.core.maxTile();
     const moves = this.core.moves;
 
-    void this.session
-      .finish({ score, maxTile, moves, durationMs })
-      .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
-
     // Скоростные испытания: номинал собран не позднее заданного хода.
     const fast = (tile: number, byMove: number): number => {
       const at = this.tileMoves.get(tile);
       return at !== undefined && at <= byMove ? 1 : 0;
     };
-    this.registry.set('lastGame', {
-      locale: this.locale, score, maxTile, moves, durationMs,
-      tile256in220: fast(256, 220), tile512in400: fast(512, 400), tile1024in800: fast(1024, 800),
-    });
+    const speed = { tile256in220: fast(256, 220), tile512in400: fast(512, 400), tile1024in800: fast(1024, 800) };
+
+    void this.session
+      .finish({ score, maxTile, moves, durationMs, won: this.core.hasWon(), ...speed })
+      .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
+
+    this.registry.set('lastGame', { locale: this.locale, score, maxTile, moves, durationMs, ...speed });
     this.cameras.main.fadeOut(250, ...COLORS.fade);
     this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameOver'));
   }
