@@ -1,0 +1,21 @@
+{
+  "app.title": "Basketbol", "prototype": "PROTOTIP · MUKOFOTSIZ",
+  "menu.subtitle": "Aniq zarba", "menu.description": "Toʻpni sakratish uchun maydonni bos.\nSavatga yuqoridan tushir.",
+  "menu.play": "Maydonga", "menu.record": "Shaxsiy rekord", "menu.challenges": "Sinovlar · {k} / {n}",
+  "sound.on": "Ovoz: yoqilgan", "sound.off": "Ovoz: oʻchirilgan",
+  "game.baskets": "Tushirishlar: {n}", "game.target": "Maqsad {n}: {text}", "game.allDone": "Barcha sinovlar bajarildi",
+  "game.tap": "Toʻpni sakratish", "game.hint": "Bir bosish — bir sakrash",
+  "game.keyboard": "Maydonni yoki boʻsh joy tugmasini bos",
+  "game.clean": "Sof tushdi! +150", "game.hit": "Savatga tushdi! +100", "game.reset": "Toʻp qaytdi · vaqt qoʻshilmadi",
+  "game.timeBonus": "Savatga tushsa: +4 soniya · koʻpi bilan 10",
+  "tutorial.firstMove": "Maydonni bos — toʻp savatga sakraydi",
+  "tutorial.note": "Birinchi tushirishdan keyin raund boshlanadi",
+  "pause.summary": "Tushirishlar: {n} · vaqt toʻxtatildi",
+  "challenge.baskets": "Savatga {n} marta tushir", "challenge.clean": "{n} ta sof tushirish qil",
+  "challenge.streak": "Ketma-ket {n} ta sof tushirish",
+  "result.score": "{n} ochko", "result.stats": "Tushirishlar: {baskets} · sof: {clean}",
+  "result.time": "Vaqt tugadi", "result.limit": "Ajoyib natija!", "result.record": "Yangi shaxsiy rekord",
+  "result.closed": "Bajarilgan sinovlar: {n}", "result.near": "{text}\nBu raundda: {value} / {target}",
+  "result.retry": "Yana oʻynash", "result.menu": "Menyuga",
+  "result.notice": "Oʻyin ochkolari sodiqlik ballari emas."
+}

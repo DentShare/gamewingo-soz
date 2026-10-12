@@ -1,0 +1,21 @@
+{
+  "app.title": "Баскетбол", "prototype": "ПРОТОТИП · БЕЗ НАГРАД",
+  "menu.subtitle": "Точный бросок", "menu.description": "Касайся площадки, чтобы подбросить мяч.\nОтправляй его в корзину сверху.",
+  "menu.play": "На площадку", "menu.record": "Личный рекорд", "menu.challenges": "Испытания · {k} / {n}",
+  "sound.on": "Звук: вкл", "sound.off": "Звук: выкл",
+  "game.baskets": "Попаданий: {n}", "game.target": "Цель {n}: {text}", "game.allDone": "Все испытания пройдены",
+  "game.tap": "Подбросить мяч", "game.hint": "Одно касание — один подброс",
+  "game.keyboard": "Касайся площадки или нажимай пробел",
+  "game.clean": "Чисто! +150", "game.hit": "В корзину! +100", "game.reset": "Мяч вернулся · время не добавлено",
+  "game.timeBonus": "Попадание: +4 секунды · запас до 10",
+  "tutorial.firstMove": "Коснись площадки — мяч прыгнет в корзину",
+  "tutorial.note": "Первое попадание запускает настоящий раунд",
+  "pause.summary": "Попаданий: {n} · таймер остановлен",
+  "challenge.baskets": "Попади в корзину {n} раз", "challenge.clean": "Чистые попадания: {n}",
+  "challenge.streak": "Серия: {n} чистых попаданий подряд",
+  "result.score": "{n} очков", "result.stats": "Попадания: {baskets} · чистые: {clean}",
+  "result.time": "Время вышло", "result.limit": "Отличная серия!", "result.record": "Новый личный рекорд",
+  "result.closed": "Испытаний пройдено: {n}", "result.near": "{text}\nВ этом раунде: {value} / {target}",
+  "result.retry": "Ещё броски", "result.menu": "В меню",
+  "result.notice": "Игровые очки — не баллы лояльности."
+}

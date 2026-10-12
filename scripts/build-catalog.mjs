@@ -29,7 +29,7 @@ const GAMES = [
   // логические / детские
   'soz', 'pairs', 'fifteen', '2048', 'sudoku-kids', 'sums',
   // аркадные
-  'stack', 'flyer', 'targets', 'snake',
+  'stack', 'flyer', 'targets', 'snake', 'tanks', 'tap-hoops',
   // для малышей
   'sorting', 'color-sort', 'block-drop', 'counting', 'jigsaw',
   // знания

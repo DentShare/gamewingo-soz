@@ -17,7 +17,7 @@
  *
  * Запуск: `npm run check:back` или `node scripts/back.mjs pairs soz`.
  */
-import { spawn, spawnSync } from 'node:child_process';
+import { startQaGame, stopQaGame, launchQaBrowser } from './qa-runtime.mjs';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -61,8 +61,6 @@ function listGames() {
     .map((d) => d.name)
     .sort();
 }
-
-const packageName = (slug) => JSON.parse(readFileSync(join(GAMES_DIR, slug, 'package.json'), 'utf8')).name;
 
 /** Детские игры: флаг `kidsMode` в манифесте каталога. */
 const KIDS = new Set(
@@ -119,17 +117,7 @@ async function until(page, pred, timeoutMs = 8000) {
 // ── Одна игра ─────────────────────────────────────────────────────────────────
 
 async function checkGame(browser, slug, port) {
-  const isWindows = process.platform === 'win32';
-  const npmArgs = ['run', 'dev', '-w', packageName(slug), '--', '--port', String(port), '--host', '127.0.0.1'];
-  const command = isWindows ? (process.env.ComSpec ?? 'cmd.exe') : 'npm';
-  const args = isWindows ? ['/d', '/s', '/c', 'npm', ...npmArgs] : npmArgs;
-  const server = spawn(command, args, {
-    cwd: ROOT,
-    env: { ...process.env, PORT: String(port) },
-    stdio: 'ignore',
-    detached: true,
-    windowsHide: true,
-  });
+  const server = startQaGame(ROOT, slug, port);
   const url = `http://127.0.0.1:${port}/`;
   const problems = [];
   const page = await browser.newPage({ viewport: { width: 400, height: 800 } });
@@ -225,8 +213,7 @@ async function checkGame(browser, slug, port) {
     return [...problems, `упал сам тест: ${e.message}`];
   } finally {
     await page.close().catch(() => {});
-    if (isWindows) spawnSync('taskkill', ['/pid', String(server.pid), '/t', '/f'], { stdio: 'ignore', windowsHide: true });
-    else { try { process.kill(-server.pid, 'SIGTERM'); } catch { server.kill('SIGTERM'); } }
+    await stopQaGame(server);
   }
 }
 
@@ -239,8 +226,8 @@ if (!exe) {
   console.error('Chromium не найден. Укажите путь в CHROMIUM_PATH или поставьте chromium.');
   process.exit(2);
 }
-const { chromium } = await import('playwright-core');
-const browser = await chromium.launch({ executablePath: exe });
+const runtime = await launchQaBrowser(exe);
+const { browser } = runtime;
 
 console.log(`Системный «назад»: ${games.length} игр\n`);
 let failed = 0;
@@ -254,6 +241,6 @@ for (const [i, slug] of games.entries()) {
     for (const p of problems) console.log(`   ${p}`);
   }
 }
-await browser.close();
+await runtime.close();
 console.log(failed ? `\nИгр с проблемами: ${failed} из ${games.length}` : '\nВо всех играх «назад» ведёт куда нужно.');
 process.exit(failed ? 1 : 0);

@@ -16,8 +16,8 @@
  *
  * Запуск: `npm run check:smoke` (вся сеть игр) или `node scripts/smoke.mjs stack 2048`.
  */
-import { spawn, spawnSync } from 'node:child_process';
-import { readdirSync, readFileSync, existsSync } from 'node:fs';
+import { readdirSync, existsSync } from 'node:fs';
+import { startQaGame, stopQaGame, launchQaBrowser } from './qa-runtime.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -124,10 +124,6 @@ function listGames() {
     .sort();
 }
 
-function packageName(slug) {
-  return JSON.parse(readFileSync(join(GAMES_DIR, slug, 'package.json'), 'utf8')).name;
-}
-
 // ── Один проход краулера ──────────────────────────────────────────────────────
 
 /**
@@ -201,21 +197,7 @@ async function runFlow(browser, url, target, seed, steps = STEPS) {
 // ── Одна игра ─────────────────────────────────────────────────────────────────
 
 async function checkGame(browser, slug, port) {
-  // detached: npm запускает vite отдельным процессом, и убивать нужно всю группу —
-  // иначе после прогона на машине остаются висеть четырнадцать dev-серверов.
-  const npmArgs = ['run', 'dev', '-w', packageName(slug), '--', '--port', String(port), '--host', '127.0.0.1'];
-  const isWindows = process.platform === 'win32';
-  // `.cmd` нельзя запускать через spawn как обычный бинарник на Windows.
-  // Ведём весь процесс через один cmd и ниже завершаем именно его дерево.
-  const command = isWindows ? (process.env.ComSpec ?? 'cmd.exe') : 'npm';
-  const args = isWindows ? ['/d', '/s', '/c', 'npm', ...npmArgs] : npmArgs;
-  const server = spawn(command, args, {
-    cwd: ROOT,
-    env: { ...process.env },
-    stdio: 'ignore',
-    detached: true,
-    windowsHide: true,
-  });
+  const server = startQaGame(ROOT, slug, port);
   const url = `http://127.0.0.1:${port}/`;
   try {
     if (!(await waitForServer(url))) return [{ flow: 'dev-сервер', errors: ['не поднялся'] }];
@@ -253,13 +235,7 @@ async function checkGame(browser, slug, port) {
     }
     return failures.length ? failures : { ok: true, buttons: targets.length, scenes: [...scenes] };
   } finally {
-    if (isWindows) {
-      // PID принадлежит созданному нами cmd; /t не оставляет дочерний Vite висеть.
-      spawnSync('taskkill', ['/pid', String(server.pid), '/t', '/f'], { stdio: 'ignore', windowsHide: true });
-    } else {
-      try { process.kill(-server.pid, 'SIGTERM'); }
-      catch { server.kill('SIGTERM'); }
-    }
+    await stopQaGame(server);
   }
 }
 
@@ -273,8 +249,8 @@ if (!exe) {
   process.exit(2);
 }
 
-const { chromium } = await import('playwright-core');
-const browser = await chromium.launch({ executablePath: exe });
+const runtime = await launchQaBrowser(exe);
+const { browser } = runtime;
 let failed = 0;
 
 console.log(`Дымовой тест: ${games.length} игр, ${STEPS} шагов краулера на кнопку\n`);
@@ -289,7 +265,7 @@ for (const [i, slug] of games.entries()) {
     for (const f of res) for (const e of f.errors) console.log(`   [${f.flow}] ${e}`);
   }
 }
-await browser.close();
+await runtime.close();
 
 console.log(failed ? `\nИгр с падениями: ${failed} из ${games.length}` : '\nВсе игры прошли.');
 process.exit(failed ? 1 : 0);

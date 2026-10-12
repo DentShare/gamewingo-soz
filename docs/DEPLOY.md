@@ -10,7 +10,7 @@ https://gamewingo-soz.vercel.app/manifest.json
 головоломки (games/<slug>/dist):
   /soz/  /pairs/  /fifteen/  /2048/  /sudoku-kids/
 аркады:
-  /stack/  /flyer/  /targets/  /snake/
+  /stack/  /flyer/  /targets/  /snake/  /tanks/  /tap-hoops/
 малышам:
   /sorting/  /counting/
 ```
@@ -61,9 +61,23 @@ outputDirectory: dist
    localStorage с префиксом `<slug>:`.
 2. Добавить slug в `GAMES` в `scripts/build-catalog.mjs` и в `build:games` в корневом
    `package.json`.
-3. Запись в `games/manifest.json` (url: `https://gamewingo-games.vercel.app/<slug>/`)
+3. Запись в `games/manifest.json` (url: `https://gamewingo-soz.vercel.app/<slug>/`)
    и карточка в `hub/index.html`.
 4. Мерж в `main` — деплой произойдёт автоматически.
+
+### Веб-пилоты без наград
+
+`tanks` и `tap-hoops` публикуются как `status: prototype`, `modes: [practice]`,
+`rewardsEnabled: false`, без leaderboard/streak. Хаб помечает их «Прототип · без наград»
+и исключает из рекомендаций заданий дня/рекорда недели. Личные рекорды/испытания
+не записывают дневную статистику и не инициируют бонусы. Это не банковская интеграция:
+реальные WebView, устройства, серверный скоринг и антифрод проверяются отдельно.
+
+Для проверки собранного каталога: `node scripts/check-web-pilots.mjs`
+(по умолчанию `http://127.0.0.1:4179/`; иной адрес — переменная `PILOT_CHECK_URL`).
+Проверка не использует dev-ручки, не подменяет счёт и не отправляет тестовые сессии
+в живой монитор. Общий smoke/back использует существующий установленный Chromium,
+прямой запуск Vite по dev-конфигу и ограниченное завершение только собственных процессов.
 
 ## Проверка сборки локально (перед мержем)
 
