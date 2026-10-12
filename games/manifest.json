@@ -3,6 +3,38 @@
   "version": 1,
   "games": [
     {
+      "gameId": "tap-hoops",
+      "title": { "ru": "Баскетбол", "uz": "Basketbol" },
+      "genre": "arcade",
+      "mechanic": "tap-hoops",
+      "locales": ["ru", "uz"],
+      "orientation": "portrait",
+      "url": "https://gamewingo-soz.vercel.app/tap-hoops/",
+      "modes": ["practice"],
+      "leaderboard": false,
+      "streak": false,
+      "rewardsEnabled": false,
+      "status": "prototype",
+      "buildSizeMb": 1.7,
+      "ageHint": "6-9"
+    },
+    {
+      "gameId": "tanks",
+      "title": { "ru": "Танчики", "uz": "Tanklar" },
+      "genre": "arcade",
+      "mechanic": "tank-defense",
+      "locales": ["ru", "uz"],
+      "orientation": "portrait",
+      "url": "https://gamewingo-soz.vercel.app/tanks/",
+      "modes": ["practice"],
+      "leaderboard": false,
+      "streak": false,
+      "rewardsEnabled": false,
+      "status": "prototype",
+      "buildSizeMb": 1.7,
+      "ageHint": "10-13"
+    },
+    {
       "gameId": "soz",
       "title": {
         "ru": "5 букв",

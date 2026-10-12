@@ -40,3 +40,30 @@ test('RU/UZ: названия и пояснения есть у каждой г�
     assert.ok(STR[locale].ageDescriptions[group.id]);
   }
 });
+
+for (const slug of ['tanks', 'tap-hoops']) test(`${slug}: явно обозначенный пилот без наград`, () => {
+  const game = manifest.games.find((entry) => entry.gameId === slug);
+  assert.equal(game.status, 'prototype');
+  assert.equal(game.rewardsEnabled, false);
+  assert.equal(game.leaderboard, false);
+  assert.equal(game.streak, false);
+  assert.deepEqual(game.modes, ['practice']);
+  const setup = script.slice(script.indexOf('const P ='), script.indexOf('const byId'));
+  const catalog = vm.runInNewContext(setup + '\nALL;', { window: {}, categorizeGames });
+  assert.equal(catalog.find((entry) => entry.id === slug).pilot, true);
+  assert.match(html, /if\s*\(g\.pilot\).*Прототип · без наград/);
+  assert.match(readFileSync(new URL(`../hub/icons/${slug}.svg`, import.meta.url), 'utf8'), /viewBox="0 0 512 512"/);
+});
+
+test('безнаградные пилоты не предлагаются для дневных заданий и рекорда недели', () => {
+  const setup = script.slice(script.indexOf('const P ='), script.indexOf('const byId'));
+  const helpers = script.slice(script.indexOf('function rewardArcade'), script.indexOf('// ── Разметка блоков'));
+  const P = { getLastPlayed: () => ({ slug: 'tap-hoops' }),
+    loadCounters: () => ({ slugs: manifest.games.filter(g => g.status !== 'prototype').map(g => g.gameId) }) };
+  const result = vm.runInNewContext(setup + helpers + `\n({
+    missions: ['levels','stars','score','variety'].map(kind => gameForMission({kind}).id),
+    weekly: ['tanks','tap-hoops'].map(id => rewardArcade(ALL.find(g => g.id === id)).id)
+  });`, { window: { WingoProgress: P }, categorizeGames });
+  for (const id of [...result.missions, ...result.weekly]) assert.ok(!['tanks','tap-hoops'].includes(id));
+  assert.match(script, /const arcade = rewardArcade\(lastGame\)/);
+});

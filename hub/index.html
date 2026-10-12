@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8" />
+<link rel="icon" href="data:," />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F76624" />
 <title>Игры WinGo</title>
@@ -335,6 +336,8 @@
   ];
   // Аркады: заходишь и играешь — партия на 30–60 секунд, управление одним пальцем.
   const ARCADE = [
+    { id: 'tap-hoops', kind: 'arcade', pilot: true, metric: 'score', title: { ru: 'Баскетбол', uz: 'Basketbol' } },
+    { id: 'tanks', kind: 'arcade', pilot: true, metric: 'score', title: { ru: 'Танчики', uz: 'Tanklar' } },
     { id: 'block-drop', kind: 'arcade', total: 0, metric: 'score', title: { ru: 'Блок-дроп', uz: 'Bloklar' } },
     { id: 'stack', kind: 'arcade', metric: 'score', title: { ru: 'Башня', uz: 'Minora' } },
     { id: 'flyer', kind: 'arcade', metric: 'score', title: { ru: 'Полёт', uz: 'Parvoz' } },
@@ -353,6 +356,7 @@
     { id: 'sums', kind: 'ladder', title: { ru: 'Суммы', uz: 'Yigʻindilar' } },
   ];
   const ALL = KIDS.concat(ARCADE, PUZZLES);
+  const REWARD_GAMES = ALL.filter((g) => !g.pilot);
   const SECTIONS = categorizeGames(ALL);
   const byId = (id) => ALL.find((g) => g.id === id) || null;
   const TOTAL = 15; // ступеней в лестнице и испытаний в аркаде
@@ -490,6 +494,7 @@
   const currentChallenge = (st) => Math.min((st.challengesDone || 0) + 1, st.total || TOTAL);
 
   function statusLine(g, s) {
+    if (g.pilot) return lang === 'uz' ? 'Prototip · mukofotsiz' : 'Прототип · без наград';
     const st = statusOf(g);
     if (!st.started) return s.stNew;
     if (g.kind === 'arcade') return s.stArcade(st.record || 0, currentChallenge(st), st.total);
@@ -511,18 +516,23 @@
     return s.hm(Math.floor(left / 3600e3), Math.floor((left % 3600e3) / 60e3));
   }
 
-  /** Какая игра закрывает задание — туда и ведёт тап по нему. */
+  function rewardArcade(lastGame) {
+    return lastGame && !lastGame.pilot && lastGame.kind === 'arcade'
+      ? lastGame : REWARD_GAMES.find((g) => g.kind === 'arcade');
+  }
+
+  /** Пилоты не закрывают задания и не предлагаются как источник наград. */
   function gameForMission(m) {
     const last = P.getLastPlayed();
-    const lastGame = last && byId(last.slug);
-    const firstLadder = ALL.find((g) => g.kind === 'ladder');
+    const lastGame = last && REWARD_GAMES.find((g) => g.id === last.slug);
+    const firstLadder = REWARD_GAMES.find((g) => g.kind === 'ladder');
     switch (m.kind) {
       case 'levels': return lastGame || firstLadder;
       case 'stars': return lastGame && lastGame.kind === 'ladder' ? lastGame : firstLadder;
-      case 'score': return ALL.find((g) => g.kind === 'arcade');
+      case 'score': return rewardArcade(null);
       case 'variety': {
         const played = P.loadCounters().slugs;
-        return ALL.find((g) => !played.includes(g.id)) || lastGame || ALL[0];
+        return REWARD_GAMES.find((g) => !played.includes(g.id)) || lastGame || REWARD_GAMES[0];
       }
       default: return null;
     }
@@ -677,7 +687,7 @@
     const weekDone = walletHas(`record-week-${P.computeWeekId(dayId)}`);
     const last = P.getLastPlayed();
     const lastGame = last && byId(last.slug);
-    const arcade = lastGame && lastGame.kind === 'arcade' ? lastGame : ALL.find((g) => g.kind === 'arcade');
+    const arcade = rewardArcade(lastGame);
     const daysLeft = 7 - ((dayId + 3) % 7); // сколько дней недели осталось, считая сегодня
 
     document.getElementById('bTitle').textContent = s.bonuses;
