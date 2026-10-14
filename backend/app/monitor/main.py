@@ -1,6 +1,7 @@
 """uvicorn app.monitor.main:app — отдельный сервис с постоянным диском."""
 import csv
 import io
+import importlib
 import json
 import os
 import secrets
@@ -289,3 +290,31 @@ user_id обозначает браузер, а не установленную 
     except Exception:
         shutil.rmtree(folder)
         raise
+
+
+def backup_module():
+    return importlib.import_module(f"{__package__}.backup" if __package__ else "backup")
+
+
+@app.get("/monitor/backups", dependencies=[Depends(auth)])
+def backups():
+    worker = backup_module()
+    if not worker.configured():
+        data = {"configured": False, "healthy": False}
+    else:
+        try:
+            data = worker.latest()
+        except Exception:
+            data = {"configured": True, "healthy": False, "error": "Последняя копия недоступна"}
+    return Response(json.dumps(data), media_type="application/json", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/monitor/backup.zip", dependencies=[Depends(auth)])
+def saved_backup():
+    try:
+        path = backup_module().download_latest()
+    except Exception:
+        raise HTTPException(503, "Проверенная резервная копия пока недоступна")
+    return FileResponse(path, media_type="application/zip", filename="gamewingo-verified-backup.zip",
+                        headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"},
+                        background=BackgroundTask(shutil.rmtree, path.parent))

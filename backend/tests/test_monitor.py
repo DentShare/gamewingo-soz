@@ -150,3 +150,96 @@ def test_archive_contains_all_history_and_can_restore(monkeypatch, tmp_path):
         assert db.execute("SELECT score FROM played_rounds").fetchone()[0] == 123
     monkeypatch.setenv("MONITOR_DB_PATH", str(restored))
     assert TestClient(app).get(f'/monitor/history?user={s["userId"]}', auth=AUTH).json()["rounds"][0]["roundId"] == played["roundId"]
+
+
+@pytest.fixture
+def backup_storage(monkeypatch):
+    import io
+    import json
+    import app.monitor.backup as worker
+
+    class MemoryStorage:
+        objects = {}
+        corrupt = False
+
+        def upload_file(self, path, bucket, key, **kwargs):
+            from pathlib import Path
+            self.objects[key] = Path(path).read_bytes()
+
+        def get_object(self, *, Bucket, Key):
+            content = self.objects[Key]
+            if self.corrupt and Key.endswith('.zip'):
+                content = content[:-1]
+            return {"Body": io.BytesIO(content)}
+
+        def put_object(self, *, Bucket, Key, Body, **kwargs):
+            self.objects[Key] = Body
+
+    fake = MemoryStorage()
+    monkeypatch.setattr(worker, "storage", lambda: fake)
+    monkeypatch.setattr(worker, "configured", lambda: True)
+    monkeypatch.setenv("BACKUP_S3_BUCKET", "private-test-bucket")
+    content = client.get('/monitor/archive.zip', auth=AUTH).content
+
+    def source(path):
+        import hashlib
+        path.write_bytes(content)
+        return len(content), hashlib.sha256(content).hexdigest()
+
+    monkeypatch.setattr(worker, "download_source", source)
+    return worker, fake
+
+
+def test_backup_round_trip_download_and_auth(backup_storage):
+    import json
+    worker, fake = backup_storage
+    result = worker.run_backup()
+    assert result['objectKey'] in fake.objects
+    assert worker.latest()['healthy']
+    assert client.get('/monitor/backups').status_code == 401
+    assert client.get('/monitor/backup.zip').status_code == 401
+    status = client.get('/monitor/backups', auth=AUTH)
+    assert status.headers['cache-control'] == 'no-store'
+    assert status.json()['verifiedAt'] == result['verifiedAt']
+    downloaded = client.get('/monitor/backup.zip', auth=AUTH)
+    assert downloaded.status_code == 200
+    assert downloaded.content == fake.objects[result['objectKey']]
+    again = worker.run_backup()
+    assert again['objectKey'] != result['objectKey']
+    assert result['objectKey'] in fake.objects, 'Earlier snapshots are retained'
+
+
+def test_bad_upload_does_not_replace_last_good_backup(backup_storage):
+    worker, fake = backup_storage
+    good = worker.run_backup()
+    previous = fake.objects[worker.LATEST]
+    fake.corrupt = True
+    with pytest.raises(ValueError, match='checksum'):
+        worker.run_backup()
+    assert fake.objects[worker.LATEST] == previous
+    assert worker.latest()['objectKey'] == good['objectKey']
+    assert client.get('/monitor/backup.zip', auth=AUTH).status_code == 503
+
+
+def test_stale_or_missing_backup_is_visible(backup_storage):
+    import json
+    worker, fake = backup_storage
+    assert client.get('/monitor/backups', auth=AUTH).json()['healthy'] is False
+    good = worker.run_backup()
+    good['verifiedAt'] = (datetime.now(timezone.utc)-timedelta(hours=9)).isoformat()
+    fake.objects[worker.LATEST] = json.dumps(good).encode()
+    data = client.get('/monitor/backups', auth=AUTH).json()
+    assert data['healthy'] is False
+    assert data['ageSeconds'] >= 9 * 3600
+
+
+def test_backup_rejects_invalid_source_and_corrupt_snapshot(monkeypatch, tmp_path):
+    import app.monitor.backup as worker
+    monkeypatch.setenv('MONITOR_BACKUP_URL', 'http://example.com')
+    with pytest.raises(ValueError, match='HTTPS'):
+        worker.download_source(tmp_path / 'bad.zip')
+    path = tmp_path / 'broken.zip'
+    path.write_bytes(b'broken archive')
+    import zipfile
+    with pytest.raises(zipfile.BadZipFile):
+        worker.verify_archive(path)

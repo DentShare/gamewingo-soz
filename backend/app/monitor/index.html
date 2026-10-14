@@ -7,6 +7,8 @@ body{font:16px system-ui;background:#f5f7fa;color:#202638;margin:0;padding:24px}
 <div class="toolbar"><label>Период <select id="days"><option value="1">Сегодня</option><option value="7">7 дней</option><option value="14" selected>14 дней</option><option value="30">30 дней</option><option value="90">90 дней</option><option value="180">180 дней</option></select></label><button id="refresh">Обновить</button><a class="download" id="dailyCsv">CSV по дням</a><a class="download" id="usersCsv">CSV по игрокам</a></div>
 <p class="muted">История сохраняется на сервере. <a class="download" href="/monitor/archive.zip">Вся история для передачи · ZIP</a> — полная база и CSV за всё время, независимо от выбранного периода.</p>
 <p id="status" role="status"></p><div class="cards" id="cards"></div>
+<p class="muted" id="backupStatus" role="status">Проверка резервных копий…</p>
+<p><a class="download" href="/monitor/backup.zip">Скачать последнюю резервную копию</a></p>
 <p class="muted">«Сейчас активны» — есть активность за последние 45 секунд. Время включает каталог и игры; скрытая вкладка, пауза и бездействие дольше минуты не учитываются. Одновременно открытые вкладки могут увеличивать суммарное время.</p>
 <p class="muted">Коины — локальные начисления тестовой версии, сообщённые браузером. Это не подтверждённые сервером финансовые операции. Другой браузер или очистка хранилища создаёт нового игрока.</p>
 <h2>По дням</h2><div class="scroll"><table><thead><tr><th>Дата</th><th>Игроки</th><th>Активное время</th><th>Партии</th><th>Коины</th></tr></thead><tbody id="daily"></tbody></table></div>
@@ -56,5 +58,15 @@ async function load(){
   el('status').textContent=t.players?`Обновлено ${new Date().toLocaleTimeString('ru-RU')}`:'Данных за период пока нет. Сбор начинается после подключения мониторинга к сайту.';
  }catch(error){el('status').textContent=error.message;}finally{loading=false;}
 }
-el('refresh').onclick=load;el('days').onchange=load;setInterval(load,30000);load();
+async function loadBackups(){
+ try{
+  const response=await fetch('/monitor/backups',{cache:'no-store'});
+  if(!response.ok)throw new Error();
+  const data=await response.json();
+  el('backupStatus').textContent=!data.configured?'Автоматическое копирование не настроено.':data.healthy?
+   `Резервная копия проверена: ${new Date(data.verifiedAt).toLocaleString('ru-RU',{timeZone:'Asia/Tashkent'})}. Копирование каждые 6 часов, хранение отдельно от сервера.`:
+   `Внимание: ${data.verifiedAt?'резервная копия старше 8 часов.':'проверенная резервная копия недоступна.'} Проверьте задачу gamewingo-backup в Railway.`;
+ }catch{el('backupStatus').textContent='Не удалось проверить резервные копии. Проверьте задачу gamewingo-backup в Railway.';}
+}
+el('refresh').onclick=()=>{load();loadBackups();};el('days').onchange=load;setInterval(load,30000);setInterval(loadBackups,60000);load();loadBackups();
 </script></body></html>
