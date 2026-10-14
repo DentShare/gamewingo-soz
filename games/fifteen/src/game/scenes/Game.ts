@@ -433,7 +433,7 @@ export class Game extends Scene {
     const moves = this.board.moves;
 
     void this.session
-      .finish({ level: this.level, mode: this.daily ? 'dailyLevel' : 'level', moves, durationMs })
+      .finish({ level: this.level, mode: this.daily ? 'dailyLevel' : 'level', won: cleared, moves, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {
