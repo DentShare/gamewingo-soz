@@ -47,6 +47,8 @@ export interface AwardResult {
   stars: number;
   unlockedAchievements: string[];
   balance: number;
+  /** Партия отклонена антифродом (лимит времени сессии, счёта). */
+  rejected?: boolean;
 }
 
 export function createApiClient(config: ApiConfig) {
@@ -64,14 +66,20 @@ export function createApiClient(config: ApiConfig) {
   }
 
   return {
-    /** Отправить результат партии на серверную валидацию. */
+    /**
+     * @deprecated У Score Engine нет маршрута /games/score: итог партии —
+     * `submitResult` (через `reportResult`). Остаётся, пока его реализуют демо-бэкенды игр.
+     */
     submitScore(payload: SubmitScorePayload): Promise<SubmitScoreResult> {
       return request<SubmitScoreResult>('/games/score', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
     },
-    /** Получить лидерборд игры. */
+    /**
+     * Получить лидерборд игры.
+     * @deprecated У Score Engine пока нет маршрута лидерборда; сцены его не показывают.
+     */
     leaderboard(gameId: string, limit = 10): Promise<LeaderboardEntry[]> {
       return request<LeaderboardEntry[]>(
         `/games/${encodeURIComponent(gameId)}/leaderboard?limit=${limit}`,

@@ -1,3 +1,4 @@
+import { reportResult } from '@gamewingo/game-bridge';
 import type {
   GameBridge, ApiClient, AppToGameEvent, BrandTheme, LeaderboardEntry,
 } from '@gamewingo/game-bridge';
@@ -13,6 +14,8 @@ export interface FinishInput {
   durationMs: number;
   /** Итоговая длина змейки; если не передана — выводится из `eaten`. */
   length?: number;
+  /** Наибольшее число съеденного за 12 секунд — испытание «пир». */
+  feast12: number;
 }
 
 export interface Session {
@@ -54,16 +57,13 @@ export function createSession(
       const length = input.length ?? START_LENGTH + input.eaten;
       bridge.gameOver(score, sessionId, input.durationMs);
       bridge.track('round_finished', { eaten: input.eaten, length });
-      if (!api) return null;
-      try {
-        return await api.submitScore({
-          sessionId, gameId: 'snake', score, durationMs: input.durationMs,
-          meta: { eaten: input.eaten, length },
-        });
-      } catch (err) {
-        bridge.error(String(err));
-        return null;
-      }
+      return reportResult(bridge, api, {
+        game: 'snake', mode: 'endless', score, durationMs: input.durationMs, sessionId,
+        metrics: {
+          eaten: input.eaten, length, lengthMax: length, bestLength: length,
+          survivedSec: Math.floor(input.durationMs / 1000), feast12: input.feast12,
+        },
+      });
     },
     exit() { bridge.exit(sessionId); },
     async leaderboard(limit = 10) {

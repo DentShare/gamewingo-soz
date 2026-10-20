@@ -557,7 +557,7 @@ export class Game extends Scene {
     const hints = MAX_HINTS - this.hintsLeft;
 
     void this.session
-      .finish({ level: this.level, mode: this.daily ? 'dailyLevel' : 'level', hints, durationMs })
+      .finish({ level: this.level, mode: this.daily ? 'dailyLevel' : 'level', won: cleared, hints, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     // Докуда дошли — для итога проваленного уровня: верно заполненные клетки из пустых.

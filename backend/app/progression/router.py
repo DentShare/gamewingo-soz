@@ -1,14 +1,14 @@
 """Маршруты Score Engine: приём событий, результатов и чек-ина.
 
-Авторизация — точка интеграции: сейчас пользователь берётся из заголовка
-X-User-Id (демо), в проде здесь будет проверка JWT финтех-приложения,
-прокинутого игре через INIT (см. game-bridge).
+Пользователь — из JWT финтех-приложения, который игра получила в INIT
+(см. app/auth.py); в демо-режиме — из заголовка X-User-Id.
 """
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, HTTPException
 
 from .. import state
+from ..auth import current_user as get_user_id
 from . import antifraud, config_loader, engine
 from .models import AwardResult, EventsAccepted, GameResult, RoundEvent
 from .store import day_id, week_id
@@ -16,8 +16,14 @@ from .store import day_id, week_id
 router = APIRouter(prefix="/progression", tags=["progression"])
 
 
-def get_user_id(x_user_id: str = Header(default="demo")) -> str:
-    return x_user_id
+def _config_or_404(game_id: str) -> dict[str, Any]:
+    """Конфиг игры. У игры без экономики — пустой: антифрод по умолчанию, баллов нет."""
+    if game_id in config_loader.UNSCORED_GAMES:
+        return {}
+    try:
+        return config_loader.get_config(game_id, state.override_provider)
+    except FileNotFoundError:
+        raise HTTPException(404, f"Неизвестная игра {game_id!r}")
 
 
 @router.get("/games")
@@ -30,7 +36,7 @@ def ingest_events(events: list[RoundEvent], user_id: str = Depends(get_user_id))
     if not events:
         return EventsAccepted(xp=0)
     game_id = events[0].game
-    config = config_loader.get_config(game_id, state.override_provider)
+    config = _config_or_404(game_id)
     raw = [e.model_dump() for e in events]
 
     ok, reason = antifraud.validate_session(config, raw, None, state.store.sessions)
@@ -47,7 +53,7 @@ def ingest_events(events: list[RoundEvent], user_id: str = Depends(get_user_id))
 
 @router.post("/result", response_model=AwardResult)
 def ingest_result(result: GameResult, user_id: str = Depends(get_user_id)) -> AwardResult:
-    config = config_loader.get_config(result.game, state.override_provider)
+    config = _config_or_404(result.game)
     raw = result.model_dump()
 
     ok, reason = antifraud.validate_session(config, [], raw, state.store.sessions)
@@ -57,6 +63,15 @@ def ingest_result(result: GameResult, user_id: str = Depends(get_user_id)) -> Aw
             user_id=user_id, game_id=result.game, session_id=result.sessionId,
             mode=result.mode, level=result.level, score=result.score,
             duration_ms=result.durationMs, won=False, stars=0, xp=0, rejected=reason,
+        )
+        return AwardResult(xp=0, balance=state.store.user(user_id).balance, rejected=True)
+
+    if result.game in config_loader.UNSCORED_GAMES:
+        # Экономики у игры нет: партия идёт в аналитику, баллы не начисляются.
+        state.analytics.record_round(
+            user_id=user_id, game_id=result.game, session_id=result.sessionId,
+            mode=result.mode, level=result.level, score=result.score,
+            duration_ms=result.durationMs, won=result.won, stars=0, xp=0,
         )
         return AwardResult(xp=0, balance=state.store.user(user_id).balance)
 
