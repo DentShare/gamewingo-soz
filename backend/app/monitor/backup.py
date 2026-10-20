@@ -54,18 +54,21 @@ def copy_stream(source, target):
 
 def verify_archive(path):
     with zipfile.ZipFile(path) as package:
+        if package.getinfo("manifest.json").file_size > 65536:
+            raise ValueError("Invalid manifest size")
+        manifest = json.loads(package.read("manifest.json"))
+        version = manifest.get("version")
         expected = {"monitor.sqlite3", "manifest.json", "README.txt", "users.csv",
                     "sessions.csv", "coins.csv", "played_rounds.csv"}
+        if version == 2:
+            expected.add("funnel_sessions.csv")
         if set(package.namelist()) != expected or len(package.infolist()) != len(expected):
             raise ValueError("Unexpected archive contents")
         if sum(item.file_size for item in package.infolist()) > MAX_BYTES * 2:
             raise ValueError("Unpacked archive exceeds size limit")
-        if package.getinfo("manifest.json").file_size > 65536:
-            raise ValueError("Invalid manifest size")
         if package.testzip() is not None:
             raise ValueError("Corrupted archive")
-        manifest = json.loads(package.read("manifest.json"))
-        if (manifest.get("format") != "gamewingo-pilot-history" or manifest.get("version") != 1
+        if (manifest.get("format") != "gamewingo-pilot-history" or version not in (1, 2)
                 or manifest.get("scope") != "all-stored-history"):
             raise ValueError("Unsupported history format")
         with tempfile.TemporaryDirectory(prefix="wingo-restore-check-") as folder:
@@ -75,8 +78,10 @@ def verify_archive(path):
             with closing(sqlite3.connect(f"{restored.as_uri()}?mode=ro", uri=True)) as db:
                 if db.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
                     raise ValueError("SQLite integrity check failed")
-                counts = {table: db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-                          for table in ("sessions", "coins", "played_rounds")}
+                tables = ["sessions", "coins", "played_rounds"]
+                if version == 2:
+                    tables.append("funnel_sessions")
+                counts = {table: db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] for table in tables}
                 counts["users"] = db.execute("""SELECT COUNT(*) FROM (
                     SELECT user_id FROM sessions UNION SELECT user_id FROM coins
                     UNION SELECT user_id FROM played_rounds)""").fetchone()[0]

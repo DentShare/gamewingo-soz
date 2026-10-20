@@ -19,7 +19,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, model_validator
 from starlette.background import BackgroundTask
 
 app = FastAPI(title="GameWingo Pilot Monitor", docs_url=None, redoc_url=None, openapi_url=None)
@@ -51,6 +51,19 @@ class PlayedRound(BaseModel):
     durationMs: int = Field(ge=0, le=86400000, strict=True)
 
 
+class Funnel(BaseModel):
+    openedDay: date
+    started: bool = Field(strict=True)
+    completed: bool = Field(strict=True)
+    replayed: bool = Field(strict=True)
+
+    @model_validator(mode="after")
+    def ordered(self):
+        if self.completed and not self.started or self.replayed and not self.completed:
+            raise ValueError("Funnel stages must be ordered")
+        return self
+
+
 class Session(BaseModel):
     userId: str = Field(pattern=r"^[a-f0-9-]{36}$")
     sessionId: str = Field(pattern=r"^[a-f0-9-]{36}$")
@@ -61,6 +74,7 @@ class Session(BaseModel):
     active: bool
     coins: list[Coin] = Field(default_factory=list, max_length=100)
     history: list[PlayedRound] = Field(default_factory=list, max_length=100)
+    funnel: Funnel | None = None
 
 
 class Batch(BaseModel):
@@ -92,6 +106,12 @@ def database():
                 PRIMARY KEY(user_id,round_id)
             );
             CREATE INDEX IF NOT EXISTS rounds_user_day ON played_rounds(user_id,day);
+            CREATE TABLE IF NOT EXISTS funnel_sessions (
+                user_id TEXT, session_id TEXT, game TEXT, opened_day TEXT,
+                started INTEGER, completed INTEGER, replayed INTEGER, received_at REAL,
+                PRIMARY KEY(user_id,session_id)
+            );
+            CREATE INDEX IF NOT EXISTS funnel_opened_day ON funnel_sessions(opened_day);
         """)
         yield db
         db.commit()
@@ -121,13 +141,23 @@ async def collect(request: Request):
         raise HTTPException(422, "Неверный пакет")
     today = datetime.now(TZ).date()
     first = today - timedelta(days=180)
-    if any(not first <= s.day <= today or any(not first <= c.day <= today for c in s.coins)
+    if any(not first <= s.day <= today
+           or s.funnel is not None and not first <= s.funnel.openedDay <= s.day
+           or any(not first <= c.day <= today for c in s.coins)
            or any(not first <= r.day <= today or r.endedAt.tzinfo is None
                   or r.endedAt.astimezone(TZ).date() != r.day for r in s.history)
            for s in batch.sessions):
         raise HTTPException(422, "Дата вне разрешённого периода")
     with database() as db:
         for s in batch.sessions:
+            if s.funnel is not None:
+                f = s.funnel
+                db.execute("""INSERT INTO funnel_sessions VALUES (?,?,?,?,?,?,?,?)
+                    ON CONFLICT(user_id,session_id) DO UPDATE SET
+                    started=MAX(started,excluded.started), completed=MAX(completed,excluded.completed),
+                    replayed=MAX(replayed,excluded.replayed)""",
+                           (s.userId, s.sessionId, s.game, str(f.openedDay), int(f.started),
+                            int(f.completed), int(f.replayed), time.time()))
             db.execute("""INSERT INTO sessions VALUES (?,?,?,?,?,?,?,?)
                 ON CONFLICT(user_id,session_id,day) DO UPDATE SET
                 active_ms=MAX(active_ms,excluded.active_ms),
@@ -196,6 +226,40 @@ def summary(days: int = Query(14, ge=1, le=180)):
     return Response(json.dumps(report(days)), media_type="application/json", headers={"Cache-Control": "no-store"})
 
 
+def analytics_data(days):
+    module = importlib.import_module(f"{__package__}.analytics" if __package__ else "analytics")
+    with database() as db:
+        return module.analytics_report(db, days, datetime.now(TZ).date())
+
+
+@app.get("/monitor/analytics", dependencies=[Depends(auth)])
+def analytics(days: int = Query(14, ge=1, le=180)):
+    data = analytics_data(days)
+    return Response(json.dumps(data), media_type="application/json", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/monitor/analytics.csv", dependencies=[Depends(auth)])
+def analytics_csv(days: int = Query(14, ge=1, le=180), kind: str = Query("cohorts", pattern="^(cohorts|games|funnel)$")):
+    data = analytics_data(days)
+    if kind == "cohorts":
+        fields = ["date", "players"] + [f"d{n}{key}" for n in (1, 7, 30) for key in ("Eligible", "Returned", "Rate")]
+        rows = [{"date": c["date"], "players": c["players"],
+                 **{f"d{n}{key.title()}": c[f"d{n}"][key] for n in (1, 7, 30)
+                    for key in ("eligible", "returned", "rate")}} for c in data["retention"]["cohorts"]]
+    elif kind == "games":
+        rows = data["funnel"]["games"]
+        fields = ["game", "opened", "started", "completed", "replayed", "completionRate", "withoutCompletion", "pageSessions"]
+    else:
+        rows = data["funnel"]["stages"]
+        fields = ["stage", "players", "fromPrevious", "fromOpened"]
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fields)
+    writer.writeheader()
+    writer.writerows(rows)
+    return Response("\ufeff" + buf.getvalue(), media_type="text/csv; charset=utf-8", headers={
+        "Content-Disposition": f'attachment; filename="gamewingo-{kind}.csv"', "Cache-Control": "no-store"})
+
+
 @app.get("/monitor/export.csv", dependencies=[Depends(auth)])
 def export(days: int = Query(14, ge=1, le=180), kind: str = Query("days", pattern="^(days|users)$")):
     rows = report(days)[kind]
@@ -239,6 +303,7 @@ def archive():
             "sessions": "SELECT * FROM sessions ORDER BY user_id,session_id,day",
             "coins": "SELECT * FROM coins ORDER BY user_id,reward_key",
             "played_rounds": "SELECT * FROM played_rounds ORDER BY user_id,round_id",
+            "funnel_sessions": "SELECT * FROM funnel_sessions ORDER BY user_id,session_id",
             "users": """WITH ids AS (SELECT user_id FROM sessions UNION SELECT user_id FROM coins
                 UNION SELECT user_id FROM played_rounds),
                 s AS (SELECT user_id,SUM(active_ms) active_ms,SUM(rounds) rounds,
@@ -262,7 +327,7 @@ def archive():
                             writer.writerow(record)
                             counts[name] += 1
             package.writestr("manifest.json", json.dumps({
-                "format": "gamewingo-pilot-history", "version": 1,
+                "format": "gamewingo-pilot-history", "version": 2,
                 "exportedAt": created.isoformat(), "scope": "all-stored-history",
                 "timezone": "Asia/Tashkent", "coinSource": "client-demo", "rows": counts,
             }, ensure_ascii=False, indent=2))
@@ -271,6 +336,7 @@ monitor.sqlite3 — согласованная копия базы, пригод
 users.csv — анонимные ID и итоговые показатели за всё время.
 sessions.csv — активное время и число партий по сессиям и дням.
 played_rounds.csv — отдельные партии, игра, счёт, время и длительность.
+funnel_sessions.csv — наблюдаемые этапы воронки по страницам; в старой телеметрии их нет.
 coins.csv — начисления и уникальные ключи наград.
 manifest.json — версия формата, время выгрузки и количество записей.
 CSV: UTF-8 с BOM. Время last_seen: Unix seconds; ended_at: UTC ISO 8601.

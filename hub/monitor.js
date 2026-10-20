@@ -25,6 +25,8 @@
   let paused = false;
   const day = () => new Date(Date.now() + 5 * 3600000).toISOString().slice(0, 10);
   let currentDay = day();
+  const funnel = { openedDay: currentDay, started: false, completed: false, replayed: false };
+  let inRound = false;
   const sample = () => {
     const now = performance.now();
     // Ограничиваем интервал: сон устройства и зависание таймера не считаются игрой.
@@ -42,6 +44,7 @@
     active: !document.hidden && !paused && performance.now() - lastInput < 60000,
     coins: coins.slice(0, 100),
     history: history.slice(0, 100),
+    funnel: { ...funnel },
   });
   const pending = () => {
     const rows = [];
@@ -120,7 +123,17 @@
   // Мост дополнительно сообщает событие локально: работает и внутри чужого iframe.
   addEventListener('wingo:bridge-event', event => {
     const data = event.detail;
+    if (data?.type === 'GAME_START') {
+      if (inRound) return;
+      inRound = true;
+      funnel.started = true;
+      if (funnel.completed) funnel.replayed = true;
+      void send();
+    }
+    if (data?.type === 'GAME_EXIT') inRound = false;
     if (data?.type === 'GAME_OVER') {
+      if (inRound) funnel.completed = true;
+      inRound = false;
       rounds++;
       const round = {
         roundId: crypto.randomUUID(), day: day(), endedAt: new Date().toISOString(),

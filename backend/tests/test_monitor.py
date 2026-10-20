@@ -48,7 +48,7 @@ def test_same_browser_multiple_pages_one_player_and_reward():
     assert sum(g["activeMs"] for g in games) == 30000
 
 
-@pytest.mark.parametrize("path", ["/monitor/ui", "/monitor/summary", "/monitor/export.csv", "/monitor/archive.zip"])
+@pytest.mark.parametrize("path", ["/monitor/ui", "/monitor/summary", "/monitor/export.csv", "/monitor/archive.zip", "/monitor/analytics", "/monitor/analytics.csv"])
 def test_reports_require_password_even_without_config(path, monkeypatch):
     assert client.get(path).status_code == 401
     assert client.get(path, auth=("report", "wrong")).status_code == 401
@@ -133,9 +133,10 @@ def test_archive_contains_all_history_and_can_restore(monkeypatch, tmp_path):
     assert not staging.exists(), "Temporary export must be removed after delivery"
     with zipfile.ZipFile(io.BytesIO(response.content)) as package:
         assert set(package.namelist()) == {"monitor.sqlite3", "manifest.json", "README.txt",
-                                           "sessions.csv", "coins.csv", "played_rounds.csv", "users.csv"}
+                                           "sessions.csv", "coins.csv", "played_rounds.csv", "users.csv", "funnel_sessions.csv"}
         manifest = json.loads(package.read("manifest.json"))
-        assert manifest["rows"] == {"sessions": 2, "coins": 1, "played_rounds": 1, "users": 1}
+        assert manifest["version"] == 2
+        assert manifest["rows"] == {"sessions": 2, "coins": 1, "played_rounds": 1, "users": 1, "funnel_sessions": 0}
         assert manifest["scope"] == "all-stored-history"
         users = list(csv.DictReader(io.StringIO(package.read("users.csv").decode("utf-8-sig"))))
         assert users[0]["user_id"] == s["userId"]

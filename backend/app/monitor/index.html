@@ -2,6 +2,7 @@
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>GameWingo — отчёт пилота</title>
 <style>
 body{font:16px system-ui;background:#f5f7fa;color:#202638;margin:0;padding:24px}main{max-width:1100px;margin:auto}h1{font-size:26px;margin-bottom:8px}.muted{color:#586276;font-size:14px;line-height:1.5}.toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:24px 0}select,button,a{font:inherit}button,select,.download{border:1px solid #d7ddea;background:white;padding:10px 14px;border-radius:10px;color:#263555;text-decoration:none}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.card{background:white;border-radius:14px;padding:20px;border:1px solid #e2e7ef}.card strong{display:block;font-size:28px;margin:8px 0}.scroll{overflow:auto;background:white;border-radius:12px;margin-bottom:24px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:13px;border-bottom:1px solid #edf0f5;white-space:nowrap}th{background:#eaf0f8}#status{min-height:24px;color:#586276}h2{font-size:20px;margin-top:28px}code{font-size:12px}
+.download{display:inline-block;max-width:100%;box-sizing:border-box}.card small{display:block;color:#586276;line-height:1.5}.meter{height:8px;min-width:110px;background:#eaf0f8;border-radius:5px;overflow:hidden}.meter span{display:block;height:100%;background:#4369c6}.notice{padding:14px;background:#eaf0f8;border-radius:10px;line-height:1.5}
 </style></head><body><main>
 <h1>GameWingo · отчёт пилота</h1><p class="muted">Анонимные браузеры, активность и начисления за выбранный период. Дни считаются по Ташкенту.</p>
 <div class="toolbar"><label>Период <select id="days"><option value="1">Сегодня</option><option value="7">7 дней</option><option value="14" selected>14 дней</option><option value="30">30 дней</option><option value="90">90 дней</option><option value="180">180 дней</option></select></label><button id="refresh">Обновить</button><a class="download" id="dailyCsv">CSV по дням</a><a class="download" id="usersCsv">CSV по игрокам</a></div>
@@ -11,6 +12,20 @@ body{font:16px system-ui;background:#f5f7fa;color:#202638;margin:0;padding:24px}
 <p><a class="download" href="/monitor/backup.zip">Скачать последнюю резервную копию</a></p>
 <p class="muted">«Сейчас активны» — есть активность за последние 45 секунд. Время включает каталог и игры; скрытая вкладка, пауза и бездействие дольше минуты не учитываются. Одновременно открытые вкладки могут увеличивать суммарное время.</p>
 <p class="muted">Коины — локальные начисления тестовой версии, сообщённые браузером. Это не подтверждённые сервером финансовые операции. Другой браузер или очистка хранилища создаёт нового игрока.</p>
+<section aria-label="Вовлечённость и воронка">
+<h2>Активность и возвраты</h2><p class="muted" id="analyticsStatus" role="status">Загрузка аналитики…</p>
+<div class="cards" id="activityCards"></div>
+<p class="muted">DAU / WAU / MAU — активные браузеры за сегодня / последние 7 / 30 дней, включая сегодня. Активность — положительное активное время или завершённая партия; фоновые сообщения с нулевым временем не считаются. Новые и прежние игроки показаны за выбранный период.</p>
+<h2>Удержание D1 / D7 / D30</h2><div class="cards" id="retentionCards"></div>
+<p class="muted">Все наблюдаемые когорты: доля игроков, активных именно на 1-й, 7-й или 30-й календарный день после первого зафиксированного активного дня. Учитываются только полностью завершённые дни по Ташкенту. «Ещё рано» означает, что подходящих игроков пока нет. Использование до начала мониторинга неизвестно.</p>
+<h2>Когорты за выбранный период</h2><div class="scroll"><table><thead><tr><th>Первый активный день</th><th>Новые игроки</th><th>D1</th><th>D7</th><th>D30</th></tr></thead><tbody id="cohorts"></tbody></table></div>
+<h2>Воронка за выбранный период</h2><p class="notice" id="funnelCoverage"></p>
+<div class="scroll"><table><thead><tr><th>Этап</th><th>Игроки</th><th>От предыдущего</th><th>От открывших</th><th>Доля</th></tr></thead><tbody id="funnel"></tbody></table></div>
+<p class="muted">Уникальные браузеры среди страниц, открытых за выбранный период с новой телеметрией. Старт — GAME_START, завершение — GAME_OVER после старта, повтор — новый старт после завершения на той же странице. Это воронка страниц, а не число партий. Старые версии в неё не включаются.</p>
+<h2>Воронка по играм</h2><div class="scroll"><table><thead><tr><th>Игра</th><th>Открыли</th><th>Начали</th><th>Завершили</th><th>Начали ещё</th><th>Завершили / начали</th><th>Страниц без завершения</th></tr></thead><tbody id="funnelGames"></tbody></table></div>
+<p class="muted">«Без завершения» — страницы с началом, но без зафиксированного завершения. Среди них могут быть текущие партии или недоставленные события; это не точное число уходов.</p>
+<div class="toolbar"><a class="download" id="cohortsCsv">CSV когорт</a><a class="download" id="funnelCsv">CSV воронки</a><a class="download" id="funnelGamesCsv">CSV по играм</a></div>
+</section>
 <h2>По дням</h2><div class="scroll"><table><thead><tr><th>Дата</th><th>Игроки</th><th>Активное время</th><th>Партии</th><th>Коины</th></tr></thead><tbody id="daily"></tbody></table></div>
 <h2>По играм</h2><div class="scroll"><table><thead><tr><th>Игра</th><th>Игроки</th><th>Активное время</th><th>Партии</th><th>Коины</th></tr></thead><tbody id="games"></tbody></table></div>
 <h2>По анонимным игрокам</h2><div class="scroll"><table><thead><tr><th>ID</th><th>Активное время</th><th>Партии</th><th>Коины</th></tr></thead><tbody id="users"></tbody></table></div>
@@ -20,6 +35,42 @@ const el=id=>document.getElementById(id);
 const number=v=>new Intl.NumberFormat('ru-RU').format(v);
 const duration=ms=>ms<60000?`${Math.floor(ms/1000)} с`:`${Math.floor(ms/3600000)} ч ${Math.floor(ms/60000)%60} мин`;
 function row(target, values){const tr=document.createElement('tr');for(const value of values){const td=document.createElement('td');td.textContent=value;tr.append(td);}target.append(tr);}
+const percent=value=>value===null?'—':`${number(value)} %`;
+function metric(target,title,value,note){
+ const card=document.createElement('div');card.className='card';
+ const label=document.createElement('span');label.textContent=title;
+ const strong=document.createElement('strong');strong.textContent=value;
+ const small=document.createElement('small');small.textContent=note;
+ card.append(label,strong,small);target.append(card);
+}
+async function loadAnalytics(days){
+ el('analyticsStatus').textContent='Загрузка аналитики…';
+ for(const [id,kind] of [['cohortsCsv','cohorts'],['funnelCsv','funnel'],['funnelGamesCsv','games']])el(id).href=`/monitor/analytics.csv?days=${days}&kind=${kind}`;
+ try{
+  const response=await fetch(`/monitor/analytics?days=${days}`,{cache:'no-store'});
+  if(!response.ok)throw new Error('Аналитика временно недоступна.');
+  const data=await response.json();if(days!==el('days').value)return;
+  const a=data.activity;el('activityCards').replaceChildren();
+  for(const [label,value,note] of [['DAU',a.dau,'Сегодня'],['WAU',a.wau,'Последние 7 дней'],['MAU',a.mau,'Последние 30 дней'],['Новые',a.newPlayersPeriod,'Первый активный день в выбранном периоде'],['Прежние',a.returningPlayersPeriod,'Активны в периоде, впервые замечены раньше']])metric(el('activityCards'),label,number(value),note);
+  el('retentionCards').replaceChildren();
+  for(const r of data.retention.intervals)metric(el('retentionCards'),`D${r.day}`,r.rate===null?'Ещё рано':percent(r.rate),`${number(r.returned)} вернулись из ${number(r.eligible)} с завершённым днём наблюдения`);
+  el('cohorts').replaceChildren();
+  for(const c of data.retention.cohorts)row(el('cohorts'),[c.date,number(c.players),...[1,7,30].map(n=>c[`d${n}`].rate===null?'Ещё рано':`${percent(c[`d${n}`].rate)} (${c[`d${n}`].returned}/${c[`d${n}`].eligible})`)]);
+  if(!data.retention.cohorts.length)row(el('cohorts'),['За период активных новых игроков нет.','','','','']);
+  const f=data.funnel;
+  el('funnelCoverage').textContent=f.observedSince?`Новые события собираются с ${new Date(f.observedSince*1000).toLocaleString('ru-RU',{timeZone:'Asia/Tashkent'})} по Ташкенту. В выбранном периоде: ${number(f.pageSessions)} открытий страниц.`:'Событий новой воронки пока нет. Старую историю стартов восстановить нельзя.';
+  el('funnel').replaceChildren();
+  const labels={opened:'Открыли каталог или игру',started:'Начали игру',completed:'Завершили партию',replayed:'Начали ещё после завершения'};
+  for(const s of f.stages){
+   row(el('funnel'),[labels[s.stage],number(s.players),percent(s.fromPrevious),percent(s.fromOpened),'']);
+   const meter=document.createElement('div');meter.className='meter';const fill=document.createElement('span');fill.style.width=`${s.fromOpened??0}%`;meter.append(fill);el('funnel').lastElementChild.lastElementChild.append(meter);
+  }
+  el('funnelGames').replaceChildren();
+  for(const g of f.games)row(el('funnelGames'),[g.game,number(g.opened),number(g.started),number(g.completed),number(g.replayed),percent(g.completionRate),number(g.withoutCompletion)]);
+  if(!f.games.length)row(el('funnelGames'),['Новых событий игр за период нет.','','','','','','']);
+  el('analyticsStatus').textContent=`Период ${data.period.first} — ${data.period.last}. Начало наблюдаемой активности: ${data.firstObservedActivity??'нет данных'}.`;
+ }catch(error){if(days===el('days').value)el('analyticsStatus').textContent=error.message;}
+}
 async function showHistory(user){
  el('historySection').hidden=false;el('historyTitle').textContent=`История · ${user}`;
  el('historyStatus').textContent='Загрузка…';el('history').replaceChildren();
@@ -36,6 +87,7 @@ let loading=false;
 async function load(){
  if(loading)return; loading=true;
  const days=el('days').value;
+ void loadAnalytics(days);
  el('status').textContent='Загрузка…';
  el('dailyCsv').href=`/monitor/export.csv?days=${days}`;
  el('usersCsv').href=`/monitor/export.csv?days=${days}&kind=users`;
@@ -56,7 +108,7 @@ async function load(){
   }
   for(const g of data.games)row(el('games'),[g.game==='hub'?'Каталог':g.game,number(g.players),duration(g.activeMs),number(g.rounds),number(g.coins)]);
   el('status').textContent=t.players?`Обновлено ${new Date().toLocaleTimeString('ru-RU')}`:'Данных за период пока нет. Сбор начинается после подключения мониторинга к сайту.';
- }catch(error){el('status').textContent=error.message;}finally{loading=false;}
+ }catch(error){el('status').textContent=error.message;}finally{loading=false;if(el('days').value!==days)void load();}
 }
 async function loadBackups(){
  try{

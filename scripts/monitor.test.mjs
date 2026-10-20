@@ -103,3 +103,32 @@ test('large offline queue sends bounded batches and does not block current activ
   assert.ok(m.sent.every(batch=>JSON.stringify(batch).length<65536));
   assert.ok(m.sent.at(-1).sessions.at(-1).activeMs>=15000);
 });
+
+test('funnel records ordered starts, completions and replay with immutable snapshots', async () => {
+  const m=setup();await settle();
+  const initial=m.sent[0].sessions[0];assert.equal(initial.funnel.started,false);
+  m.emit('wingo:bridge-event',{type:'GAME_OVER'});await settle();
+  assert.equal(m.sent.at(-1).sessions.at(-1).funnel.completed,false);
+  m.emit('wingo:bridge-event',{type:'GAME_START'});await settle();
+  assert.equal(m.sent.at(-1).sessions.at(-1).funnel.started,true);
+  assert.equal(m.sent.at(-1).sessions.at(-1).funnel.replayed,false);
+  m.emit('wingo:bridge-event',{type:'GAME_START'});await settle();
+  assert.equal(m.sent.at(-1).sessions.at(-1).funnel.replayed,false);
+  m.emit('wingo:bridge-event',{type:'GAME_OVER'});await settle();
+  assert.equal(m.sent.at(-1).sessions.at(-1).funnel.completed,true);
+  m.emit('wingo:bridge-event',{type:'GAME_START'});await settle();
+  assert.equal(m.sent.at(-1).sessions.at(-1).funnel.replayed,true);
+  assert.equal(initial.funnel.started,false);
+});
+
+test('funnel survives offline navigation and a page crossing midnight', async () => {
+  const m=setup({online:false});await settle();
+  m.emit('wingo:bridge-event',{type:'GAME_START'});await settle();
+  m.emit('wingo:bridge-event',{type:'GAME_OVER'});await settle();
+  m.calendar(Date.parse('2026-10-05T19:00:00Z'));await m.tick(15000);
+  assert.equal(m.sent.at(-1).sessions.at(-1).funnel.openedDay,'2026-10-05');
+  assert.equal(m.sent.at(-1).sessions.at(-1).funnel.completed,true);
+  const n=setup({storage:m.storage});await settle();
+  assert.ok(n.sent[0].sessions.some(s=>s.funnel?.completed));
+  assert.equal(n.sent[0].sessions.at(-1).funnel.completed,false);
+});
