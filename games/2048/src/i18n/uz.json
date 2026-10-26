@@ -38,5 +38,7 @@
   "result.points.one": "{n} ochko",
   "result.points.few": "{n} ochko",
   "result.points.many": "{n} ochko",
-  "result.thisGameMissing": "Bu oʻyinda: {v} · {m} yetmadi"
+  "result.thisGameMissing": "Bu oʻyinda: {v} · {m} yetmadi",
+  "menu.boardSize": "Yangi oʻyin maydoni",
+  "menu.size": "{n}×{n}"
 }

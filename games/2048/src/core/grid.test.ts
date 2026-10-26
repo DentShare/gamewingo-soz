@@ -12,6 +12,55 @@ const spawnFirst2 = () => 0;
 const countTiles = (cells: readonly (readonly number[])[]) =>
   cells.flat().filter((v) => v !== 0).length;
 
+describe('5×5 board', () => {
+  const empty = () => Array.from({ length: 5 }, () => [0, 0, 0, 0, 0]);
+  it('starts with two tiles and keeps 4×4 as the default', () => {
+    const g = createGrid2048(spawnFirst2, undefined, { size: 5 });
+    expect(g.size).toBe(5);
+    expect(g.cells).toHaveLength(5);
+    expect(g.cells.every(row => row.length === 5)).toBe(true);
+    expect(countTiles(g.cells)).toBe(2);
+    expect(createGrid2048(spawnFirst2).size).toBe(4);
+  });
+
+  it.each(['left', 'right', 'up', 'down'] as const)('merges all five positions towards %s', dir => {
+    const cells = empty();
+    if (dir === 'left' || dir === 'right') cells[4] = [2, 2, 2, 2, 2];
+    else cells.forEach(row => { row[4] = 2; });
+    const result = applyMove(cells, dir);
+    const line = dir === 'left' || dir === 'right' ? result.cells[4] : result.cells.map(row => row[4]);
+    expect(line).toEqual(dir === 'left' || dir === 'up' ? [4, 4, 2, 0, 0] : [0, 0, 2, 4, 4]);
+    expect(result.gained).toBe(8);
+    expect(result.merges).toHaveLength(2);
+  });
+
+  it('spawns in the fifth row/column, increments score and moves once', () => {
+    const cells = empty();
+    cells[4] = [2, 2, 4, 4, 8];
+    const g = createGrid2048(spawnLast4, cells);
+    g.move('left');
+    expect(g.cells[4]).toEqual([4, 8, 8, 0, 4]);
+    expect(g.score).toBe(12);
+    expect(g.moves).toBe(1);
+    expect(g.move('up').moved).toBe(true);
+  });
+
+  it('checks game-over and winning merges at the fifth edge', () => {
+    const cells: number[][] = empty().map((row, r) => row.map((_, c) => (r + c) % 2 ? 2 : 4));
+    expect(createGrid2048(spawnFirst2, cells).isOver()).toBe(true);
+    cells[4][4] = 0;
+    expect(createGrid2048(spawnFirst2, cells).isOver()).toBe(false);
+    cells[4][4] = cells[3][4];
+    expect(createGrid2048(spawnFirst2, cells).isOver()).toBe(false);
+    const win = empty();
+    win[4][3] = win[4][4] = 1024;
+    const g = createGrid2048(spawnFirst2, win);
+    g.move('right');
+    expect(g.cells[4][4]).toBe(2048);
+    expect(g.hasWon()).toBe(true);
+  });
+});
+
 describe('applyMove (сдвиг + слияния, без спавна)', () => {
   it('[2,2,4,4] влево → [4,8,0,0], gained 12, две пары слились', () => {
     const res = applyMove(board([[2, 2, 4, 4], E, E, E]), 'left');
