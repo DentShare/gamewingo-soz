@@ -18,7 +18,8 @@ import {
 } from '@gamewingo/game-progress';
 import { COLORS, FONT, tileColor, tileTextColor } from '../palette';
 import { DPR } from '../dpr';
-import { loadSave, clearSave } from '../../core/persistence';
+import { loadBoardSize, saveBoardSize, loadSave, clearSave } from '../../core/persistence';
+import type { BoardSize } from '../../core/grid';
 import type { Session } from '../../bridge/session';
 
 const CX = 200;
@@ -32,6 +33,7 @@ const HUB_URL = '../';
 
 export class MainMenu extends Scene {
   private locale: Locale = 'ru';
+  private boardSize: BoardSize = 4;
 
   constructor() {
     super('MainMenu');
@@ -39,6 +41,7 @@ export class MainMenu extends Scene {
 
   create() {
     this.locale = (this.registry.get('locale') as Locale) ?? 'ru';
+    this.boardSize = loadBoardSize();
     applyTheme(this);
     setupCamera(this);
     this.cameras.main.fadeIn(200, ...COLORS.fade);
@@ -72,9 +75,27 @@ export class MainMenu extends Scene {
 
     // Незаконченная партия — «Продолжить» первым, новая партия — под ним.
     let y = 252 + list.height + 34;
+    this.add.text(CX, y, t(this.locale, 'menu.boardSize'), {
+      fontFamily: FONT, fontSize: 14, color: COLORS.headMuted,
+    }).setOrigin(0.5).setResolution(DPR);
+    y += 34;
+    const sizeY = y;
+    const choices: ReturnType<typeof makeButton>[] = [];
+    const drawChoices = () => {
+      choices.splice(0).forEach(button => button.destroy());
+      ([4, 5] as const).forEach((size, index) => {
+        choices.push(makeButton(this, 112 + index * 176, sizeY, t(this.locale, 'menu.size', { n: size }), () => {
+          this.boardSize = size;
+          saveBoardSize(size);
+          drawChoices();
+        }, { width: 160, primary: this.boardSize === size }));
+      });
+    };
+    drawChoices();
+    y += 56;
     const saved = loadSave();
     if (saved) {
-      makeButton(this, CX, y, `${t(this.locale, 'menu.continue')} · ${saved.score}`,
+      makeButton(this, CX, y, `${t(this.locale, 'menu.continue')} · ${saved.cells.length}×${saved.cells.length} · ${saved.score}`,
         () => this.startGame(true), { primary: true });
       y += 52;
     }
@@ -120,6 +141,7 @@ export class MainMenu extends Scene {
   /** `resume` — продолжить сохранённую партию; иначе стартует новая (сохранение стирается). */
   private startGame(resume: boolean) {
     if (!resume) clearSave();
+    this.registry.set('boardSize', this.boardSize);
     this.registry.set('resume', resume);
     this.registry.set('locale', this.locale);
     this.scene.start('Game');

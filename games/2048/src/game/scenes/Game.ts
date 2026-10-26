@@ -1,6 +1,6 @@
 import { Scene } from 'phaser';
 import type { Locale } from '../../core/locale';
-import { createGrid2048, applyMove, SIZE, type Grid2048, type Dir } from '../../core/grid';
+import { createGrid2048, applyMove, isBoardSize, type Grid2048, type Dir } from '../../core/grid';
 import { mulberry32 } from '../../core/rng';
 import { COLORS, FONT, tileColor, tileTextColor, tileFontSize } from '../palette';
 import {
@@ -20,10 +20,9 @@ import {
 } from '../../core/persistence';
 
 const W = 400;
-const TILE = 80;
 const GAP = 10;
 const PAD = 12;
-const BOARD = SIZE * TILE + (SIZE - 1) * GAP + 2 * PAD; // 374
+const BOARD = 374; // Одинаковый внешний размер для обоих режимов.
 const BOARD_LEFT = (W - BOARD) / 2;
 /** Строка активного испытания — на поле, сразу под шапкой партии. */
 const CHALLENGE_Y = TOP_BAR_H + 22;
@@ -36,12 +35,11 @@ const SWIPE_MIN = 24; // порог свайпа, px
  * вправо сливает их в «4»; смах вверх/вниз оставляет их соседями в одном ряду
  * (спавн между соседними плитками невозможен) — слияние остаётся на следующий ход.
  */
-const TUTORIAL_CELLS: number[][] = [
-  [0, 0, 0, 0],
-  [0, 2, 2, 0],
-  [0, 0, 0, 0],
-  [0, 0, 0, 0],
-];
+function tutorialCells(size: number): number[][] {
+  const cells = Array.from({ length: size }, () => Array<number>(size).fill(0));
+  cells[1][1] = cells[1][2] = 2;
+  return cells;
+}
 
 export class Game extends Scene {
   private locale: Locale = 'ru';
@@ -54,6 +52,7 @@ export class Game extends Scene {
   /** Ход, на котором впервые собран номинал (для испытаний на скорость). */
   private tileMoves = new Map<number, number>();
   private core!: Grid2048;
+  private get tileSize(): number { return (BOARD - 2 * PAD - (this.core.size - 1) * GAP) / this.core.size; }
   private tileLayer!: Phaser.GameObjects.Container;
   private header?: GameHeader;
   /** «Призрак» рекорда очков под шапкой: каждая партия — гонка с собой. */
@@ -99,6 +98,8 @@ export class Game extends Scene {
     this.session = this.registry.get('session') as Session;
     this.timer = createRoundTimer(() => performance.now());
 
+    const selectedSize = this.registry.get('boardSize');
+    const size = isBoardSize(selectedSize) ? selectedSize : 4;
     const howto = this.registry.get('howto') === true;
     this.registry.set('howto', false);
     const resume = !!this.registry.get('resume');
@@ -107,7 +108,7 @@ export class Game extends Scene {
     // «Как играть» из паузы: учебное поле, сохранённая партия не трогается.
     if (howto) {
       this.sandbox = true;
-      this.core = createGrid2048(this.freshRng(), { cells: TUTORIAL_CELLS });
+      this.core = createGrid2048(this.freshRng(), { cells: tutorialCells(size) });
       this.best = this.recordScore();
       this.buildScene();
       this.startTutorial();
@@ -123,11 +124,13 @@ export class Game extends Scene {
     } else {
       clearSave(); // старая партия больше не нужна
       this.core = teach
-        ? createGrid2048(this.freshRng(), { cells: TUTORIAL_CELLS })
-        : createGrid2048(this.freshRng());
+        ? createGrid2048(this.freshRng(), { cells: tutorialCells(size) })
+        : createGrid2048(this.freshRng(), undefined, { size });
     }
+    this.registry.set('boardSize', this.core.size);
     this.best = this.recordScore();
     this.buildScene();
+    this.persist();
 
     this.session.start();
     this.timer.start();
@@ -194,15 +197,15 @@ export class Game extends Scene {
     const span = (r0: number, c0: number, r1: number, c1: number): Rect => {
       const a = this.cellXY(r0, c0);
       const b = this.cellXY(r1, c1);
-      return { x: a.x - TILE / 2, y: a.y - TILE / 2, w: b.x - a.x + TILE, h: b.y - a.y + TILE };
+      return { x: a.x - this.tileSize / 2, y: a.y - this.tileSize / 2, w: b.x - a.x + this.tileSize, h: b.y - a.y + this.tileSize };
     };
-    for (let r = 0; r < SIZE; r++) {
-      for (let c = 0; c + 1 < SIZE; c++) {
+    for (let r = 0; r < this.core.size; r++) {
+      for (let c = 0; c + 1 < this.core.size; c++) {
         if (cells[r][c] !== 0 && cells[r][c] === cells[r][c + 1]) return [span(r, c, r, c + 1)];
       }
     }
-    for (let c = 0; c < SIZE; c++) {
-      for (let r = 0; r + 1 < SIZE; r++) {
+    for (let c = 0; c < this.core.size; c++) {
+      for (let r = 0; r + 1 < this.core.size; r++) {
         if (cells[r][c] !== 0 && cells[r][c] === cells[r + 1][c]) return [span(r, c, r + 1, c)];
       }
     }
@@ -345,19 +348,22 @@ export class Game extends Scene {
 
   private cellXY(row: number, col: number): { x: number; y: number } {
     return {
-      x: BOARD_LEFT + PAD + col * (TILE + GAP) + TILE / 2,
-      y: BOARD_TOP + PAD + row * (TILE + GAP) + TILE / 2,
+      x: BOARD_LEFT + PAD + col * (this.tileSize + GAP) + this.tileSize / 2,
+      y: BOARD_TOP + PAD + row * (this.tileSize + GAP) + this.tileSize / 2,
     };
   }
 
   private buildBoard() {
+    this.add.text(W / 2, BOARD_TOP + BOARD + 24, `${this.core.size}×${this.core.size}`, {
+      fontFamily: FONT, fontSize: 14, color: COLORS.headMuted,
+    }).setOrigin(0.5).setResolution(DPR);
     const g = this.add.graphics();
     g.fillStyle(darken(COLORS.board, 0.16), 1).fillRoundedRect(BOARD_LEFT, BOARD_TOP + 4, BOARD, BOARD, 18);
     g.fillStyle(COLORS.board, 1).fillRoundedRect(BOARD_LEFT, BOARD_TOP, BOARD, BOARD, 18);
-    for (let r = 0; r < SIZE; r++) {
-      for (let c = 0; c < SIZE; c++) {
+    for (let r = 0; r < this.core.size; r++) {
+      for (let c = 0; c < this.core.size; c++) {
         const { x, y } = this.cellXY(r, c);
-        g.fillStyle(COLORS.boardCell, 1).fillRoundedRect(x - TILE / 2, y - TILE / 2, TILE, TILE, 12);
+        g.fillStyle(COLORS.boardCell, 1).fillRoundedRect(x - this.tileSize / 2, y - this.tileSize / 2, this.tileSize, this.tileSize, 12);
       }
     }
   }
@@ -369,8 +375,8 @@ export class Game extends Scene {
   private redraw(fx?: { spawn: [number, number] | null; merged: Array<[number, number]> }) {
     this.tileLayer.removeAll(true);
     const cells = this.core.cells;
-    for (let r = 0; r < SIZE; r++) {
-      for (let c = 0; c < SIZE; c++) {
+    for (let r = 0; r < this.core.size; r++) {
+      for (let c = 0; c < this.core.size; c++) {
         const v = cells[r][c];
         if (v === 0) continue;
         const cont = this.buildTile(r, c, v);
@@ -389,11 +395,11 @@ export class Game extends Scene {
     const cont = this.add.container(x, y);
     const color = tileColor(value);
     const g = this.add.graphics();
-    g.fillStyle(darken(color, 0.18), 1).fillRoundedRect(-TILE / 2, -TILE / 2 + 3, TILE, TILE, 12);
-    g.fillStyle(color, 1).fillRoundedRect(-TILE / 2, -TILE / 2, TILE, TILE, 12);
+    g.fillStyle(darken(color, 0.18), 1).fillRoundedRect(-this.tileSize / 2, -this.tileSize / 2 + 3, this.tileSize, this.tileSize, 12);
+    g.fillStyle(color, 1).fillRoundedRect(-this.tileSize / 2, -this.tileSize / 2, this.tileSize, this.tileSize, 12);
     const txt = this.add
       .text(0, 0, String(value), {
-        fontFamily: FONT, fontSize: tileFontSize(value), color: tileTextColor(value), fontStyle: 'bold',
+        fontFamily: FONT, fontSize: Math.round(tileFontSize(value) * this.tileSize / 80), color: tileTextColor(value), fontStyle: 'bold',
       })
       .setOrigin(0.5)
       .setResolution(DPR);
@@ -406,10 +412,23 @@ export class Game extends Scene {
 
   private bindInput() {
     const kb = this.input.keyboard;
-    kb?.on('keydown-LEFT', () => this.tryMove('left'));
-    kb?.on('keydown-RIGHT', () => this.tryMove('right'));
-    kb?.on('keydown-UP', () => this.tryMove('up'));
-    kb?.on('keydown-DOWN', () => this.tryMove('down'));
+    const handled = new WeakSet<KeyboardEvent>();
+    const bindings = [['LEFT', 'left'], ['RIGHT', 'right'], ['UP', 'up'], ['DOWN', 'down']] as const;
+    const handlers = bindings.map(([key, dir]) => {
+      const event = 'keydown-' + key;
+      const handler = (event: KeyboardEvent) => {
+        if (handled.has(event)) return;
+        handled.add(event);
+        this.tryMove(dir);
+      };
+      kb?.on(event, handler);
+      return { event, handler };
+    });
+    kb?.addCapture('LEFT,RIGHT,UP,DOWN');
+    this.events.once('shutdown', () => {
+      handlers.forEach(({event, handler}) => kb?.off(event, handler));
+      kb?.removeCapture('LEFT,RIGHT,UP,DOWN');
+    });
 
     // Слушатели на всю сцену: они слышат и тапы по затемнению паузы, поэтому
     // пока пауза открыта, свайп не начинается и не завершается.
@@ -445,8 +464,8 @@ export class Game extends Scene {
   /** Клетка, появившаяся после спавна: единственное отличие от чистого хода. */
   private findSpawn(expectedCells: number[][]): [number, number] | null {
     let spawn: [number, number] | null = null;
-    for (let r = 0; r < SIZE; r++) {
-      for (let c = 0; c < SIZE; c++) {
+    for (let r = 0; r < this.core.size; r++) {
+      for (let c = 0; c < this.core.size; c++) {
         if (this.core.cells[r][c] !== expectedCells[r][c]) spawn = [r, c];
       }
     }
@@ -514,7 +533,7 @@ export class Game extends Scene {
     const moves = this.core.moves;
 
     void this.session
-      .finish({ score, maxTile, moves, durationMs })
+      .finish({ score, maxTile, moves, durationMs, boardSize: this.core.size })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     // Скоростные испытания: номинал собран не позднее заданного хода.

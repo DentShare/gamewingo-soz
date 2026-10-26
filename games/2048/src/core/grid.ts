@@ -1,11 +1,13 @@
 /**
- * Чистое ядро «2048»: поле 4×4, сдвиги, слияния, спавн.
+ * Чистое ядро «2048»: поле 4×4 или 5×5, сдвиги, слияния, спавн.
  * Без Phaser и DOM — RNG инжектится (mulberry32), состояние тестируемо напрямую.
  */
 
 export type Dir = 'left' | 'right' | 'up' | 'down';
 
 export const SIZE = 4;
+export type BoardSize = 4 | 5;
+export const isBoardSize = (n: unknown): n is BoardSize => n === 4 || n === 5;
 
 export interface MergeInfo {
   /** Номинал получившейся плитки (сумма двух слитых). */
@@ -24,14 +26,14 @@ export interface ApplyResult {
 }
 
 /** Координаты клеток линии `line` в порядке «от края движения к хвосту». */
-function lineCoords(dir: Dir, line: number): Array<[number, number]> {
+function lineCoords(dir: Dir, line: number, size: number): Array<[number, number]> {
   const coords: Array<[number, number]> = [];
-  for (let i = 0; i < SIZE; i++) {
+  for (let i = 0; i < size; i++) {
     switch (dir) {
       case 'left': coords.push([line, i]); break;
-      case 'right': coords.push([line, SIZE - 1 - i]); break;
+      case 'right': coords.push([line, size - 1 - i]); break;
       case 'up': coords.push([i, line]); break;
-      case 'down': coords.push([SIZE - 1 - i, line]); break;
+      case 'down': coords.push([size - 1 - i, line]); break;
     }
   }
   return coords;
@@ -42,12 +44,13 @@ function lineCoords(dir: Dir, line: number): Array<[number, number]> {
  * Каждая плитка сливается максимум один раз за ход; сливается пара, ближняя к краю движения.
  */
 export function applyMove(cells: readonly (readonly number[])[], dir: Dir): ApplyResult {
+  const size = cells.length;
   const out = cells.map((row) => row.map(() => 0));
   let gained = 0;
   const merges: MergeInfo[] = [];
 
-  for (let line = 0; line < SIZE; line++) {
-    const coords = lineCoords(dir, line);
+  for (let line = 0; line < size; line++) {
+    const coords = lineCoords(dir, line, size);
     const vals = coords.map(([r, c]) => cells[r][c]).filter((v) => v !== 0);
     const packed: number[] = [];
     let i = 0;
@@ -80,7 +83,8 @@ export interface MoveResult {
 }
 
 export interface Grid2048 {
-  /** 4×4, [row][col], 0 — пусто. */
+  readonly size: BoardSize;
+  /** 4×4 или 5×5, [row][col], 0 — пусто. */
   readonly cells: readonly (readonly number[])[];
   /** Сумма номиналов всех слитых плиток (стандарт 2048). */
   readonly score: number;
@@ -111,6 +115,7 @@ export interface Grid2048State {
  * Без `initial` спавнятся две стартовые плитки.
  */
 export interface Grid2048Options {
+  size?: BoardSize;
   /**
    * Сколько лишних плиток положить на поле при старте новой партии.
    * Убирает скучное вступление поздних уровней, где первые ходы не требуют решений.
@@ -125,9 +130,13 @@ export function createGrid2048(
   opts: Grid2048Options = {},
 ): Grid2048 {
   const state: Grid2048State | undefined = Array.isArray(initial) ? { cells: initial } : initial;
+  const size = state?.cells.length ?? opts.size ?? SIZE;
+  if (!isBoardSize(size) || (state && state.cells.some(row => row.length !== size))) {
+    throw new RangeError('2048 requires a square 4×4 or 5×5 board');
+  }
   let cells: number[][] = state
     ? state.cells.map((row) => row.slice())
-    : Array.from({ length: SIZE }, () => new Array<number>(SIZE).fill(0));
+    : Array.from({ length: size }, () => new Array<number>(size).fill(0));
   let score = state?.score ?? 0;
   let moves = state?.moves ?? 0;
   let won = (state?.won ?? false) || cells.some((row) => row.some((v) => v >= 2048));
@@ -148,18 +157,19 @@ export function createGrid2048(
   }
 
   return {
+    size,
     get cells() { return cells; },
     get score() { return score; },
     get moves() { return moves; },
     maxTile() { return Math.max(...cells.flat()); },
     hasWon() { return won; },
     isOver() {
-      for (let r = 0; r < SIZE; r++) {
-        for (let c = 0; c < SIZE; c++) {
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
           const v = cells[r][c];
           if (v === 0) return false;
-          if (c + 1 < SIZE && cells[r][c + 1] === v) return false;
-          if (r + 1 < SIZE && cells[r + 1][c] === v) return false;
+          if (c + 1 < size && cells[r][c + 1] === v) return false;
+          if (r + 1 < size && cells[r + 1][c] === v) return false;
         }
       }
       return true;

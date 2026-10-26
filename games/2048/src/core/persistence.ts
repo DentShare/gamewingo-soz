@@ -1,4 +1,4 @@
-import { SIZE } from './grid';
+import { isBoardSize, type BoardSize } from './grid';
 
 const KEY = '2048:best';
 
@@ -40,9 +40,9 @@ export interface SavedGame {
 function isSavedGame(v: unknown): v is SavedGame {
   if (typeof v !== 'object' || v === null) return false;
   const s = v as Partial<SavedGame>;
-  if (!Array.isArray(s.cells) || s.cells.length !== SIZE) return false;
+  if (!Array.isArray(s.cells) || !isBoardSize(s.cells.length)) return false;
   for (const row of s.cells) {
-    if (!Array.isArray(row) || row.length !== SIZE) return false;
+    if (!Array.isArray(row) || row.length !== s.cells.length) return false;
     if (!row.every((n) => typeof n === 'number' && Number.isFinite(n) && n >= 0)) return false;
   }
   return (
@@ -106,4 +106,15 @@ export function setOnboarded(): void {
   } catch {
     /* quota / приватный режим — тихо игнорируем */
   }
+}
+
+// Предпочтение для новой партии не меняет сохранённую партию.
+export function loadBoardSize(): BoardSize {
+  try { return localStorage.getItem('2048:boardSize') === '5' ? 5 : 4; }
+  catch { return 4; }
+}
+
+export function saveBoardSize(size: BoardSize): void {
+  try { localStorage.setItem('2048:boardSize', String(size)); }
+  catch { /* приватный режим */ }
 }

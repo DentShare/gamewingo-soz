@@ -19,6 +19,7 @@ const config: Phaser.Types.Core.GameConfig = {
     autoRound: true,
   },
   render: { antialias: true, roundPixels: true },
+  input: { activePointers: 3 },
   scene: [Boot, MainMenu, Game, GameOver],
 };
 

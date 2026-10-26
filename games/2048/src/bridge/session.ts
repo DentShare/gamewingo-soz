@@ -6,6 +6,7 @@ import type { Locale } from '../core/locale';
 export interface FinishInput {
   /** Готовый счёт из ядра (сумма слитых номиналов) — здесь НЕ пересчитывается. */
   score: number;
+  boardSize?: 4 | 5;
   maxTile: number;
   moves: number;
   durationMs: number;
@@ -47,14 +48,14 @@ export function createSession(
     start() { bridge.start(sessionId); },
     exit() { bridge.exit(sessionId); },
     async finish(input) {
-      const { score, maxTile, moves, durationMs } = input;
+      const { score, maxTile, moves, durationMs, boardSize = 4 } = input;
       bridge.gameOver(score, sessionId, durationMs);
-      bridge.track('round_finished', { maxTile, moves });
+      bridge.track('round_finished', { maxTile, moves, boardSize });
       if (!api) return null;
       try {
         return await api.submitScore({
           sessionId, gameId: '2048', score, durationMs,
-          meta: { maxTile, moves },
+          meta: { maxTile, moves, boardSize },
         });
       } catch (err) {
         bridge.error(String(err));

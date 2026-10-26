@@ -71,10 +71,10 @@ export function shift(state:BlockDropState,dx:-1|1):BlockDropState {
   return withPiece(state,{...state.active,x:state.active.x+dx});
 }
 
-export function rotate(state:BlockDropState):BlockDropState {
+export function rotate(state:BlockDropState,direction:1|-1=1):BlockDropState {
   if(state.over)return state;
   const rotations=SHAPES[state.active.type].length;
-  const rotated={...state.active,rotation:(state.active.rotation+1)%rotations};
+  const rotated={...state.active,rotation:(state.active.rotation+direction+rotations)%rotations};
   if(fits(state.board,rotated))return {...state,active:rotated};
   for(const kick of [-1,1,-2,2] as const){const candidate={...rotated,x:rotated.x+kick};if(fits(state.board,candidate))return {...state,active:candidate};}
   return state;

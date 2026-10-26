@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  loadBest, saveBest, loadSave, saveGame, clearSave, hasOnboarded, setOnboarded,
+  loadBest, saveBest, loadSave, saveGame, clearSave, hasOnboarded, setOnboarded, loadBoardSize, saveBoardSize,
   type SavedGame,
 } from './persistence';
 import { createGrid2048 } from './grid';
@@ -32,6 +32,34 @@ describe('рекорд', () => {
 });
 
 describe('сохранение партии', () => {
+  it('restores a 5×5 game with its original dimension and continues normally', () => {
+    const cells = Array.from({ length: 5 }, () => [0, 0, 0, 0, 0]);
+    cells[4][3] = cells[4][4] = 2;
+    saveGame({ cells, score: 100, moves: 7, won: false });
+    const g = createGrid2048(() => 0, loadSave()!);
+    expect(g.size).toBe(5);
+    g.move('right');
+    expect(g.cells[4][4]).toBe(4);
+    expect(g.score).toBe(104);
+    expect(g.moves).toBe(8);
+  });
+
+  it('rejects ragged and unsupported dimensions', () => {
+    for (const cells of [Array.from({ length: 5 }, () => [0, 0, 0, 0]), Array.from({ length: 6 }, () => Array(6).fill(0))]) {
+      localStorage.setItem('2048:save', JSON.stringify({ ...SAMPLE, cells }));
+      expect(loadSave()).toBeNull();
+    }
+  });
+
+  it('stores the new-game preference without overwriting a saved 4×4 game', () => {
+    expect(loadBoardSize()).toBe(4);
+    saveGame(SAMPLE);
+    saveBoardSize(5);
+    expect(loadBoardSize()).toBe(5);
+    expect(loadSave()!.cells).toEqual(SAMPLE.cells);
+    localStorage.setItem('2048:boardSize', '6');
+    expect(loadBoardSize()).toBe(4);
+  });
   it('нет сохранения → null', () => {
     expect(loadSave()).toBeNull();
   });
