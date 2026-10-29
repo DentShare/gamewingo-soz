@@ -9,8 +9,8 @@
  *
  * Запускается ПОСЛЕ сборки всех игр (см. npm run build:all).
  */
-import { readdirSync, readFileSync, writeFileSync, rmSync, mkdirSync, copyFileSync, statSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, copyFileSync, statSync, existsSync, unlinkSync, rmdirSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { ageManifest } from '../hub/age-groups.mjs';
@@ -36,7 +36,18 @@ const GAMES = [
   'quiz',
 ];
 
-rmSync(out, { recursive: true, force: true });
+// Test builds must not leave token entry or API config in a later normal build.
+if (resolve(out) !== resolve(root, 'dist-all')) throw new Error('Неверный путь сборки');
+function clearTree(dir) {
+  if (!existsSync(dir)) return;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory() && !entry.isSymbolicLink()) clearTree(path);
+    else unlinkSync(path);
+  }
+  rmdirSync(dir);
+}
+clearTree(out);
 mkdirSync(out, { recursive: true });
 
 // Хаб — корень каталога. Копируем содержимое поэлементно: на Windows Node 24
@@ -71,6 +82,29 @@ for (const slug of GAMES) {
     process.exit(1);
   }
   copyTree(dist, join(out, slug));
+}
+
+// Include the Phoenix client only in an explicitly configured pilot build.
+const petPilotApi = (process.env.GAMEWINGO_PET_PILOT_API ?? '').replace(/\/$/, '');
+const petTestApi = (process.env.GAMEWINGO_PET_TEST_API ?? '').replace(/\/$/, '');
+if (petPilotApi && petTestApi) throw new Error('Choose one Phoenix pilot API');
+if (petPilotApi || petTestApi) {
+  const url = new URL(petPilotApi || petTestApi);
+  const localHttp = url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname);
+  if ((petPilotApi && !localHttp) || (petTestApi && url.protocol !== 'https:')
+      || url.username || url.password || url.search || url.hash) {
+    throw new Error('Phoenix pilot API URL must use local HTTP or remote HTTPS');
+  }
+  writeFileSync(join(out, 'pet-pilot-config.js'),
+    `window.${petTestApi ? 'WINGO_PET_TEST_API' : 'WINGO_PET_PILOT_API'}=${JSON.stringify(petPilotApi || petTestApi).replace(/</g, '\\u003c')};\n`);
+  if (petPilotApi) copyFileSync(join(root, 'scripts', 'pet-pilot-check.html'), join(out, 'pet-pilot-check.html'));
+  if (petTestApi) copyFileSync(join(root, 'scripts', 'phoenix-test.html'), join(out, 'phoenix-test.html'));
+  for (const slug of ['', 'phoenix.html', ...GAMES]) {
+    const page = slug === 'phoenix.html' ? join(out, slug) : join(out, slug, 'index.html');
+    const prefix = GAMES.includes(slug) ? '../' : './';
+    const tags = `<script src="${prefix}pet-pilot-config.js"></script><script src="${prefix}phoenix-pilot.js"></script>`;
+    writeFileSync(page, readFileSync(page, 'utf8').replace('</head>', `${tags}</head>`));
+  }
 }
 
 // Публичный адрес приёмника; пароль отчёта никогда не попадает в статический билд.

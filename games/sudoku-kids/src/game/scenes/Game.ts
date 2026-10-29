@@ -556,13 +556,16 @@ export class Game extends Scene {
     const durationMs = Math.round(this.timer.elapsedMs());
     const hints = MAX_HINTS - this.hintsLeft;
 
+    // Эти факты нужны и экрану итога, и проверке содержательности партии.
+    const open = this.given.map((g, i) => (g ? -1 : i)).filter((i) => i !== -1);
+    const filled = open.filter((i) => this.grid[i] === this.solution[i]).length;
+
     void this.session
-      .finish({ level: this.level, mode: this.daily ? 'dailyLevel' : 'level', hints, durationMs })
+      .finish({ level: this.level, mode: this.daily ? 'dailyLevel' : 'level', hints, durationMs,
+        cleared, filled, mistakes: this.mistakes })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     // Докуда дошли — для итога проваленного уровня: верно заполненные клетки из пустых.
-    const open = this.given.map((g, i) => (g ? -1 : i)).filter((i) => i !== -1);
-    const filled = open.filter((i) => this.grid[i] === this.solution[i]).length;
     this.registry.set('lastGame', {
       level: this.level, daily: this.daily, locale: this.locale, hints, durationMs, mistakes: this.mistakes, cleared,
       filled, toFill: open.length,

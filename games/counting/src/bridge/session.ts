@@ -50,6 +50,11 @@ export function createSession(
     async finish(input) {
       const score = computeScore(input);
       bridge.gameOver(score, sessionId, input.durationMs);
+      bridge.sendResult({
+        game: 'counting', mode: input.mode ?? 'level', level: input.level,
+        score, durationMs: input.durationMs, sessionId, won: true,
+        metrics: { correct: input.correct, mistakes: input.mistakes },
+      });
       bridge.track('round_finished', { correct: input.correct, mistakes: input.mistakes });
       if (!api) return null;
       try {

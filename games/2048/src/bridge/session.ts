@@ -50,6 +50,10 @@ export function createSession(
     async finish(input) {
       const { score, maxTile, moves, durationMs, boardSize = 4 } = input;
       bridge.gameOver(score, sessionId, durationMs);
+      bridge.sendResult({
+        game: '2048', mode: 'endless', score, durationMs, sessionId,
+        metrics: { maxTile, moves, boardSize },
+      });
       bridge.track('round_finished', { maxTile, moves, boardSize });
       if (!api) return null;
       try {
