@@ -77,6 +77,9 @@
       token = value.trim();
       if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) {
         token = null;
+        state = null;
+        status = 'needs_token';
+        changed();
         return Promise.reject(new Error('Invalid test token format'));
       }
       try { sessionStorage.setItem(tokenKey, token); } catch { /* Current page still works. */ }
