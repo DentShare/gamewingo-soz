@@ -5,7 +5,7 @@ import type { AppToGameEvent } from '@gamewingo/game-bridge';
 function fakeBridge() {
   let handler: ((e: AppToGameEvent) => void) | null = null;
   return {
-    ready: vi.fn(), start: vi.fn(), gameOver: vi.fn(), claimReward: vi.fn(),
+    ready: vi.fn(), start: vi.fn(), gameOver: vi.fn(), sendResult: vi.fn(), claimReward: vi.fn(),
     track: vi.fn(), error: vi.fn(),
     onApp: vi.fn((h: (e: AppToGameEvent) => void) => { handler = h; return () => { handler = null; }; }),
     destroy: vi.fn(),
@@ -26,6 +26,10 @@ describe('session', () => {
     s.start();
     await s.finish({ mode: 'daily', dayId: 1, guessesUsed: 2, solved: true, durationMs: 5000, rows: [] });
     expect(b.gameOver).toHaveBeenCalled();
+    expect(b.sendResult).toHaveBeenCalledWith({
+      game: 'soz', mode: 'daily', score: expect.any(Number), durationMs: 5000,
+      sessionId: 'sess', won: true, metrics: { guessesUsed: 2, dayId: 1 },
+    });
     expect(api.submitScore).toHaveBeenCalledWith(expect.objectContaining({ gameId: 'soz', sessionId: 'sess' }));
   });
 
@@ -37,6 +41,10 @@ describe('session', () => {
     s.start();
     await s.finish({ mode: 'practice', dayId: 1, guessesUsed: 3, solved: true, durationMs: 5000, rows: [] });
     expect(b.gameOver).toHaveBeenCalled();
+    expect(b.sendResult).toHaveBeenCalledWith({
+      game: 'soz', mode: 'practice', score: expect.any(Number), durationMs: 5000,
+      sessionId: 'sess', won: true, metrics: { guessesUsed: 3, dayId: 1 },
+    });
     expect(api.submitScore).not.toHaveBeenCalled();
   });
 

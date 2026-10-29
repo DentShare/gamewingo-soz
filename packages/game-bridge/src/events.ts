@@ -11,7 +11,7 @@ export const BRIDGE_PROTOCOL_VERSION = 1 as const;
 export const GAME_IDS = [
   'soz', 'pairs', 'fifteen', '2048', 'sudoku-kids',
   'stack', 'flyer', 'targets', 'snake', 'sorting', 'counting',
-  'quiz', 'jigsaw', 'sums',
+  'quiz', 'jigsaw', 'sums', 'color-sort', 'block-drop',
 ] as const;
 
 export type GameId = (typeof GAME_IDS)[number];
@@ -21,10 +21,10 @@ export type GameId = (typeof GAME_IDS)[number];
  * забег аркады. Сервер по режиму выбирает правила начисления.
  */
 /**
- * level — ступень лестницы; daily — слово дня «5 букв»; dailyLevel — уровень дня
- * лестничной игры (свой тариф и дневной лимит на сервере); endless — забег аркады.
+ * level — ступень лестницы; daily — слово дня «5 букв»; practice — тренировка
+ * «5 букв»; dailyLevel — уровень дня лестничной игры; endless — забег аркады.
  */
-export type GameMode = 'level' | 'daily' | 'dailyLevel' | 'endless';
+export type GameMode = 'level' | 'daily' | 'practice' | 'dailyLevel' | 'endless';
 
 /**
  * Сырое игровое событие — основа событийного скоринга. Игра сообщает факты

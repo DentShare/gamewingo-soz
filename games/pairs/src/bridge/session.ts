@@ -6,6 +6,7 @@ import type { Locale } from '../core/locale';
 
 export interface FinishInput {
   level: number;
+  cleared: boolean;
   /** level — ступень лестницы; dailyLevel — уровень дня (свой тариф на сервере). */
   mode?: 'level' | 'dailyLevel';
   pairs: number;
@@ -50,6 +51,11 @@ export function createSession(
     async finish(input) {
       const score = computeScore(input);
       bridge.gameOver(score, sessionId, input.durationMs);
+      bridge.sendResult({
+        game: 'pairs', mode: input.mode ?? 'level', level: input.level,
+        score, durationMs: input.durationMs, sessionId, won: input.cleared,
+        metrics: { pairs: input.pairs, moves: input.moves },
+      });
       bridge.track('round_finished', { level: input.level, moves: input.moves });
       if (!api) return null;
       try {

@@ -153,6 +153,18 @@
   .greet p { margin: 0; font-size: 14px; line-height: 1.35; color: var(--muted); }
   .greet svg { flex: none; overflow: visible; }
 
+  /* Локальный прототип питомца: компактный вход в отдельный экран. */
+  .pet-entry { display: flex; gap: 12px; align-items: center; color: inherit; text-decoration: none;
+    background: var(--surface); border: 1px solid var(--divider); border-radius: 14px; padding: 9px 12px; }
+  .pet-entry:active { background: var(--tint); }
+  .pet-entry:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .pet-entry.new-spark { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(217, 154, 18, .12); }
+  .pet-entry img { width: 62px; height: 62px; flex: none; object-fit: contain; filter: drop-shadow(0 4px 5px rgba(157, 72, 18, .18)); }
+  .pet-entry .pet-copy { min-width: 0; flex: 1; display: grid; gap: 3px; }
+  .pet-entry strong { font-size: 15px; line-height: 19px; }
+  .pet-entry .pet-sub { color: var(--muted); font-size: 12px; line-height: 16px; }
+  .pet-entry .pet-count { color: var(--gold-text); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
   /* Полоса недели: пройденные — success, сегодня — primary, будущие — surface. */
   .week { display: flex; gap: 6px; }
   .day {
@@ -285,6 +297,7 @@
 
   <main class="wrap">
     <div id="top"></div>
+    <div id="petEntry"></div>
     <div id="today"></div>
     <div id="sections"></div>
   </main>
@@ -387,6 +400,8 @@
         age14plus: 'Слова и знания · подросткам и взрослым',
       },
       greet: 'Заходите каждый день — серия бонусов растёт',
+      petTitle: 'Мой феникс', petDemo: 'Демо · на этом устройстве', petNew: 'Новая искра! · Демо',
+      petStage: { egg: 'Яйцо', awakening: 'Пробуждение', chick: 'Птенец' },
       cont: 'Продолжить', play: 'Играть',
       contLevel: (g, n) => `${g} · уровень ${n}`,
       contRecord: (g, n) => `${g} · рекорд ${num(n)}`,
@@ -429,6 +444,8 @@
         age14plus: 'Soʻzlar va bilim · oʻsmirlar va kattalarga',
       },
       greet: 'Har kuni kiring — bonus seriyasi oʻsadi',
+      petTitle: 'Mening feniksim', petDemo: 'Demo · shu qurilmada', petNew: 'Yangi uchqun! · Demo',
+      petStage: { egg: 'Tuxum', awakening: 'Uygʻonish', chick: 'Joʻja' },
       cont: 'Davom etish', play: 'Oʻynash',
       contLevel: (g, n) => `${g} · ${n}\u2011daraja`,
       contRecord: (g, n) => `${g} · rekord ${num(n)}`,
@@ -584,7 +601,7 @@
   function topHtml(s) {
     const last = P && P.getLastPlayed();
     const g = last && byId(last.slug);
-    if (!g) return `<div class="greet" id="greet">${phoenixSvg(56)}<p>${s.greet}</p></div>`;
+    if (!g) return '';
     const st = statusOf(g);
     const name = g.title[lang];
     const line1 = g.kind === 'arcade' ? s.contRecord(name, st.record || 0) : s.contLevel(name, st.level);
@@ -601,6 +618,26 @@
         </div>
         <button class="btn-play" type="button" data-go="${g.id}">${s.play}</button>
       </div>`;
+  }
+
+  function petEntryHtml(s) {
+    if (!P || !P.petState) return '';
+    const pilot = window.WingoPetPilot;
+    const pet = pilot ? (pilot.state || { total:0, today:0, stage:'egg', nextStageAt:3, lastSpark:null }) : P.petState();
+    const fresh = pet.lastSpark && Date.now() - pet.lastSpark.at < 120000 && Date.now() >= pet.lastSpark.at;
+    const pilotLabel = pilot && (pilot.status === 'ready'
+      ? (lang === 'uz' ? 'Sinov serveri' : 'Тестовый сервер')
+      : pilot.status === 'connecting'
+        ? (lang === 'uz' ? 'Ulanmoqda…' : 'Подключение…')
+        : pilot.status === 'needs_token'
+          ? (lang === 'uz' ? 'Sinov tokenini kiriting' : 'Введите тестовый токен')
+        : (lang === 'uz' ? 'Serverga ulanish yoʻq' : 'Нет связи с сервером'));
+    const petHref = pilot?.status === 'needs_token' && window.WINGO_PET_TEST_API ? 'phoenix-test.html' : `phoenix.html?lang=${lang}`;
+    return `<a class="pet-entry${fresh ? ' new-spark' : ''}" href="${petHref}" aria-label="${s.petTitle}: ${s.petStage[pet.stage]}, ${pet.total} / ${pet.nextStageAt || pet.total}">
+      <img src="phoenix-assets/${pet.stage}.webp" alt="" loading="lazy" />
+      <span class="pet-copy"><strong>${s.petTitle}</strong><span class="pet-sub">${fresh ? s.petNew : `${s.petStage[pet.stage]} · ${pilotLabel || s.petDemo}`}</span></span>
+      <span class="pet-count">✦ ${pet.total}${pet.nextStageAt ? `/${pet.nextStageAt}` : ''}</span>
+    </a>`;
   }
 
   function todayHtml(s) {
@@ -654,6 +691,7 @@
     fitTitle();
 
     document.getElementById('top').innerHTML = topHtml(s);
+    document.getElementById('petEntry').innerHTML = petEntryHtml(s);
     document.getElementById('today').innerHTML = P ? todayHtml(s) : '';
     document.getElementById('sections').innerHTML = `
       <div><nav class="age-nav" aria-label="${s.ages}">
@@ -913,6 +951,7 @@
   const checkin = P ? P.claimCheckin() : null;
 
   render();
+  window.addEventListener('wingo:pet-state', render);
 
   // Перезагрузка на открытом экране «Бонусы» (или возврат из игры на эту запись
   // истории) — открываем его снова, а не оставляем «пустой» шаг назад.
@@ -929,6 +968,7 @@
   // тогда статусы, задания и баланс надо перечитать.
   window.addEventListener('pageshow', (e) => {
     if (!e.persisted || !P) return;
+    window.WingoPetPilot?.refresh().catch(() => {});
     bonusVal.textContent = num(P.bonusBalance());
     render();
   });

@@ -6,9 +6,12 @@ import type { Locale } from '../core/locale';
 
 export interface FinishInput {
   level: number;
+  cleared: boolean;
   /** level — ступень лестницы; dailyLevel — уровень дня (свой тариф на сервере). */
   mode?: 'level' | 'dailyLevel';
   hints: number;
+  filled: number;
+  mistakes: number;
   durationMs: number;
 }
 
@@ -49,6 +52,12 @@ export function createSession(
     async finish(input) {
       const score = computeScore(input);
       bridge.gameOver(score, sessionId, input.durationMs);
+      bridge.sendResult({
+        game: 'sudoku-kids', mode: input.mode ?? 'level', level: input.level,
+        score, durationMs: input.durationMs, sessionId, won: input.cleared,
+        metrics: { hints: input.hints, filled: input.filled, mistakes: input.mistakes,
+          timeSec: Math.floor(input.durationMs / 1000) },
+      });
       bridge.track('round_finished', { level: input.level, hints: input.hints });
       if (!api) return null;
       try {

@@ -50,6 +50,11 @@ export function createSession(
     async finish(input) {
       const score = computeScore(input);
       bridge.gameOver(score, sessionId, input.durationMs);
+      bridge.sendResult({
+        game: 'jigsaw', mode: input.mode ?? 'level', level: input.level,
+        score, durationMs: input.durationMs, sessionId, won: true,
+        metrics: { pieces: input.pieces, wrongDrops: input.wrongDrops },
+      });
       bridge.track('round_finished', { pieces: input.pieces, wrongDrops: input.wrongDrops });
       if (!api) return null;
       try {

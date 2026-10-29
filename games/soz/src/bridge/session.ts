@@ -53,6 +53,11 @@ export function createSession(
     async finish(input) {
       const score = computeScore(input);
       bridge.gameOver(score, sessionId, input.durationMs);
+      bridge.sendResult({
+        game: 'soz', mode: input.mode, score, durationMs: input.durationMs,
+        sessionId, won: input.solved,
+        metrics: { guessesUsed: input.guessesUsed, dayId: input.dayId },
+      });
       bridge.track('round_finished', { mode: input.mode, solved: input.solved });
       if (input.mode !== 'daily' || !api) return null;
       try {

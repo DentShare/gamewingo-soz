@@ -1,6 +1,7 @@
 import { readJson, writeJson } from './storage.js';
 import { recordLastPlayed } from './hub.js';
 import { computeDayId, hashIndex } from './day.js';
+import { recordPetRound } from './pet.js';
 
 /**
  * Задания дня и достижения каталога — мета-слой поверх лестниц уровней.
@@ -96,6 +97,12 @@ export function recordRound(outcome: RoundOutcome, dayId: number = computeDayId(
   writeJson(COUNTERS_KEY, c);
   // Для карточки «Продолжить» в хабе: последняя игра — та, где был последний итог.
   recordLastPlayed(outcome.slug);
+  // Локальный прототип питомца: только завершённые партии, прошедшие через общий итог.
+  // В локальном серверном пилоте экран питомца читает только подтверждённые
+  // искры API; параллельная запись демо-искры давала бы ложный прогресс.
+  if (!(globalThis as typeof globalThis & { WingoPetPilot?: { enabled: boolean } }).WingoPetPilot?.enabled) {
+    recordPetRound(outcome.slug, dayId);
+  }
   return c;
 }
 

@@ -58,6 +58,8 @@ describe('createBridge: событийный слой', () => {
 
   it('sendResult выталкивает очередь перед результатом', () => {
     const bridge = createBridge();
+    const local = vi.fn();
+    window.addEventListener('wingo:bridge-event', local);
     bridge.sendEvent(ev('pair_found'));
     bridge.sendResult({
       game: 'pairs', mode: 'level', level: 3, score: 420,
@@ -68,9 +70,11 @@ describe('createBridge: событийный слой', () => {
     const result = sent[1];
     if (result.type !== 'GAME_RESULT') throw new Error('ожидался GAME_RESULT');
     expect(result.result.metrics).toEqual({ moves: 14 });
+    expect((local.mock.calls.at(-1)?.[0] as CustomEvent).detail).toEqual(result);
     // Очередь пуста — таймер ничего не дошлёт.
     vi.runAllTimers();
     expect(sent).toHaveLength(2);
+    window.removeEventListener('wingo:bridge-event', local);
     bridge.destroy();
   });
 
