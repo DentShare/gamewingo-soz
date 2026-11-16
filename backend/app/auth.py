@@ -24,6 +24,8 @@ from typing import Optional
 import jwt
 from fastapi import Header, HTTPException
 
+from .security import demo_mode
+
 DEFAULT_AUDIENCE = "wingo-games"
 DEFAULT_ALGORITHMS = "RS256,ES256"
 # Часы приложения и сервера расходятся: полминуты допуска на exp/nbf/iat.
@@ -82,7 +84,7 @@ def current_user(
     x_user_id: Optional[str] = Header(default=None),
 ) -> str:
     """Зависимость маршрутов игрока: ID пользователя, которому идут баллы."""
-    if _env("GAMEWINGO_AUTH").lower() == "demo":
+    if demo_mode():
         return x_user_id or "demo"
     if not _env("GAMEWINGO_JWKS_URL"):
         raise HTTPException(503, "Авторизация не настроена: задайте GAMEWINGO_JWKS_URL")

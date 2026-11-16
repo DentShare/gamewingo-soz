@@ -70,6 +70,7 @@ def save_config(game_id: str, config: dict[str, Any],
     stored = validated.model_dump(exclude_none=True)
     stored["version"] = previous.get("version", 0) + 1
     state.overrides[game_id] = stored
+    state.save_overrides()
     config_loader.invalidate_cache()
     return {"ok": True, "version": stored["version"]}
 
@@ -94,6 +95,7 @@ def rollback(game_id: str, body: dict[str, Any],
     if not isinstance(index, int) or not 0 <= index < len(history):
         raise HTTPException(404, "Версия не найдена")
     state.overrides[game_id] = history[index]
+    state.save_overrides()
     config_loader.invalidate_cache()
     return {"ok": True, "version": history[index].get("version", 0)}
 
@@ -103,6 +105,7 @@ def drop_override(game_id: str, x_admin_token: Optional[str] = Header(default=No
     _check_token(x_admin_token)
     _known(game_id)
     state.overrides.pop(game_id, None)
+    state.save_overrides()
     config_loader.invalidate_cache()
     return {"ok": True}
 

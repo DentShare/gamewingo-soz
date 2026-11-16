@@ -163,6 +163,16 @@ def test_admin_token_guards_analytics(monkeypatch):
     assert client.get("/analytics/summary", headers={"X-Admin-Token": "s3cret"}).status_code == 200
 
 
+def test_service_sections_closed_without_admin_token(monkeypatch):
+    """Забытый ADMIN_TOKEN в бою не открывает админку и аналитику."""
+    monkeypatch.delenv("GAMEWINGO_AUTH")
+    monkeypatch.delenv("ADMIN_TOKEN", raising=False)
+    assert client.get("/analytics/summary").status_code == 503
+    assert client.get("/admin/configs/pairs").status_code == 503
+    assert client.put("/admin/configs/pairs", json={}).status_code == 503
+    assert client.get("/analytics/summary", headers={"X-Admin-Token": ""}).status_code == 503
+
+
 def test_store_forgets_oldest_rows_when_full():
     store = AnalyticsStore(max_rows=3)
     for i in range(5):

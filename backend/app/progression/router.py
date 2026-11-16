@@ -8,12 +8,25 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from .. import state
-from ..auth import current_user as get_user_id
+from ..auth import current_user
+from ..security import demo_mode
 from . import antifraud, config_loader, engine
 from .models import AwardResult, EventsAccepted, GameResult, RoundEvent
 from .store import day_id, week_id
 
 router = APIRouter(prefix="/progression", tags=["progression"])
+
+
+def get_user_id(user_id: str = Depends(current_user)):
+    """Игрок запроса; после обработки его состояние уходит на диск.
+
+    В бою без постоянного хранилища маршруты закрыты: иначе баллы настоящих
+    пользователей жили бы в памяти и пропали при первом перезапуске.
+    """
+    if not (state.store.durable or demo_mode()):
+        raise HTTPException(503, "Хранилище не настроено: задайте GAMEWINGO_DB")
+    yield user_id
+    state.store.save(user_id)
 
 
 def _config_or_404(game_id: str) -> dict[str, Any]:

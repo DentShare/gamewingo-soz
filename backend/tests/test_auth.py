@@ -22,6 +22,8 @@ def jwt_mode(monkeypatch):
     monkeypatch.setenv("GAMEWINGO_JWKS_URL", "https://partner.test/.well-known/jwks.json")
     monkeypatch.setenv("GAMEWINGO_JWT_ISSUER", "https://partner.test")
     monkeypatch.setattr(auth, "_signing_key", lambda url, token: PARTNER_KEY.public_key())
+    # В бою маршруты игрока требуют постоянное хранилище (GAMEWINGO_DB).
+    monkeypatch.setattr(state.store, "durable", True)
 
 
 def token(sub="user-42", key=PARTNER_KEY, **overrides):
@@ -92,6 +94,13 @@ def test_not_configured_is_closed(monkeypatch):
     monkeypatch.delenv("GAMEWINGO_JWKS_URL")
     r = checkin({"Authorization": f"Bearer {token()}", "X-User-Id": "user-42"})
     assert r.status_code == 503
+    assert state.store.users == {}
+
+
+def test_no_durable_storage_is_closed(monkeypatch):
+    """Верный токен, но баллы некуда сохранить: не начисляем в память."""
+    monkeypatch.setattr(state.store, "durable", False)
+    assert checkin({"Authorization": f"Bearer {token()}"}).status_code == 503
     assert state.store.users == {}
 
 
