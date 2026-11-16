@@ -518,7 +518,7 @@ export class Game extends Scene {
     const serverScore = computeScore({ blocks, perfects });
 
     void this.session
-      .finish({ score: serverScore, blocks, perfects, durationMs })
+      .finish({ score: serverScore, blocks, perfects, perfectStreak: this.streakMax, durationMs })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {

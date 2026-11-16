@@ -1,3 +1,4 @@
+import { reportResult } from '@gamewingo/game-bridge';
 import type {
   GameBridge, ApiClient, AppToGameEvent, BrandTheme, LeaderboardEntry,
 } from '@gamewingo/game-bridge';
@@ -7,6 +8,8 @@ import type { Row } from '../core/gameState';
 
 export interface FinishInput {
   mode: 'daily' | 'practice'; dayId: number; locale?: Locale;
+  /** Ступень лестницы тренировки; у слова дня не используется. */
+  level: number;
   guessesUsed: number; solved: boolean; durationMs: number; rows: Row[];
 }
 export type RewardResult = { rewardId: string; granted: boolean; points?: number };
@@ -54,19 +57,17 @@ export function createSession(
       const score = computeScore(input);
       bridge.gameOver(score, sessionId, input.durationMs);
       bridge.track('round_finished', { mode: input.mode, solved: input.solved });
-      if (input.mode !== 'daily' || !api) return null;
-      try {
-        return await api.submitScore({
-          sessionId, gameId: 'soz', score, durationMs: input.durationMs,
-          meta: {
-            dayId: input.dayId, guessesUsed: input.guessesUsed,
-            solved: input.solved, rows: input.rows, locale,
-          },
-        });
-      } catch (err) {
-        bridge.error(String(err));
-        return null;
-      }
+      // Слово дня — свой тариф раз в день (день считает сервер); тренировка — ступень лестницы.
+      const daily = input.mode === 'daily';
+      return reportResult(bridge, api, {
+        game: 'soz', mode: daily ? 'daily' : 'level', level: daily ? undefined : input.level,
+        won: input.solved, score, durationMs: input.durationMs, sessionId,
+        metrics: {
+          guessesUsed: input.guessesUsed,
+          wordsGuessed: input.solved ? 1 : 0,
+          firstTryCount: input.solved && input.guessesUsed === 1 ? 1 : 0,
+        },
+      });
     },
     claim(rewardId) { bridge.claimReward(rewardId, sessionId); },
     exit() { bridge.exit(sessionId); },

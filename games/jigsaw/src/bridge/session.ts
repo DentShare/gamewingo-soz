@@ -1,3 +1,4 @@
+import { reportResult } from '@gamewingo/game-bridge';
 import type {
   GameBridge, ApiClient, AppToGameEvent, BrandTheme, LeaderboardEntry,
 } from '@gamewingo/game-bridge';
@@ -51,16 +52,12 @@ export function createSession(
       const score = computeScore(input);
       bridge.gameOver(score, sessionId, input.durationMs);
       bridge.track('round_finished', { pieces: input.pieces, wrongDrops: input.wrongDrops });
-      if (!api) return null;
-      try {
-        return await api.submitScore({
-          sessionId, gameId: 'jigsaw', score, durationMs: input.durationMs,
-          meta: { level: input.level, mode: input.mode ?? 'level', pieces: input.pieces, wrongDrops: input.wrongDrops },
-        });
-      } catch (err) {
-        bridge.error(String(err));
-        return null;
-      }
+      // Финиш — только собранная картинка.
+      return reportResult(bridge, api, {
+        game: 'jigsaw', mode: input.mode ?? 'level', level: input.level, won: true,
+        score, durationMs: input.durationMs, sessionId,
+        metrics: { wrongDrops: input.wrongDrops, pictures: 1 },
+      });
     },
     exit() { bridge.exit(sessionId); },
     async leaderboard(limit = 10) {

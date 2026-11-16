@@ -48,7 +48,11 @@ bridge.ready();                   // ← ровно один раз, когда 
 ```ts
 const durationMs = this.time.now - startedAt;
 bridge.gameOver(score, sessionId, durationMs);
-const res = await api?.submitScore({ sessionId, gameId: '<slug>', score, durationMs });
+// GAME_RESULT хосту + POST /progression/result; сервер решает по режиму, уровню, победе и метрикам
+const res = await reportResult(bridge, api, {
+  game: '<slug>', mode: 'level', level, won, score, durationMs, sessionId,
+  metrics: { /* starMetric и метрики испытаний из конфига игры */ },
+});
 // показать res.pointsAwarded, если res.accepted
 ```
 
@@ -65,14 +69,14 @@ bridge.claimReward(rewardId, sessionId);
 - [ ] `INIT` обрабатывается: сохранены `sessionId`, `api`, применены `theme` и `locale`
 - [ ] `GAME_START` шлётся при старте партии (нужно для серверного лимита времени)
 - [ ] `GAME_OVER` шлёт `score` и `durationMs`
-- [ ] `submitScore()` идёт на сервер; UI показывает результат только после ответа
+- [ ] `reportResult()` идёт на сервер с `won`, `mode`, `level` и метриками конфига; UI показывает результат только после ответа
 - [ ] Нет начисления баллов на клиенте
 - [ ] `PAUSE`/`RESUME` корректно ставят/снимают паузу сцены
 - [ ] `bridge.destroy()` при уничтожении игры (снять слушатель message)
 
 ## Антифрод (что учесть на клиенте, решает сервер)
 
-- слать `durationMs` и, по возможности, число ходов/seed в `meta`;
-- не доверять локальному счёту в UI до подтверждения `submitScore`.
+- слать `durationMs` и метрики партии (ходы, ошибки) в `metrics`;
+- не доверять локальному счёту в UI до подтверждения `reportResult`.
 
 Схема потока событий — `docs/ARCHITECTURE.md`.

@@ -1,7 +1,9 @@
+import { reportResult } from '@gamewingo/game-bridge';
 import type {
   GameBridge, ApiClient, AppToGameEvent, BrandTheme, LeaderboardEntry,
 } from '@gamewingo/game-bridge';
 import { computeScore } from '../core/score';
+import { perfectCrosses } from '../core/levels';
 import type { Locale } from '../core/locale';
 
 export interface FinishInput {
@@ -53,16 +55,13 @@ export function createSession(
       // головоломку решают не на скорость (см. core/score.ts).
       bridge.gameOver(score, sessionId, input.durationMs);
       bridge.track('round_finished', { level: input.level, moves: input.moves, undos: input.undos });
-      if (!api) return null;
-      try {
-        return await api.submitScore({
-          sessionId, gameId: 'sums', score, durationMs: input.durationMs,
-          meta: { level: input.level, mode: input.mode ?? 'level', moves: input.moves, undos: input.undos },
-        });
-      } catch (err) {
-        bridge.error(String(err));
-        return null;
-      }
+      // Финиш — только решённое поле. Звёзды — по лишним ходам, как на экране итога.
+      const extraMoves = Math.max(0, input.moves - perfectCrosses(input.level));
+      return reportResult(bridge, api, {
+        game: 'sums', mode: input.mode ?? 'level', level: input.level, won: true,
+        score, durationMs: input.durationMs, sessionId,
+        metrics: { extraMoves, flawlessRounds: extraMoves === 0 ? 1 : 0, solved: 1 },
+      });
     },
     exit() { bridge.exit(sessionId); },
     async leaderboard(limit = 10) {
