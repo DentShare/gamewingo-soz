@@ -25,6 +25,7 @@
 | soz | github.com/phaserjs/template-vite-ts | MIT | сохранён `games/soz/LICENSE` + копирайт Phaser Studio | 2026-07-24 | — |
 | soz · confetti | github.com/catdad/canvas-confetti | MIT | сохранить копирайт в NOTICE | 2026-07-25 | — |
 | soz · словарь RU (allowed) | github.com/danakt/russian-words | MIT | сохранить копирайт; отфильтровано до 5-букв, нормализовано | 2026-07-25 | — |
+| soz · словарь RU (answers) | оригинальная курация: частые существительные, сверены со списком allowed | — (собственная) | без сторонних прав; факты-слова | 2026-11-16 | — |
 | soz · словарь UZ | оригинальная курация (латиница, 5 юнитов) | — (собственная) | без сторонних прав; факты-слова | 2026-07-25 | — |
 | pairs | github.com/phaserjs/template-vite-ts (через структуру soz) | MIT | сохранён `games/pairs/LICENSE` + копирайт Phaser Studio | 2026-07-28 | — |
 | pairs · confetti | github.com/catdad/canvas-confetti | MIT | сохранить копирайт в NOTICE | 2026-07-28 | — |
