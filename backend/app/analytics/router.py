@@ -7,7 +7,7 @@ ADMIN_TOKEN задана в окружении. Персональных дан�
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, Header, Query
+from fastapi import APIRouter, Header, HTTPException, Query
 from fastapi.responses import FileResponse
 
 from .. import state
@@ -92,11 +92,18 @@ def economy(days: int = Query(DEFAULT_DAYS, ge=1, le=180),
     return metrics.economy(_window(days), list(state.store.audit))
 
 
+def _demo_storage_only() -> None:
+    # Оба маршрута стирают аудит и факты целиком — на боевых данных это потеря.
+    if state.store.durable:
+        raise HTTPException(409, "На постоянном хранилище демо-данные и очистка отключены")
+
+
 @router.post("/demo")
 def make_demo(days: int = Query(21, ge=7, le=90), players: int = Query(140, ge=10, le=2000),
               x_admin_token: Optional[str] = Header(default=None)) -> dict[str, Any]:
     """Заполнить демонстрационными данными: посмотреть страницу до боевого трафика."""
     check_admin_token(x_admin_token)
+    _demo_storage_only()
     state.analytics.clear()
     state.store.audit.clear()
     state.analytics.demo = True
@@ -108,6 +115,7 @@ def make_demo(days: int = Query(21, ge=7, le=90), players: int = Query(140, ge=1
 def wipe(x_admin_token: Optional[str] = Header(default=None)) -> dict[str, Any]:
     """Стереть накопленное — после демо перед боевым запуском."""
     check_admin_token(x_admin_token)
+    _demo_storage_only()
     state.analytics.clear()
     state.store.audit.clear()
     return {"cleared": True}

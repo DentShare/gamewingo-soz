@@ -12,6 +12,10 @@ from typing import Any, Callable, Optional
 
 CONFIG_DIR = Path(__file__).parent / "configs"
 
+# Игры каталога без конфига экономики — зеркало UNSCORED_GAME_IDS из
+# packages/game-bridge/src/events.ts: партия записывается, баллы не начисляются.
+UNSCORED_GAMES = frozenset({"block-drop", "color-sort"})
+
 # Провайдер override-ов: game_id → конфиг или None. В проде — запрос к Supabase,
 # в тестах и демо — словарь в памяти (см. admin/router.py).
 OverrideProvider = Callable[[str], Optional[dict[str, Any]]]

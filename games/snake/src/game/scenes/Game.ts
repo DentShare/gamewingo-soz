@@ -259,7 +259,7 @@ export class Game extends Scene {
     const { score, eaten, length } = this.core;
 
     void this.session
-      .finish({ score, eaten, length, durationMs })
+      .finish({ score, eaten, length, durationMs, feast12: this.feast12 })
       .then((res) => this.registry.set('scorePreview', res?.pointsAwarded ?? null));
 
     this.registry.set('lastGame', {

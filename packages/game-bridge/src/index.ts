@@ -21,9 +21,13 @@
  *
  *   // в конце партии:
  *   bridge.gameOver(score, session, durationMs);
- *   const res = await api?.submitScore({ sessionId: session, gameId: 'match3', score, durationMs });
+ *   const res = await reportResult(bridge, api, {
+ *     game: 'pairs', mode: 'level', level: 3, won: true, score, durationMs,
+ *     sessionId: session, metrics: { moves: 14 },
+ *   });
  */
 
 export * from './events.js';
 export * from './bridge.js';
 export * from './api.js';
+export * from './report.js';

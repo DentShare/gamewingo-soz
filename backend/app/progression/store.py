@@ -59,6 +59,9 @@ class AuditEntry:
 class InMemoryStore:
     """Всё в памяти процесса: перезапуск сервера очищает демо-данные."""
 
+    # Переживает ли состояние перезапуск (см. app/persistence.py).
+    durable = False
+
     def __init__(self) -> None:
         self.users: dict[str, UserState] = {}
         self.sessions: dict[str, dict[str, Any]] = {}
@@ -84,6 +87,9 @@ class InMemoryStore:
         state.keys.add(key)
         self.grant(user_id, xp, game_id, key, session_id)
         return True
+
+    def save(self, user_id: str) -> None:
+        """Зафиксировать состояние пользователя после запроса. В памяти — нечего."""
 
     def day_counters(self, user_id: str, current_day: int) -> dict[str, float]:
         """Дневные счётчики; вчерашние обнуляются — задания дневные."""

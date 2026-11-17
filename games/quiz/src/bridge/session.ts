@@ -1,3 +1,4 @@
+import { reportResult } from '@gamewingo/game-bridge';
 import type {
   GameBridge, ApiClient, AppToGameEvent, BrandTheme, LeaderboardEntry,
 } from '@gamewingo/game-bridge';
@@ -8,6 +9,8 @@ export interface FinishInput {
   level: number;
   /** level — ступень лестницы; dailyLevel — уровень дня (свой тариф на сервере). */
   mode?: 'level' | 'dailyLevel';
+  /** Раунд пройден; провал (ошибок больше допустимого) — false. */
+  won: boolean;
   correct: number;
   mistakes: number;
   durationMs: number;
@@ -51,16 +54,11 @@ export function createSession(
       const score = computeScore(input);
       bridge.gameOver(score, sessionId, input.durationMs);
       bridge.track('round_finished', { correct: input.correct, mistakes: input.mistakes });
-      if (!api) return null;
-      try {
-        return await api.submitScore({
-          sessionId, gameId: 'quiz', score, durationMs: input.durationMs,
-          meta: { mode: input.mode ?? 'level', correct: input.correct, mistakes: input.mistakes },
-        });
-      } catch (err) {
-        bridge.error(String(err));
-        return null;
-      }
+      return reportResult(bridge, api, {
+        game: 'quiz', mode: input.mode ?? 'level', level: input.level, won: input.won,
+        score, durationMs: input.durationMs, sessionId,
+        metrics: { mistakes: input.mistakes, correctAnswers: input.correct },
+      });
     },
     exit() { bridge.exit(sessionId); },
     async leaderboard(limit = 10) {

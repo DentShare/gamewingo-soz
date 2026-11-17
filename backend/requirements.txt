@@ -1,6 +1,8 @@
 fastapi>=0.115
 pydantic>=2.9
 uvicorn>=0.30
+# проверка JWT партнёра по JWKS (RS256/ES256)
+PyJWT[crypto]>=2.10
 
 # тесты
 pytest>=8.0
