@@ -1,8 +1,8 @@
 // Рекомендации по сложности, не официальный рейтинг и не ограничение доступа.
 export const AGE_GROUPS = [
   { id: 'under6', minAge: 3, maxAge: 5, games: ['sorting', 'counting', 'jigsaw'] },
-  { id: 'age6to9', minAge: 6, maxAge: 9, games: ['pairs', 'color-sort', 'sudoku-kids', 'stack', 'targets', 'flyer', 'snake', 'tap-hoops'] },
-  { id: 'age10to13', minAge: 10, maxAge: 13, games: ['block-drop', 'tanks', 'fifteen', '2048', 'sums'] },
+  { id: 'age6to9', minAge: 6, maxAge: 9, games: ['pairs', 'color-sort', 'sudoku-kids', 'stack', 'targets', 'flyer', 'snake', 'tap-hoops', 'paths', 'penalties', 'spiral', 'meteor-cannon'] },
+  { id: 'age10to13', minAge: 10, maxAge: 13, games: ['block-drop', 'tanks', 'fifteen', '2048', 'sums', 'knife-throw', 'token-football', 'sheep-lanes', 'rope-swing'] },
   { id: 'age14plus', minAge: 14, maxAge: null, games: ['soz', 'quiz'] },
 ];
 

@@ -1,0 +1,19 @@
+.age-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.age-nav a{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;padding:8px 3px 10px;background:var(--surface);border:1px solid var(--line);text-align:center;min-width:0;box-shadow:0 3px 10px #1a1a1a04}
+.age-icon{display:block;width:60px;height:60px;flex:none}
+.age-nav strong{font-size:12px;line-height:18px;font-weight:700;white-space:nowrap}
+.age-nav small{font-size:10px;line-height:14px;color:var(--muted)}
+.age-nav a:hover,.age-nav a[aria-current]{border-color:var(--primary);background:var(--tint)}
+#sections{gap:28px}
+.age-section{border-top:2px solid var(--line);padding-top:18px;gap:12px}
+.age-heading{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;background:var(--tint)}
+.age-heading .age-icon{width:64px;height:64px}
+.age-heading>div{flex:1;min-width:0}
+.age-heading .section-title{font-size:20px;line-height:25px;font-weight:700}
+.age-heading .section-note{margin:4px 0 0;font-size:12px;line-height:17px;color:var(--ink)}
+.age-count{display:inline-block;font-size:11px;line-height:16px;margin-top:7px;padding:3px 8px;border-radius:8px;background:var(--surface);color:var(--ink)}
+#age6to9 .age-heading{background:#E8F3EE}
+#age10to13 .age-heading{background:#FFF0D7}
+#age14plus .age-heading{background:#EAF0F4}
+.age-section:target .age-heading{outline:2px solid var(--primary);outline-offset:2px}
+@media(max-width:359px){.age-nav{grid-template-columns:repeat(2,minmax(0,1fr))}.age-nav a{display:grid;grid-template-columns:44px 1fr;column-gap:5px;text-align:left;padding:8px}.age-nav .age-icon{width:44px;height:44px;grid-row:span 2}.age-nav strong{font-size:12px}.age-heading{padding:10px;gap:8px}.age-heading .age-icon{width:52px;height:52px}}

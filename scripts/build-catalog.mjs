@@ -6,6 +6,7 @@
  *     progress.js                 ← @gamewingo/game-progress для хаба (IIFE, window.WingoProgress)
  *     manifest.json               ← games/manifest.json (читается приложением)
  *     <slug>/                     ← games/<slug>/dist (билды игр, base './')
+ *     <slug>/                     ← prebuilt/<slug> (прототипы, у которых в репо пока только сборка)
  *
  * Запускается ПОСЛЕ сборки всех игр (см. npm run build:all).
  */
@@ -34,6 +35,14 @@ const GAMES = [
   'sorting', 'color-sort', 'block-drop', 'counting', 'jigsaw',
   // знания
   'quiz',
+];
+
+// Веб-прототипы без наград, у которых в репозитории пока только готовая сборка
+// (выкладывались вручную; восстановлены из прод-деплоя). Копируются как есть.
+// Когда появятся исходники — перенести в games/<slug> и в GAMES выше.
+const PREBUILT = [
+  'paths', 'penalties', 'spiral', 'meteor-cannon',
+  'knife-throw', 'token-football', 'sheep-lanes', 'rope-swing',
 ];
 
 rmSync(out, { recursive: true, force: true });
@@ -72,6 +81,14 @@ for (const slug of GAMES) {
   }
   copyTree(dist, join(out, slug));
 }
+for (const slug of PREBUILT) {
+  const dist = join(root, 'prebuilt', slug);
+  if (!existsSync(join(dist, 'index.html'))) {
+    console.error(`✗ prebuilt/${slug}/index.html не найден`);
+    process.exit(1);
+  }
+  copyTree(dist, join(out, slug));
+}
 
 // Публичный адрес приёмника; пароль отчёта никогда не попадает в статический билд.
 const monitorApi = (process.env.GAMEWINGO_MONITOR_API ?? 'https://gamewingo-monitor-production.up.railway.app').replace(/\/$/, '');
@@ -83,7 +100,7 @@ if (monitorApi) {
   }
   writeFileSync(join(out, 'monitor-config.js'),
     `window.WINGO_MONITOR_API=${JSON.stringify(monitorApi).replace(/</g, '\\u003c')};\n`);
-  for (const slug of ['', ...GAMES]) {
+  for (const slug of ['', ...GAMES, ...PREBUILT]) {
     const page = join(out, slug, 'index.html');
     const prefix = slug ? '../' : './';
     const tags = `<script src="${prefix}monitor-config.js"></script><script src="${prefix}monitor.js"></script>`;
@@ -91,4 +108,4 @@ if (monitorApi) {
   }
 }
 
-console.log(`✓ dist-all собран: хаб + progress.js + ${GAMES.length} игр (${GAMES.join(', ')})`);
+console.log(`✓ dist-all собран: хаб + progress.js + ${GAMES.length} игр (${GAMES.join(', ')}) + ${PREBUILT.length} прототипов`);

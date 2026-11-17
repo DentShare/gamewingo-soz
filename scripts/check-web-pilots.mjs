@@ -1,6 +1,6 @@
 // Read-only browser check of the built catalog. No dev handles or injected scores.
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { launchQaBrowser } from './qa-runtime.mjs';
 
@@ -32,7 +32,7 @@ try {
   const manifestResponse = await context.request.get(new URL('manifest.json', base).href);
   assert.ok(manifestResponse.ok());
   const manifest = await manifestResponse.json();
-  assert.equal(manifest.games.length, 18);
+  assert.equal(manifest.games.length, JSON.parse(readFileSync(new URL('../games/manifest.json', import.meta.url), 'utf8')).games.length);
   await page.goto(base.href);
   for (const [slug, age, playY] of [['tap-hoops', 'age6to9', 605], ['tanks', 'age10to13', 601]]) {
     const game = manifest.games.find(g => g.gameId === slug);
