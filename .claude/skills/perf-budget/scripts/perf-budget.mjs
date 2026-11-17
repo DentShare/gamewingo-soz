@@ -83,6 +83,17 @@ for (const slug of slugs) {
   results.push(measure(slug, dist));
 }
 
+// Прототипы, у которых в репо пока только готовая сборка (prebuilt/<slug>).
+const prebuiltDir = join(ROOT, 'prebuilt');
+const prebuilt = existsSync(prebuiltDir)
+  ? readdirSync(prebuiltDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && existsSync(join(prebuiltDir, e.name, 'index.html')))
+    .map((e) => e.name)
+    .filter((slug) => (only.length ? only.includes(slug) : true))
+    .sort()
+  : [];
+for (const slug of prebuilt) results.push(measure(slug, join(prebuiltDir, slug)));
+
 // Хаб меряем отдельно: он собирается в корень домена и грузится первым.
 if (!only.length) {
   const hub = join(ROOT, 'dist-all');
@@ -90,7 +101,7 @@ if (!only.length) {
     // `join()` возвращает обратные слэши на Windows, поэтому проверка строкой
     // `${hub}/${slug}/` считала вложенные билды игр частью хаба. Сравниваем
     // первый относительный сегмент — это одинаково работает на всех ОС.
-    const gameNames = new Set(slugs);
+    const gameNames = new Set([...slugs, ...prebuilt]);
     const paths = walk(hub).filter((f) => !gameNames.has(relative(hub, f).split(/[\\/]/)[0]));
     const files = paths.map((path) => {
       const raw = readFileSync(path);

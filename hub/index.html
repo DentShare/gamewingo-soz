@@ -132,7 +132,7 @@
 
   /* «Продолжить» */
   .continue { display: flex; gap: 12px; align-items: center; }
-  .continue .ico { width: 56px; height: 56px; }
+  .continue .ico { width: 80px; height: 60px; }
   .continue .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
   .continue .name { font-size: 15px; line-height: 20px; letter-spacing: -.23px; font-weight: 590; }
   .continue .gold { font-size: 12px; line-height: 16px; font-weight: 590; color: var(--gold-text); }
@@ -142,7 +142,7 @@
   }
   .btn-play:active { background: var(--primary-pressed); }
 
-  /* Иконка игры: файл hub/icons/<slug>.svg на мягкой подложке. */
+  /* Approved volumetric covers; existing in-game SVG icons remain unchanged. */
   .ico { flex: none; border-radius: 12px; background: var(--tint); display: block; object-fit: cover; }
 
   /* Приветствие с фениксом — только у новичка, пока нечего «Продолжить». */
@@ -196,7 +196,7 @@
     cursor: pointer; text-decoration: none; color: inherit; min-width: 0;
   }
   .tile:active { background: var(--tint); }
-  .tile .ico { width: 48px; height: 48px; border-radius: 10px; }
+  .tile .ico { width: calc(100% + 24px); height: auto; aspect-ratio: 4 / 3; margin: -12px -12px 2px; border-radius: 12px 12px 0 0; object-fit: cover; }
   .tile h3 { margin: 0; font-size: 15px; line-height: 20px; letter-spacing: -.23px; font-weight: 590; overflow-wrap: anywhere; }
   .tile .sub { font-variant-numeric: tabular-nums; }
   .tile.soon { opacity: .55; cursor: default; }
@@ -263,6 +263,7 @@
     .bonus.pulse { animation: none; }
   }
 </style>
+<link rel="stylesheet" href="age-navigation.css" />
 </head>
 <body>
   <header class="topbar">
@@ -319,6 +320,7 @@
 <script src="progress.js"></script>
 <script type="module">
   import { categorizeGames } from './age-groups.mjs';
+  import { ageIcon } from './age-icons.mjs';
   // Все правила прогресса и экономики — в пакете game-progress. Хаб только рисует.
   // Нет бандла (сломанная сборка) — каталог всё равно открывается, без прогресса.
   const P = window.WingoProgress || null;
@@ -338,7 +340,7 @@
   const ARCADE = [
     { id: 'tap-hoops', kind: 'arcade', pilot: true, metric: 'score', title: { ru: 'Баскетбол', uz: 'Basketbol' } },
     { id: 'tanks', kind: 'arcade', pilot: true, metric: 'score', title: { ru: 'Танчики', uz: 'Tanklar' } },
-    { id: 'block-drop', kind: 'arcade', total: 0, metric: 'score', title: { ru: 'Блок-дроп', uz: 'Bloklar' } },
+    { id: 'block-drop', kind: 'arcade', total: 0, metric: 'score', title: { ru: 'Тетрис', uz: 'Tetris' } },
     { id: 'stack', kind: 'arcade', metric: 'score', title: { ru: 'Башня', uz: 'Minora' } },
     { id: 'flyer', kind: 'arcade', metric: 'score', title: { ru: 'Полёт', uz: 'Parvoz' } },
     { id: 'targets', kind: 'arcade', metric: 'score', title: { ru: 'Меткий глаз', uz: 'Nishonga ur' } },
@@ -355,7 +357,8 @@
     { id: 'quiz', kind: 'ladder', title: { ru: 'Викторина', uz: 'Viktorina' } },
     { id: 'sums', kind: 'ladder', title: { ru: 'Суммы', uz: 'Yigʻindilar' } },
   ];
-  const ALL = KIDS.concat(ARCADE, PUZZLES);
+  const PROTOTYPES = [{"id":"paths","title":{"ru":"Уютные линии","uz":"Yo‘llarni ulang"},"kind":"ladder","total":15,"pilot":true,"metric":"score"},{"id":"penalties","title":{"ru":"Пенальти","uz":"Penalti"},"kind":"arcade","total":15,"pilot":true,"metric":"score"},{"id":"spiral","title":{"ru":"Спираль","uz":"Spiral"},"kind":"ladder","total":15,"pilot":true,"metric":"score"},{"id":"knife-throw","title":{"ru":"Броски ножей","uz":"Usta uloqtiruvchi"},"kind":"arcade","total":15,"pilot":true,"metric":"score"},{"id":"meteor-cannon","title":{"ru":"Метеоритная пушка","uz":"Meteorit toʻpi"},"kind":"ladder","total":15,"pilot":true,"metric":"score"},{"id":"token-football","title":{"ru":"Футбол фишками","uz":"Fishkali futbol"},"kind":"ladder","total":15,"pilot":true,"metric":"score"},{"id":"sheep-lanes","title":{"ru":"Овечьи дорожки","uz":"Qoʻylar yoʻlagi"},"kind":"ladder","total":15,"pilot":true,"metric":"score"},{"id":"rope-swing","title":{"ru":"Воздушные качели","uz":"Havo argʻimchogʻi"},"kind":"ladder","total":30,"pilot":true,"metric":"score"}];
+  const ALL = KIDS.concat(ARCADE, PUZZLES, PROTOTYPES);
   const REWARD_GAMES = ALL.filter((g) => !g.pilot);
   const SECTIONS = categorizeGames(ALL);
   const byId = (id) => ALL.find((g) => g.id === id) || null;
@@ -379,7 +382,9 @@
       kids: 'Малышам · без проигрыша', arcade: 'Аркады · играй сразу',
       puzzles: 'Головоломки', soon: 'Скоро', soonBadge: 'Скоро',
       ages: 'Игры по возрасту', ageNote: 'Возраст — ориентир по сложности, не ограничение доступа.',
-      ageTitles: { under6: 'До 6 лет', age6to9: '6–9 лет', age10to13: '10–13 лет', age14plus: '14+' },
+      ageTitles: { under6: '3–5 лет', age6to9: '6–9 лет', age10to13: '10–13 лет', age14plus: '14+ лет' },
+      ageShort: { under6: 'Первые игры', age6to9: 'Играю и учусь', age10to13: 'Логика и реакция', age14plus: 'Знания и вызовы' },
+      ageCount: n => `${n} ${n === 1 ? 'игра' : n >= 2 && n <= 4 ? 'игры' : 'игр'}`,
       ageDescriptions: {
         under6: 'С 3 лет · без чтения и проигрыша',
         age6to9: 'Память, цвета, простая логика и реакция',
@@ -421,7 +426,9 @@
       kids: 'Kichkintoylarga · yutqazish yoʻq', arcade: 'Arkada · darrov oʻyna',
       puzzles: 'Boshqotirmalar', soon: 'Tez orada', soonBadge: 'Tez orada',
       ages: 'Yosh boʻyicha oʻyinlar', ageNote: 'Yosh — qiyinlik boʻyicha tavsiya, kirish cheklovi emas.',
-      ageTitles: { under6: '6 yoshgacha', age6to9: '6–9 yosh', age10to13: '10–13 yosh', age14plus: '14+' },
+      ageTitles: { under6: '3–5 yosh', age6to9: '6–9 yosh', age10to13: '10–13 yosh', age14plus: '14+ yosh' },
+      ageShort: { under6: 'Ilk oʻyinlar', age6to9: 'Oʻynab oʻrganish', age10to13: 'Mantiq va tezlik', age14plus: 'Bilim va sinov' },
+      ageCount: n => `${n} ta oʻyin`,
       ageDescriptions: {
         under6: '3 yoshdan · oʻqish va yutqazishsiz',
         age6to9: 'Xotira, ranglar, oddiy mantiq va tezkorlik',
@@ -483,7 +490,7 @@
   const openGame = (id) => { if (byId(id)) window.location.href = gameUrl(id); };
 
   const iconHtml = (id, size) =>
-    `<img class="ico" src="icons/${id}.svg" width="${size}" height="${size}" alt="" loading="lazy" />`;
+    `<img class="ico" src="covers/${id}.webp" width="480" height="360" alt="" loading="lazy" decoding="async" />`;
 
   // ── Данные из game-progress ────────────────────────────────────────────────
 
@@ -657,18 +664,28 @@
     document.getElementById('today').innerHTML = P ? todayHtml(s) : '';
     document.getElementById('sections').innerHTML = `
       <div><nav class="age-nav" aria-label="${s.ages}">
-        ${SECTIONS.map((sec) => `<a href="#${sec.id}">${s.ageTitles[sec.id]}</a>`).join('')}
+        ${SECTIONS.map((sec) => `<a href="#${sec.id}"${location.hash === '#'+sec.id ? ' aria-current="location"' : ''}>${ageIcon(sec.id)}<strong>${s.ageTitles[sec.id]}</strong><small>${s.ageShort[sec.id]}</small></a>`).join('')}
       </nav><p class="sub">${s.ageNote}</p></div>` + SECTIONS
       .filter((sec) => sec.games.length > 0)
       .map((sec) => `
         <section class="age-section" id="${sec.id}" aria-labelledby="${sec.id}-title">
-          <h2 class="section-title" id="${sec.id}-title">${s.ageTitles[sec.id]}</h2>
-          <p class="sub section-note">${s.ageDescriptions[sec.id]}</p>
+          <header class="age-heading">${ageIcon(sec.id, 'heading')}<div>
+            <h2 class="section-title" id="${sec.id}-title">${s.ageTitles[sec.id]} · ${s.ageShort[sec.id]}</h2>
+            <p class="sub section-note">${s.ageDescriptions[sec.id]}</p>
+            <span class="age-count">${s.ageCount(sec.games.length)}</span>
+          </div></header>
           <div class="grid">${sec.games.map((g) => tileHtml(g, s, sec.soon)).join('')}</div>
         </section>`)
       .join('');
     if (isBonusOpen()) renderBonus();
   }
+
+  window.addEventListener('hashchange', () => {
+    document.querySelectorAll('.age-nav a').forEach(a => {
+      if (a.hash === location.hash) a.setAttribute('aria-current', 'location');
+      else a.removeAttribute('aria-current');
+    });
+  });
 
   // ── Экран «Бонусы» ────────────────────────────────────────────────────────
 

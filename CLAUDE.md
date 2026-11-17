@@ -26,6 +26,7 @@ GameWingo/
 ├── packages/game-progress/    ← лестница уровней, звёзды, задания дня (@gamewingo/game-progress)
 ├── hub/                       ← хаб каталога (HTML), собирается в корень домена
 ├── games/<slug>/              ← отдельные игры (Vite-проекты) + SPEC.md на каждую
+├── prebuilt/<slug>/           ← прототипы только готовой сборкой (без исходников), см. docs/DEPLOY.md
 ├── backend/                   ← Score Engine (FastAPI): скоринг, антифрод, админка баланса, аналитика
 ├── docs/
 │   ├── SPEC.template.md        ← шаблон спеки игры

@@ -11,6 +11,9 @@ https://gamewingo-soz.vercel.app/manifest.json
   /soz/  /pairs/  /fifteen/  /2048/  /sudoku-kids/
 аркады:
   /stack/  /flyer/  /targets/  /snake/  /tanks/  /tap-hoops/
+веб-прототипы без наград (prebuilt/):
+  /paths/  /penalties/  /spiral/  /meteor-cannon/
+  /knife-throw/  /token-football/  /sheep-lanes/  /rope-swing/
 малышам:
   /sorting/  /counting/
 ```
@@ -41,6 +44,20 @@ outputDirectory: dist
 > а этот проект собирает весь каталог из корня монорепо. Без этой строки правки в других играх
 > (`games/pairs`, `games/snake`, …) не доезжали бы до продакшена: деплой отмечался успешным,
 > но фактически пропускался. Код выхода 1 означает «не игнорировать» — сборка идёт всегда.
+
+> ⚠️ **Не выкладывать прод вручную** (`vercel deploy --prod`, `--prebuilt`). Автодеплой из `main`
+> перезаписывает всё, чего нет в git. 2026-11-16 так «пропал» новый дизайн хаба: его выложили
+> с локальной машины, не закоммитив, и мерж #45 вернул старый хаб. Любая правка — через PR в `main`.
+> Если прод откатывали в дашборде (Instant Rollback), автоназначение домена отключается —
+> после мержа нужного PR снять откат: Deployments → Undo Rollback / Promote.
+
+### Прототипы без исходников (`prebuilt/`)
+
+`paths`, `penalties`, `spiral`, `meteor-cannon`, `knife-throw`, `token-football`, `sheep-lanes`,
+`rope-swing` лежат в `prebuilt/<slug>` готовой сборкой (восстановлены из прод-деплоя): исходников
+в репозитории нет. `scripts/build-catalog.mjs` (список `PREBUILT`) копирует их в `dist-all/<slug>`
+как есть и вставляет теги мониторинга. Чтобы изменить такую игру, сначала перенести её исходники
+в `games/<slug>`, добавить slug в `GAMES` и `build:games`, и удалить из `PREBUILT` и `prebuilt/`.
 
 ## Если создавать отдельный проект под каталог
 
