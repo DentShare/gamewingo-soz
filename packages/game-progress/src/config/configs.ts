@@ -3,7 +3,8 @@ import type { AntiFraudLimits, ProgressionConfig } from './types.js';
 import { starsGte, starsLte } from './helpers.js';
 
 /**
- * Конфиги прогрессии всех 11 игр — стартовый баланс событийного скоринга.
+ * Конфиги прогрессии подключённых к Score Engine игр. Два новых каталожных
+ * slugs (color-sort, block-drop) пока не имеют серверных правил начисления.
  *
  * Балльные правила (`scoring`) — посев для Score Engine: цифры компания крутит
  * в админке без релиза, здесь только осмысленная точка отсчёта. Метрики звёзд
@@ -20,7 +21,7 @@ const AF: AntiFraudLimits = {
   maxEventsPerMinute: 240,
 };
 
-export const GAME_CONFIGS: Record<GameId, ProgressionConfig> = {
+export const GAME_CONFIGS: Partial<Record<GameId, ProgressionConfig>> = {
 
   /* ── «5 букв» — слово из пяти букв, попытки на вес золота ───────────── */
   soz: {

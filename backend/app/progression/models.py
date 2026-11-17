@@ -26,9 +26,10 @@ class GameResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     game: str
-    # level — ступень лестницы; daily — слово дня «5 букв»; dailyLevel — уровень дня
+    # level — ступень лестницы; daily — слово дня «5 букв»; practice — тренировка;
+    # dailyLevel — уровень дня
     # в любой лестничной игре (свой тариф и дневной лимит); endless — аркадный забег.
-    mode: Literal["level", "daily", "dailyLevel", "endless"]
+    mode: Literal["level", "daily", "practice", "dailyLevel", "endless"]
     level: Optional[int] = Field(default=None, ge=1)
     score: int = Field(ge=0)
     durationMs: int = Field(ge=0)

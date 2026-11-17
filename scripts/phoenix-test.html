@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Тест феникса · GameWingo</title>
+<script src="pet-pilot-config.js"></script><script src="phoenix-pilot.js"></script>
+<style>
+  body{font:16px system-ui,sans-serif;max-width:480px;margin:40px auto;padding:0 18px;color:#32251f;background:#fff8ef}
+  h1{font-size:28px}label{display:block;font-weight:700;margin-top:24px}input{box-sizing:border-box;width:100%;min-height:48px;padding:12px;border:2px solid #bc9673;border-radius:12px;font:inherit;background:white}
+  button{min-height:48px;margin:12px 8px 12px 0;padding:0 20px;border:0;border-radius:12px;background:#df571d;color:white;font:inherit;font-weight:700;cursor:pointer}
+  button.secondary{background:#6f5140}#status{padding:14px;border-radius:12px;background:#fff0d5}a{color:#9e3c18}
+</style>
+</head>
+<body>
+<h1>Тест феникса</h1>
+<p>Введите личный тестовый токен. Он действует только в этой вкладке браузера. Для проверки общего прогресса введите тот же токен на другом устройстве.</p>
+<form id="login">
+  <label for="token">Тестовый токен</label>
+  <input id="token" type="password" autocomplete="off" required spellcheck="false">
+  <button type="submit">Подключиться</button>
+  <button type="button" class="secondary" id="logout">Сбросить</button>
+</form>
+<p id="status" role="status">Проверка соединения…</p>
+<p><a href="phoenix.html?lang=ru">Открыть феникса</a> · <a href="./?lang=ru">Каталог игр</a></p>
+<script>
+  const pilot = window.WingoPetPilot;
+  const status = document.getElementById('status');
+  function render() {
+    if (!pilot) { status.textContent = 'Тестовый режим не включён в эту сборку.'; return; }
+    status.textContent = pilot.status === 'ready'
+      ? `Подключено. Искр: ${pilot.state.total}, сегодня: ${pilot.state.today}.`
+      : pilot.status === 'needs_token' ? 'Введите выданный вам тестовый токен.'
+      : pilot.status === 'offline' ? 'Сервер недоступен. Повторите позже.'
+      : 'Проверка соединения…';
+  }
+  document.getElementById('login').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+      await pilot.setToken(document.getElementById('token').value);
+      document.getElementById('token').value = '';
+    } catch { render(); }
+  });
+  document.getElementById('logout').addEventListener('click', () => {
+    pilot.clearToken();
+    document.getElementById('token').value = '';
+  });
+  window.addEventListener('wingo:pet-state', render);
+  render();
+</script>
+</body></html>

@@ -6,9 +6,12 @@ import { GAME_ACHIEVEMENTS, achievementToasts, achievementsForGame } from './reg
 import { TARIFF } from '../bonus.js';
 
 describe('GAME_CONFIGS: целостность', () => {
-  it('покрывает все игры каталога, ключ совпадает с gameId', () => {
-    expect(Object.keys(GAME_CONFIGS).sort()).toEqual([...GAME_IDS].sort());
-    for (const [key, cfg] of Object.entries(GAME_CONFIGS)) expect(cfg.gameId).toBe(key);
+  it('конфиги относятся к играм каталога; неподключённые игры видны явно', () => {
+    for (const [key, cfg] of Object.entries(GAME_CONFIGS)) {
+      expect(GAME_IDS).toContain(key);
+      expect(cfg.gameId).toBe(key);
+    }
+    expect(GAME_IDS.filter((id) => !GAME_CONFIGS[id]).sort()).toEqual(['block-drop', 'color-sort']);
   });
 
   it('события скоринга уникальны внутри игры, базы неотрицательны', () => {

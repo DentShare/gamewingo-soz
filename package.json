@@ -12,6 +12,7 @@
     "audio:build": "node scripts/build-audio.mjs",
     "build:games": "npm run build -w @gamewingo/soz -w @gamewingo/pairs -w @gamewingo/fifteen -w @gamewingo/2048 -w @gamewingo/sudoku-kids -w @gamewingo/stack -w @gamewingo/flyer -w @gamewingo/targets -w @gamewingo/snake -w @gamewingo/sorting -w @gamewingo/color-sort -w @gamewingo/block-drop -w @gamewingo/counting -w @gamewingo/quiz -w @gamewingo/jigsaw -w @gamewingo/sums -w @gamewingo/tanks -w @gamewingo/tap-hoops",
     "build:all": "npm run bridge:build && npm run build:games && node scripts/build-catalog.mjs",
+    "pilot:phoenix": "node scripts/phoenix-pilot.mjs",
     "new-game": "echo \"Скопируйте template-vite-ts-main в games/<name> — или используйте скилл new-game в Claude Code\"",
     "progression:export": "npm run bridge:build && node scripts/export-progression.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",

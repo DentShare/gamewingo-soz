@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Проверка феникса · GameWingo</title>
+<script src="pet-pilot-config.js"></script><script src="phoenix-pilot.js"></script>
+<style>body{font:16px system-ui;max-width:440px;margin:32px auto;padding:0 18px;color:#1a1a1a}button{display:block;width:100%;min-height:48px;margin:10px 0;border:0;border-radius:12px;background:#f76624;color:#fff;font:inherit;font-weight:700}pre{white-space:pre-wrap;background:#fff3cf;padding:14px;border-radius:12px}a{color:#b9440f}</style>
+</head><body>
+<h1>Проверка феникса</h1>
+<p>Диагностические кнопки имитируют завершение партии. Они проверяют связь с сервером, но не заменяют игру вручную.</p>
+<button data-game="pairs">Имитировать «Найди пару»</button>
+<button data-game="2048">Имитировать «2048»</button>
+<button data-game="quiz">Имитировать «Викторину»</button>
+<button data-game="snake">Имитировать «Змейку»</button>
+<button id="newTester" type="button" style="background:#624519">Новый тестовый профиль</button>
+<pre id="state" aria-live="polite">Подключение…</pre>
+<p><a href="phoenix.html?lang=ru">Открыть феникса</a> · <a href="./?lang=ru">Каталог игр</a></p>
+<script>
+  const metrics = { pairs:{pairs:4,moves:4}, '2048':{moves:10,maxTile:64,boardSize:4},
+    quiz:{correct:3,mistakes:1}, snake:{eaten:2,length:5} };
+  const output = document.getElementById('state');
+  function render() {
+    const pilot = window.WingoPetPilot;
+    output.textContent = pilot.status === 'ready' ? JSON.stringify(pilot.state, null, 2) : 'Нет связи с тестовым сервером';
+  }
+  window.addEventListener('wingo:pet-state', render);
+  window.addEventListener('wingo:pet-result', (event) => {
+    const reply = event.detail;
+    render();
+    output.textContent += '\n\nПоследний итог: ' + (reply.awarded ? 'искра +1' : reply.reason);
+  });
+  document.addEventListener('click', (event) => {
+    const game = event.target.dataset.game;
+    if (!game) return;
+    const id = crypto.randomUUID();
+    window.dispatchEvent(new CustomEvent('wingo:bridge-event', { detail:{type:'GAME_START',sessionId:id} }));
+    window.dispatchEvent(new CustomEvent('wingo:bridge-event', { detail:{type:'GAME_RESULT',result:{
+      game, mode:game==='2048'||game==='snake'?'endless':'level', level:game==='2048'||game==='snake'?undefined:1,
+      score:100, durationMs:15000, sessionId:id, won:true, metrics:metrics[game]
+    }} }));
+  });
+  document.getElementById('newTester').addEventListener('click', () => {
+    localStorage.setItem('wingo:phoenix:pilot-user:v1', crypto.randomUUID());
+    location.reload();
+  });
+  render();
+</script>
+</body></html>

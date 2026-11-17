@@ -19,6 +19,7 @@ export function createSession(bridge:GameBridge, makeApi:(base:string,token:stri
     start(){bridge.start(sessionId);},
     async finish(input){
       const score=computeScore(input); bridge.gameOver(score,sessionId,input.durationMs);
+      bridge.sendResult({game:'color-sort',mode:'level',level:input.level,score,durationMs:input.durationMs,sessionId,won:true,metrics:{moves:input.moves,par:input.par}});
       bridge.track('round_finished',{level:input.level,moves:input.moves});
       if(!api)return null;
       try{return await api.submitScore({sessionId,gameId:'color-sort',score,durationMs:input.durationMs,meta:{level:input.level,moves:input.moves}});}

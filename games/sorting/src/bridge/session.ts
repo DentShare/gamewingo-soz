@@ -54,6 +54,11 @@ export function createSession(
       const score = computeScore(input);
       bridge.gameOver(score, sessionId, input.durationMs);
       const mode = input.mode ?? 'level';
+      bridge.sendResult({
+        game: 'sorting', mode, level: input.level,
+        score, durationMs: input.durationMs, sessionId, won: true,
+        metrics: { placed: input.placed, mistakes: input.mistakes },
+      });
       bridge.track('round_finished', { mode, feature: input.feature, mistakes: input.mistakes });
       if (!api) return null;
       try {

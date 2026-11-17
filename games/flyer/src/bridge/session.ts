@@ -49,6 +49,10 @@ export function createSession(
     start() { bridge.start(sessionId); },
     async finish({ score, passed, durationMs }) {
       bridge.gameOver(score, sessionId, durationMs);
+      bridge.sendResult({
+        game: GAME_ID, mode: 'endless', score, durationMs, sessionId,
+        metrics: { passed },
+      });
       bridge.track('round_finished', { passed });
       if (!api) return null;
       try {

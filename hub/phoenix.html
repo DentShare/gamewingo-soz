@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#F76624" />
+  <title>Мой феникс · GameWingo</title>
+  <style>
+    :root { --orange:#F76624; --deep:#B9440F; --ink:#1A1A1A; --muted:#697382; --bg:#F9F9F9; --surface:#fff; --line:#E6E3DF; --gold:#D99A12; font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,'Segoe UI',sans-serif; }
+    * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    body { margin:0; min-height:100vh; color:var(--ink); background:var(--bg); }
+    button,input { font:inherit; }
+    .bar { background:linear-gradient(120deg,#FF7700,#FF5001); color:white; padding:max(env(safe-area-inset-top),12px) 18px 15px; }
+    .nav { max-width:440px; margin:auto; display:flex; align-items:center; gap:12px; min-height:40px; }
+    .back { color:white; text-decoration:none; font-size:28px; width:40px; height:40px; display:grid; place-items:center; border-radius:12px; }
+    .back:focus-visible,.btn:focus-visible,.pet:focus-visible,input:focus-visible { outline:3px solid var(--deep); outline-offset:3px; }
+    h1 { font-size:20px; margin:0; font-weight:700; }
+    main { max-width:440px; padding:18px 20px calc(28px + env(safe-area-inset-bottom)); margin:auto; display:grid; gap:14px; }
+    .demo { background:#FFF3CF; color:#624519; border-radius:10px; padding:10px 12px; font-size:12px; line-height:1.4; }
+    .card { background:var(--surface); border-radius:18px; padding:18px; box-shadow:0 5px 24px rgba(75,40,20,.045); }
+    .scene { position:relative; overflow:hidden; min-height:335px; background:radial-gradient(circle at 50% 52%,#fff5dc 0,#ffe4c4 53%,#fff7eb 100%); display:grid; place-items:center; isolation:isolate; }
+    .scene::before { content:''; position:absolute; width:260px; height:260px; border:1px solid rgba(247,102,36,.18); border-radius:50%; box-shadow:0 0 0 24px rgba(255,255,255,.22),0 0 0 50px rgba(255,255,255,.14); }
+    .spark { position:absolute; width:7px; height:7px; border-radius:50%; background:var(--gold); box-shadow:0 0 14px 4px #ffc66a; opacity:.75; animation:twinkle 2.8s ease-in-out infinite alternate; }
+    .spark.a { top:22%; left:22%; } .spark.b { right:20%; top:36%; animation-delay:.8s; } .spark.c { left:28%; bottom:19%; animation-delay:1.5s; }
+    .scene.sparked .spark { box-shadow:0 0 20px 7px #ffc66a; }
+    .pet { position:relative; z-index:1; width:100%; max-width:286px; height:280px; border:0; background:none; padding:0; cursor:pointer; display:grid; place-items:center; }
+    .pet img { width:100%; max-height:100%; object-fit:contain; filter:drop-shadow(0 14px 15px rgba(130,54,10,.18)); animation:breathe 3s ease-in-out infinite; }
+    .scene.awakening .pet img { animation:glow 2.4s ease-in-out infinite; }
+    .pet.reacting img { animation:hop .65s ease-in-out 1; }
+    @keyframes breathe { 50% { transform:translateY(-6px) scale(1.015); } }
+    @keyframes glow { 50% { transform:translateY(-8px) scale(1.035); filter:drop-shadow(0 0 24px rgba(255,117,23,.7)); } }
+    @keyframes hop { 45% { transform:translateY(-20px) rotate(-4deg); } 75% { transform:translateY(0) rotate(3deg); } }
+    @keyframes twinkle { to { opacity:.18; transform:scale(.55); } }
+    .eyebrow { text-transform:uppercase; letter-spacing:.08em; font-size:11px; font-weight:800; color:var(--deep); margin:0 0 6px; }
+    h2 { font-size:22px; margin:0 0 8px; }
+    p { margin:0; line-height:1.48; }
+    .muted { color:var(--muted); font-size:14px; }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .count { color:var(--deep); font-weight:800; font-variant-numeric:tabular-nums; }
+    .progress { height:10px; border-radius:99px; overflow:hidden; background:#F1EDE8; margin:12px 0 8px; }
+    .progress i { display:block; width:0; height:100%; background:linear-gradient(90deg,#F76624,#D99A12); border-radius:99px; transition:width .35s ease; }
+    .btn { display:block; width:100%; min-height:48px; padding:11px 16px; border-radius:12px; border:0; background:var(--orange); color:white; font-weight:700; cursor:pointer; }
+    .btn:active { transform:scale(.98); }
+    .name-row { display:flex; gap:8px; margin-top:12px; }
+    input { min-width:0; flex:1; height:44px; border:1px solid var(--line); border-radius:10px; padding:0 12px; }
+    .name-row button { border:0; border-radius:10px; background:#FFEBE2; color:var(--deep); padding:0 14px; font-weight:700; cursor:pointer; }
+    [hidden] { display:none!important; }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; } }
+  </style>
+</head>
+<body>
+  <header class="bar"><nav class="nav"><a class="back" id="back" href="./" aria-label="Назад">‹</a><h1 id="title"></h1></nav></header>
+  <main>
+    <div class="demo" id="demo"></div>
+    <p id="testLogin" hidden><a href="phoenix-test.html">Ввести тестовый токен / Sinov tokenini kiriting</a></p>
+    <div class="scene card" id="scene">
+      <span class="spark a"></span><span class="spark b"></span><span class="spark c"></span>
+      <button class="pet" id="pet" type="button"><img id="petImage" alt="" /></button>
+    </div>
+    <div class="card" id="recentCard" hidden aria-live="polite"><div class="eyebrow" id="recentLabel"></div><p id="recentText"></p></div>
+    <div class="card">
+      <div class="eyebrow" id="stageLabel"></div>
+      <h2 id="stageTitle"></h2>
+      <p class="muted" id="stageText"></p>
+      <div class="row" style="margin-top:17px"><strong id="progressLabel"></strong><span class="count" id="progressCount"></span></div>
+      <div class="progress" role="progressbar" id="progress" aria-valuemin="0"><i id="progressFill"></i></div>
+      <p class="muted" id="today"></p>
+    </div>
+    <button class="btn" id="touch" type="button"></button>
+    <div class="card" id="nameCard" hidden>
+      <strong id="nameLabel"></strong>
+      <form class="name-row" id="nameForm"><input id="nameInput" maxlength="20" autocomplete="off" /><button id="saveName" type="submit"></button></form>
+    </div>
+    <p class="muted" id="hint"></p>
+  </main>
+  <script src="progress.js"></script>
+  <script>
+    const P = window.WingoProgress;
+    const pilot = window.WingoPetPilot;
+    const qs = new URLSearchParams(location.search);
+    let lang = qs.get('lang') === 'uz' ? 'uz' : 'ru';
+    if (!qs.has('lang')) try { lang = localStorage.getItem('wingoHubLang') === 'uz' ? 'uz' : 'ru'; } catch {}
+    document.documentElement.lang = lang;
+    const T = {
+      ru: { title:'Мой феникс', back:'В игры', demo:'Демо на этом устройстве · прогресс пока не переносится между устройствами.', stage:'Стадия роста', egg:'Яйцо феникса', awakening:'Феникс просыпается', chick:'Птенец феникса', eggText:'Играй и помогай теплу внутри яйца расти.', awakeningText:'Скоро появится птенец — скорлупа уже светится.', chickText:'Феникс вылупился! Коснись его, чтобы увидеть отклик.', progress:'Искры до следующей стадии', grown:'Всего искр', today:(n)=>`Сегодня: ${n} из 3 искр`, touch:'Погладить феникса', tap:'Коснуться яйца', reactionEgg:'Яйцо мягко светится', reactionChick:'Феникс рад тебе!', name:'Имя феникса', save:'Сохранить', placeholder:'Как его зовут?', hint:'Искру даёт завершённая партия в новой для этого дня игре. Не больше трёх искр за день. Пропущенные дни не отнимают прогресс.' },
+      uz: { title:'Mening feniksim', back:'Oʻyinlarga', demo:'Bu qurilmadagi demo · hozircha rivojlanish boshqa qurilmaga oʻtmaydi.', stage:'Oʻsish bosqichi', egg:'Feniks tuxumi', awakening:'Feniks uygʻonmoqda', chick:'Feniks joʻjasi', eggText:'Oʻyna va tuxum ichidagi iliqlikni kuchaytir.', awakeningText:'Tez orada joʻja chiqadi — tuxum yorishmoqda.', chickText:'Feniks tuxumdan chiqdi! Unga tegib koʻr.', progress:'Keyingi bosqichgacha uchqunlar', grown:'Jami uchqunlar', today:(n)=>`Bugun: 3 tadan ${n} ta uchqun`, touch:'Feniksni silash', tap:'Tuxumga tegish', reactionEgg:'Tuxum mayin porlaydi', reactionChick:'Feniks xursand!', name:'Feniksning ismi', save:'Saqlash', placeholder:'Uning ismi nima?', hint:'Uchqun shu kun uchun yangi oʻyindagi tugallangan partiyadan olinadi. Kuniga uchtagacha uchqun. Tanaffus rivojlanishni kamaytirmaydi.' },
+    }[lang];
+    const REACTIONS = {
+      ru: { label:'Новая искра · демо', logic:'Феникс с любопытством изучает светящийся знак.', pattern:'Феникс собрал цветные искры в узор.', motion:'Феникс радостно взмахнул крыльями.' },
+      uz: { label:'Yangi uchqun · demo', logic:'Feniks yorqin belgiga qiziqib qaradi.', pattern:'Feniks rangli uchqunlardan naqsh yasadi.', motion:'Feniks xursand boʻlib qanot qoqdi.' },
+    }[lang];
+    const gameFamily = (game) => {
+      if (['soz', 'fifteen', 'sudoku-kids', 'quiz'].includes(game)) return 'logic';
+      if (['stack', 'flyer', 'targets', 'snake', 'block-drop'].includes(game)) return 'motion';
+      return 'pattern';
+    };
+    const byId = (id) => document.getElementById(id);
+    byId('back').href = './?lang=' + lang;
+    byId('back').setAttribute('aria-label', T.back);
+    byId('title').textContent = T.title;
+    byId('demo').textContent = T.demo;
+    byId('stageLabel').textContent = T.stage;
+    byId('nameLabel').textContent = T.name;
+    byId('saveName').textContent = T.save;
+    byId('nameInput').placeholder = T.placeholder;
+    byId('hint').textContent = T.hint;
+
+    function render() {
+      const state = pilot ? (pilot.state || { total:0, today:0, stage:'egg', nextStageAt:3, name:'', lastSpark:null })
+        : P ? P.petState() : { total:0, today:0, stage:'egg', nextStageAt:3, name:'', lastSpark:null };
+      byId('demo').textContent = pilot
+        ? pilot.status === 'ready'
+          ? (lang === 'uz' ? 'Sinov serveriga ulangan. Uchqunlar serverda saqlanadi.' : 'Подключено к тестовому серверу. Искры сохраняются на сервере.')
+          : pilot.status === 'needs_token'
+            ? (lang === 'uz' ? 'Sinov tokenini kiriting.' : 'Введите тестовый токен.')
+          : pilot.status === 'connecting'
+            ? (lang === 'uz' ? 'Sinov serveriga ulanmoqda…' : 'Подключение к тестовому серверу…')
+            : (lang === 'uz' ? 'Sinov serveriga ulanib boʻlmadi. Hozir yangi uchqunlar tasdiqlanmaydi.' : 'Нет связи с тестовым сервером. Новые искры пока не подтверждаются.')
+        : T.demo;
+      byId('testLogin').hidden = !window.WINGO_PET_TEST_API || pilot?.status !== 'needs_token';
+      const stage = state.stage;
+      const fresh = state.lastSpark && Date.now() >= state.lastSpark.at && Date.now() - state.lastSpark.at < 120000;
+      byId('scene').className = 'scene card ' + stage + (fresh ? ' sparked' : '');
+      byId('recentCard').hidden = !fresh;
+      if (fresh) {
+        byId('recentLabel').textContent = pilot
+          ? (lang === 'uz' ? 'Yangi uchqun' : 'Новая искра') : REACTIONS.label;
+        byId('recentText').textContent = REACTIONS[gameFamily(state.lastSpark.game)];
+      }
+      byId('petImage').src = 'phoenix-assets/' + stage + '.webp';
+      byId('pet').setAttribute('aria-label', stage === 'chick' ? T.touch : T.tap);
+      byId('stageTitle').textContent = stage === 'egg' ? T.egg : stage === 'awakening' ? T.awakening : (state.name || T.chick);
+      byId('stageText').textContent = T[stage + 'Text'];
+      byId('progressLabel').textContent = state.nextStageAt ? T.progress : T.grown;
+      byId('progressCount').textContent = state.nextStageAt ? state.total + ' / ' + state.nextStageAt : String(state.total);
+      const max = state.nextStageAt || Math.max(6, state.total);
+      const fraction = state.nextStageAt ? state.total / max : 1;
+      byId('progressFill').style.width = Math.max(0, Math.min(1, fraction)) * 100 + '%';
+      byId('progress').setAttribute('aria-valuenow', String(state.total));
+      byId('progress').setAttribute('aria-valuemax', String(max));
+      byId('today').textContent = T.today(state.today);
+      byId('touch').textContent = stage === 'chick' ? T.touch : T.tap;
+      byId('nameCard').hidden = stage !== 'chick';
+      if (stage === 'chick' && document.activeElement !== byId('nameInput')) byId('nameInput').value = state.name;
+    }
+    let reactionTimer;
+    function react() {
+      const pet = byId('pet');
+      pet.classList.remove('reacting');
+      void pet.offsetWidth;
+      pet.classList.add('reacting');
+      const old = byId('stageText').textContent;
+      byId('stageText').textContent = (pilot ? pilot.state?.stage : P?.petState().stage) === 'chick' ? T.reactionChick : T.reactionEgg;
+      clearTimeout(reactionTimer);
+      reactionTimer = setTimeout(() => { pet.classList.remove('reacting'); byId('stageText').textContent = old; }, 1100);
+    }
+    byId('pet').addEventListener('click', react);
+    byId('touch').addEventListener('click', react);
+    byId('nameForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (pilot) {
+        try { await pilot.rename(byId('nameInput').value); } catch { render(); return; }
+      } else if (P) P.namePet(byId('nameInput').value);
+      render(); byId('nameInput').blur();
+    });
+    window.addEventListener('wingo:pet-state', render);
+    window.addEventListener('pageshow', () => { if (pilot) pilot.refresh().catch(() => {}); else render(); });
+    render();
+  </script>
+</body>
+</html>

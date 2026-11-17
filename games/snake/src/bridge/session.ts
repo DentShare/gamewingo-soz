@@ -53,6 +53,11 @@ export function createSession(
       const score = clampScore(input.score);
       const length = input.length ?? START_LENGTH + input.eaten;
       bridge.gameOver(score, sessionId, input.durationMs);
+      bridge.sendResult({
+        game: 'snake', mode: 'endless', score,
+        durationMs: input.durationMs, sessionId,
+        metrics: { eaten: input.eaten, length },
+      });
       bridge.track('round_finished', { eaten: input.eaten, length });
       if (!api) return null;
       try {

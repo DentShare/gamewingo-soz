@@ -49,6 +49,11 @@ export function createSession(
     async finish(input) {
       const score = sanitizeScore(input.score);
       bridge.gameOver(score, sessionId, input.durationMs);
+      bridge.sendResult({
+        game: 'targets', mode: 'endless', score,
+        durationMs: input.durationMs, sessionId,
+        metrics: { hits: input.hits, maxCombo: input.maxCombo },
+      });
       bridge.track('round_finished', { hits: input.hits, maxCombo: input.maxCombo });
       if (!api) return null;
       try {

@@ -2,6 +2,7 @@ import type {
   GameBridge, ApiClient, AppToGameEvent, BrandTheme, LeaderboardEntry,
 } from '@gamewingo/game-bridge';
 import { computeScore } from '../core/score';
+import { perfectCrosses } from '../core/levels';
 import type { Locale } from '../core/locale';
 
 export interface FinishInput {
@@ -52,6 +53,11 @@ export function createSession(
       // Длительность уходит на сервер как антифрод-сигнал, в очки она не входит:
       // головоломку решают не на скорость (см. core/score.ts).
       bridge.gameOver(score, sessionId, input.durationMs);
+      bridge.sendResult({
+        game: 'sums', mode: input.mode ?? 'level', level: input.level,
+        score, durationMs: input.durationMs, sessionId, won: true,
+        metrics: { moves: input.moves, undos: input.undos, extraMoves: Math.max(0, input.moves - perfectCrosses(input.level)) },
+      });
       bridge.track('round_finished', { level: input.level, moves: input.moves, undos: input.undos });
       if (!api) return null;
       try {

@@ -15,6 +15,7 @@ export * from './records.js';
 export * from './challenges.js';
 export * from './chapters.js';
 export * from './hub.js';
+export * from './pet.js';
 export * from './results.js';
 export * from './config/index.js';
 
